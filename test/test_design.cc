@@ -34,15 +34,18 @@
 
 typedef unsigned int uint;
 const uint simd_block_size=4;
+
 const uint array_max_size = 1024 / simd_block_size;
 const uint array_sub_size = 768 / simd_block_size;
+
+//const uint array_max_size = 16 / simd_block_size;
+//const uint array_sub_size = 8 / simd_block_size;
+
 typedef double double4 __attribute__((__vector_size__(32)));
 //typedef std::array<double, simd_block_size> double4;
 
 
 
-//const uint array_max_size = 16;
-//const uint array_sub_size = 8;
 
 
 template <class BenchCase>
@@ -334,7 +337,7 @@ struct Expr {
 	Expr() {
 		//std::cout << "Expr constr" << "\n";
 		base_size = (2 * n_arrays + n_temp) * array_max_size;
-		base = (double4 *)memalign(simd_block_size, sizeof(double) * simd_block_size * base_size);
+		base = (double4 *)memalign(sizeof(double) * simd_block_size, sizeof(double) * simd_block_size * base_size);
 		ASSERT(base !=nullptr);
 		std::cout << "base: " << base << std::endl;
 		// Initialization
