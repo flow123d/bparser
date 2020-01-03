@@ -28,15 +28,16 @@
 #include <cstdlib>
 #include <string>
 #include <cmath>
+#include <array>
 #include <malloc.h>
 #include "assert.hh"
 
 typedef unsigned int uint;
 const uint simd_block_size=4;
-const uint array_max_size = 1024;
-const uint array_max4_size = array_max_size / simd_block_size;
-const uint array_sub_size = 768;
+const uint array_max_size = 1024 / simd_block_size;
+const uint array_sub_size = 768 / simd_block_size;
 typedef double double4 __attribute__((__vector_size__(32)));
+//typedef std::array<double, simd_block_size> double4;
 
 
 
@@ -82,8 +83,8 @@ void measure(BenchCase &bc) {
 //	std::cout << "  check sum:       " << check_sum << "\n";
 
 	// condensed
-	std::cout << typeid(BenchCase).name() << "  perf. [GFlop/s]: " << n_repeat * bc.n_flop * array_sub_size / time_array / 1000000 << "\n";
-	std::cout << typeid(BenchCase).name() << "  (direct perf.) : " << n_repeat * bc.n_flop * array_sub_size / time_direct / 1000000 << "\n";
+	std::cout << typeid(BenchCase).name() << "  perf. [GFlop/s]: " << n_repeat * bc.n_flop * array_sub_size * simd_block_size / time_array / 1000000 << "\n";
+	std::cout << typeid(BenchCase).name() << "  (direct perf.) : " << n_repeat * bc.n_flop * array_sub_size * simd_block_size / time_direct / 1000000 << "\n";
 
 }
 
@@ -93,9 +94,9 @@ void measure(BenchCase &bc) {
  */
 void make_subset(uint seed, uint *subset) {
 	srand(seed);
-	uint n_blocks = (array_sub_size + simd_block_size -1) / simd_block_size;
+	uint n_blocks = array_sub_size;
 	uint shift = 0;
-	uint total_shift = (array_max_size - array_sub_size) / simd_block_size;
+	uint total_shift = (array_max_size - array_sub_size);
 	for(uint i_block = 0; i_block < n_blocks; ++i_block) {
 		int add_shift = int(total_shift * (rand() % array_max_size) / array_max_size);
 		shift += add_shift;
@@ -103,13 +104,13 @@ void make_subset(uint seed, uint *subset) {
 		subset[i_block] = shift; // alligned shifts
 		shift += 1;
 		//std::cout << i_block << " " << subset[i_block] << " " << total_shift << "\n";
-		ASSERT(subset[i_block] + simd_block_size - 1 < array_max_size );
+		ASSERT(subset[i_block] < array_max_size );
 	}
 }
 
 #define SubsetFor \
-		for(uint i=0; i<n_blocks;  ++i)
-
+		for(uint i=0; i<n_blocks;  ++i) \
+			for(uint j=0; j<simd_block_size; ++j)
 
 
 struct SubsetArray {
@@ -149,8 +150,7 @@ struct SubsetArray {
 	{ return subset[i];}
 
 	void print() {
-		SubsetFor
-			for(uint j = 0; j < simd_block_size; ++j) {
+		SubsetFor {
 				std::cout << idx(i) << " " << j << " " << values[idx(i)][j] << "\n";
 			}
 	}
@@ -159,7 +159,7 @@ struct SubsetArray {
 		sum_[0] = sum_[1] = sum_[2] = sum_[3] = 0.0;
 		SubsetFor {
 			//std::cout << i << " " << idx << " " << values[idx] << "\n";
-			sum_ += values[idx(i)];
+			sum_[j] += values[idx(i)][j];
 		}
 
 		return sum_[0] + sum_[1] + sum_[2] + sum_[3];
@@ -167,10 +167,7 @@ struct SubsetArray {
 
 	void set_sum(const Array &a, const Array &b) {
 		SubsetFor {
-			values[idx(i)][0] = a.values[a.idx(i)][0] + b.values[b.idx(i)][0];
-			values[idx(i)][1] = a.values[a.idx(i)][1] + b.values[b.idx(i)][1];
-			values[idx(i)][2] = a.values[a.idx(i)][2] + b.values[b.idx(i)][2];
-			values[idx(i)][3] = a.values[a.idx(i)][3] + b.values[b.idx(i)][3];
+			values[idx(i)][j] = a.values[a.idx(i)][j] + b.values[b.idx(i)][j];
 		}
 
 		// not vectorized
@@ -178,29 +175,29 @@ struct SubsetArray {
 
 	void add(const Array &a) {
 		SubsetFor
-		    values[idx(i)] += a.values[a.idx(i)];
+		    values[idx(i)][j] += a.values[a.idx(i)][j];
 	}
 
 	void scalar_add(double4 cc) {
 		SubsetFor
-			values[idx(i)] += cc;
+			values[idx(i)][j] += cc[j];
 		// not vectorized
 	}
 
 	void mult(const Array &a, const Array &b) {
 		SubsetFor
-			values[idx(i)] = a.values[a.idx(i)] * b.values[b.idx(i)];
+			values[idx(i)][j] = a.values[a.idx(i)][j] * b.values[b.idx(i)][j];
 	}
 
 
 	void scale(const Array &a) {
 		SubsetFor
-			values[idx(i)] *= a.values[a.idx(i)];
+			values[idx(i)][j] *= a.values[a.idx(i)][j];
 	}
 
 	void scalar_scale(double4 cc) {
 		SubsetFor
-			values[idx(i)] *= cc;
+			values[idx(i)][j] *= cc[j];
 	}
 
 	void sqrt_(const Array &a) {
@@ -216,7 +213,8 @@ struct SubsetArray {
 };
 
 #define FlatFor \
-		for(uint idx=0; idx<n_blocks; idx+=1)
+		for(uint idx=0; idx<n_blocks; idx+=1) \
+			for(uint j=0; j<simd_block_size; ++j)
 
 
 struct FlatArray {
@@ -234,11 +232,9 @@ struct FlatArray {
 		for(uint i=0; i<n_blocks; ++i) {
 			uint f_idx = i;
 			uint s_idx = subset_ptr[i];
-			values[f_idx][0] = ptr[s_idx][0];
-			values[f_idx][1] = ptr[s_idx][1];
-			values[f_idx][2] = ptr[s_idx][2];
-			values[f_idx][3] = ptr[s_idx][3];
-
+			for(uint j=0; j<simd_block_size; ++j) {
+				values[f_idx][j] = ptr[s_idx][j];
+			}
 				//std::cout << "copy: " << f_idx << " <- " << s_idx <<  " " << ptr[s_idx] << "\n";
 		}
 
@@ -258,10 +254,9 @@ struct FlatArray {
 		for(uint i=0; i<n_blocks; ++i) {
 			uint f_idx = i;
 			uint s_idx = subset_ptr[i];
-			ptr[s_idx][0] = values[f_idx][0];
-			ptr[s_idx][1] = values[f_idx][1];
-			ptr[s_idx][2] = values[f_idx][2];
-			ptr[s_idx][3] = values[f_idx][3];
+			for(uint j=0; j<simd_block_size; ++j) {
+				ptr[s_idx][j] = values[f_idx][j];
+			}
 			// std::cout << i << " " << j << " " << values[f_idx] << "\n";
 
 		}
@@ -280,45 +275,51 @@ struct FlatArray {
 		sum_[0] = sum_[1] = sum_[2] = sum_[3] = 0.0;
 		FlatFor {
 			//std::cout << i << " " << idx << " " << values[idx] << "\n";
-			sum_ += values[idx];
+			sum_[j] += values[idx][j];
 		}
 
 		return sum_[0] + sum_[1] + sum_[2] + sum_[3];
 	}
 
 	void set_sum(const Array &a, const Array &b) {
-		FlatFor values[idx] = a.values[idx] + b.values[idx];
+		FlatFor
+		    values[idx][j] = a.values[idx][j] + b.values[idx][j];
 		// assembly: vectorized
 	}
 
 	void add(const Array &a) {
-		FlatFor values[idx] += a.values[idx];
+		FlatFor
+			values[idx][j] += a.values[idx][j];
 	}
 
 	void scalar_add(double4 a) {
-		FlatFor values[idx] += a;
+		FlatFor
+			values[idx][j] += a[j];
 	}
 
 	void mult(const Array &a, const Array &b) {
-		FlatFor values[idx] = a.values[idx] * b.values[idx];
+		FlatFor
+			values[idx][j] = a.values[idx][j] * b.values[idx][j];
 	}
 
 
 	void scale(const Array &a) {
-		FlatFor values[idx] *= a.values[idx];
+		FlatFor
+			values[idx][j] *= a.values[idx][j];
 	}
 
 	void scalar_scale(double4 b) {
-		FlatFor values[idx] *= b;
+		FlatFor
+			values[idx][j] *= b[j];
 	}
 
 	void sqrt_(const Array &a) {
 		FlatFor
-		for(uint j=0; j<simd_block_size; ++j) values[idx][j] = sqrt(a.values[idx][j]);
+			values[idx][j] = sqrt(a.values[idx][j]);
 	}
 
 
-	double4 values[array_max4_size];
+	double4 values[array_max_size];
 	double4 sum_;
 	uint n_blocks;
 };
@@ -328,35 +329,23 @@ template <class A>
 struct Expr {
 	static const uint n_arrays = 5;
 	static const uint n_temp = 4;
-	static const uint n_blocks = (array_sub_size + simd_block_size -1) / simd_block_size;
+	static const uint n_blocks = array_sub_size;
 
 	Expr() {
 		//std::cout << "Expr constr" << "\n";
-		base_size = (2 * n_arrays + n_temp) * array_max4_size;
+		base_size = (2 * n_arrays + n_temp) * array_max_size;
 		base = (double4 *)memalign(simd_block_size, sizeof(double) * simd_block_size * base_size);
 		ASSERT(base !=nullptr);
 		std::cout << "base: " << base << std::endl;
-		base[1][2] = 1;
 		// Initialization
-		double4 inc = {1, 1, 1, 1};
-		inc *= simd_block_size;
-		double4 value = {0, 1, 2, 3};
-		for(uint i=0; i<base_size; ++i, value+=inc) {
-			base[i][0] = value[0];
-			base[i][1] = value[1];
-			base[i][2] = value[2];
-			base[i][3] = value[3];
+		for(uint i=0; i<base_size; ++i)
+			for(uint j = 0, idx=0; j < simd_block_size; ++j) {
+			base[i][j] = i * simd_block_size + j;
 		}
-//		for(uint i=0; i<base_size; ++i) {
-//			base[i][0] = 1;
-//			base[i][1] = 1;
-//			base[i][2] = 1;
-//			base[i][3] = 1;
-//		}
 		//std::cout << "here" << std::endl;
 
 		for(uint i = 0; i < 2 * n_arrays; ++i) {
-			a_ptr[i] = base + i * array_max4_size;
+			a_ptr[i] = base + i * array_max_size;
 		}
 
 		for(uint j=0;j<n_temp;++j) {
@@ -366,7 +355,7 @@ struct Expr {
 		}
 
 		for(uint j=0;j<4;++j)
-			temp[j] = base + (2 * n_arrays + j) * array_max4_size;
+			temp[j] = base + (2 * n_arrays + j) * array_max_size;
 
 		uint seed = 1234;
 
@@ -378,15 +367,16 @@ struct Expr {
 
 	double check() {
 		sum_[0] = sum_[1] = sum_[2] = sum_[3] = 0.0;
-		for(uint i=0; i < 2 * n_arrays  * array_max4_size; ++i) {
+		for(uint i=0; i < 2 * n_arrays  * array_max_size; ++i)
+			for(uint j = 0, idx=0; j < simd_block_size; ++j) {
 			//std::cout << i << " " << idx << " " << values[idx] << "\n";
-			sum_ += base[i];
+			sum_[j] += base[i][j];
 		}
 		return sum_[0] + sum_[1] + sum_[2] + sum_[3];
 	}
 
 	~Expr() {
-		delete[] base;
+		free(base);
 	}
 
 	double4 sum_;
@@ -420,15 +410,12 @@ struct Sum {
 
 	void run_direct(uint shift) {
 		//std::cout << "direct" << std::endl;
-		double4 *a[3];
-		a[0] = d.a_ptr[shift+0];
-		a[1] = d.a_ptr[shift+1];
-		a[2] = d.a_ptr[shift+2];
-		for(uint i=0; i<array_sub_size; ++i) {
-			a[0][i][0] = a[1][i][0] + a[2][i][0];
-			a[0][i][1] = a[1][i][1] + a[2][i][1];
-			a[0][i][2] = a[1][i][2] + a[2][i][2];
-			a[0][i][3] = a[1][i][3] + a[2][i][3];
+		double *a[3];
+		a[0] = (double *)(& (d.a_ptr[shift+0][0]));
+		a[1] = (double *)(& (d.a_ptr[shift+1][0]));
+		a[2] = (double *)(& (d.a_ptr[shift+2][0]));
+		for(uint i=0; i<array_sub_size * simd_block_size; ++i) {
+			a[0][i] = a[1][i] + a[2][i];
 		}
 	}
 
@@ -452,10 +439,10 @@ struct Add {
 	}
 
 	void run_direct(uint shift) {
-		double4 *a[2];
-		a[0] = d.a_ptr[shift+0];
-		a[1] = d.a_ptr[shift+1];
-		for(uint i=0; i<array_sub_size; ++i)
+		double *a[2];
+		a[0] = (double *)(& (d.a_ptr[shift+0][0]));
+		a[1] = (double *)(& (d.a_ptr[shift+1][0]));
+		for(uint i=0; i<array_sub_size * simd_block_size; ++i)
 			a[0][i] += a[1][i];
 	}
 
@@ -480,9 +467,9 @@ struct AddScalar {
 	}
 
 	void run_direct(uint shift) {
-		double4 *a[1];
-		a[0] = d.a_ptr[shift+0];
-		for(uint i=0; i<array_sub_size; ++i)
+		double *a[1];
+		a[0] = (double *)(& (d.a_ptr[shift+0][0]));
+		for(uint i=0; i<array_sub_size * simd_block_size; ++i)
 			a[0][i] += 3.14;
 	}
 
@@ -519,12 +506,12 @@ struct NormSqr {
 	}
 
 	void run_direct(uint shift) {
-		double4 *a[4];
-		a[0] = d.a_ptr[shift+0];
-		a[1] = d.a_ptr[shift+1];
-		a[2] = d.a_ptr[shift+2];
-		a[3] = d.a_ptr[shift+3];
-		for(uint i=0; i<array_sub_size; ++i)
+		double *a[4];
+		a[0] = (double *)(& (d.a_ptr[shift+0][0]));
+		a[1] = (double *)(& (d.a_ptr[shift+1][0]));
+		a[2] = (double *)(& (d.a_ptr[shift+2][0]));
+		a[3] = (double *)(& (d.a_ptr[shift+3][0]));
+		for(uint i=0; i<array_sub_size * simd_block_size; ++i)
 			a[0][i] = a[1][i]*a[1][i] + a[2][i]*a[2][i] + a[3][i]*a[3][i];
 	}
 
@@ -548,12 +535,11 @@ struct Sqrt {
 	}
 
 	void run_direct(uint shift) {
-		double4 *a[2];
-		a[0] = d.a_ptr[shift+0];
-		a[1] = d.a_ptr[shift+1];
-		for(uint i=0; i<array_sub_size; ++i)
-			for(uint j=0; j< simd_block_size; ++j)
-				a[0][i][j] = sqrt(a[1][i][j]);
+		double *a[2];
+		a[0] = (double *)(& (d.a_ptr[shift+0][0]));
+		a[1] = (double *)(& (d.a_ptr[shift+1][0]));
+		for(uint i=0; i<array_sub_size * simd_block_size; ++i)
+				a[0][i] = sqrt(a[1][i]);
 	}
 
 };
