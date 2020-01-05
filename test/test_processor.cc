@@ -9,51 +9,47 @@
 
 #include <string>
 #include "assert.hh"
+#include "scalar_expr.hh"
 #include "processor.hh"
 
 
 
 
-bool match(std::string s) {
 
-    Grammar g; // Our grammar
-
-    std::string s1 = s;
-    std::string::const_iterator iter = s1.begin();
-    std::string::const_iterator end = s1.end();
-
-    bool result = phrase_parse(iter, end, g, space);
-    //std::cout << "Expr: '" << s << "' Resutl: " << result << "\n";
-    return result && iter == end;
-}
 
 
 
 
 int main()
 {
-	//bool r = match("-1.23e-2 * 5.3 / 4 + 3 - 4");
-	bool r = match("+ + -1.23e-2");
-	std::cout << r << "\n";
+	using namespace bparser;
+	using namespace bparser::details;
+
+	const uint vec_size = 20;
+	double v1_values[vec_size]; // 5 * double 4
+	double v2_values[vec_size]; // 5 * double 4
+	double v3_values[vec_size]; // 5 * double 4
+
+	ScalarExpression se;
+	ScalarNode * c1 = se.create_const(3.14);
+	ScalarNode * v1 = se.create_value(v1_values);
+	ScalarNode * e1 = se.create<_abs_>(v1);
+	ScalarNode * e2 = se.create<_add_>(e1, c1);
+	ScalarNode * r1 = se.create_result(e1, v2_values);
+	ScalarNode * r2 = se.create_result(e2, v3_values);
+
+	std::vector<ScalarNode *> results = {r1, r2};
+	Processor * processor = Processor::create(se, vec_size);
 
 
-	// Test that grammar match valid expressions and fails for invalid.
-	ASSERT(match(("123")));
-	ASSERT(match(("123.0")));
-	ASSERT(match(("1.23e2")));
-	ASSERT(match(("1.23e-2")));
-	ASSERT(match(("-1.23e-2")));
-	ASSERT(match(("1.23e-2 * 5.3")));
-	ASSERT(match(("-1.23e-2 * 5.3 / 4")));
-	ASSERT(match(("-1.23e-2 * 5.3 / 4 + 3 - 4")));
-	ASSERT(match(("-1.23e-2 * 5.3 / 4 + 2 * (3 - 4)")));
-	ASSERT(match(("((123))")));
-	ASSERT(match(("((123)*1)/4")));
-	ASSERT(match(("(1*2) / (3*4)")));
+	std::vector<uint> subset = {1, 3, 4};
+	processor->set_subset(subset);
+	processor->run();
 
-	//ASSERT(! match(("-1.23e-2 * -5.3")));
-	//ASSERT(! match(("-1.23e-2 * -5.3")));
-	//ASSERT(! match(("+ -1.23e-2")));
-	ASSERT(! match(("+ + -1.23e-2")));
+
+	subset = {0, 2, 4};
+	processor->set_subset(subset);
+	processor->run();
+
 }
 

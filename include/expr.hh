@@ -15,33 +15,6 @@
 namespace bparser {
 namespace expr {
 
-/**
- * Base class of the expression AST. Node types:
- * Value - wraps constant or symbolic value
- * Operator -
- *
- * Scalar nodes  represents final scalar operations.
- */
-struct ScalarNode {
-
-};
-
-struct Value : public ScalarNode {
-	const uint op_code = 0;
-
-};
-
-
-
-struct __add__ : public ScalarNode {
-	const uint op_code = 1;
-	inline void eval(Array res, Array a, Array b) {
-		return a.__add__(b);
-	}
-
-	virtual apply
-
-};
 
 
 /**
@@ -175,10 +148,12 @@ struct Array {
 	 * Python				C++ interface
 	 * a[0, 1]      		a(0, 1)
 	 * a[[0,1,3], 3]		a({0,1,3}, 3)
-	 * a[:, 3]				a(slice(), 3)
-	 * a[1:, 3]				a(slice(1), 3)
-	 * a[:-1, 3]		    a(slice(0, -1), 3)
-	 * a[::2, 3]		    a(slice(0, ??, 2), 3)
+	 * a[:, 3]				a(Slice(), 3)
+	 * a[1:, 3]				a(Slice(1), 3)
+	 * a[:-1, 3]		    a(Slice(0, -1), 3)
+	 * a[::2, 3]		    a(Slice(0, None(), 2), 3)
+	 *
+	 * a[None, :]			a(None(), Slice())
 	 *
 	 *
 	 * That is slice() is special, but then we haove only slice(start=0,
@@ -203,8 +178,8 @@ private:
 
 };
 
-}
-}
+} // expr
+} // bparser
 
 
 #endif /* INCLUDE_EXPR_HH_ */

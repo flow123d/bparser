@@ -55,7 +55,6 @@ void measure(BenchCase &bc) {
 	//const uint n_repeat = 1;
 
 
-	std::cout << "measure here" << std::endl;
 	auto start_time = std::chrono::high_resolution_clock::now();
 	for(uint j=0; j<n_repeat; ++j) {
 		uint shift = j % bc.d.n_arrays;
@@ -64,17 +63,14 @@ void measure(BenchCase &bc) {
 	auto end_time = std::chrono::high_resolution_clock::now();
 	double time_array  = (end_time - start_time)/std::chrono::milliseconds(1);
 
-	std::cout << "measure here" << std::endl;
 	start_time = std::chrono::high_resolution_clock::now();
 	for(uint j=0; j<n_repeat; ++j) {
 		uint shift = j % bc.d.n_arrays;
-		//std::cout << "before direct" << std::endl;
 		bc.run_direct(shift);
 	}
 	end_time = std::chrono::high_resolution_clock::now();
 	double time_direct  = (end_time - start_time)/std::chrono::milliseconds(1);
 
-	std::cout << "measure here" << std::endl;
 	double check_sum = bc.d.check();
 
 	// Full output
@@ -161,7 +157,6 @@ struct SubsetArray {
 	double sum() {
 		sum_[0] = sum_[1] = sum_[2] = sum_[3] = 0.0;
 		SubsetFor {
-			//std::cout << i << " " << idx << " " << values[idx] << "\n";
 			sum_[j] += values[idx(i)][j];
 		}
 
@@ -205,8 +200,7 @@ struct SubsetArray {
 
 	void sqrt_(const Array &a) {
 		SubsetFor
-			for(uint j=0; j<simd_block_size; ++j)
-				values[idx(i)][j] = sqrt(a.values[a.idx(i)][j]);
+			values[idx(i)][j] = sqrt(a.values[a.idx(i)][j]);
 	}
 
 	double4 sum_;
@@ -339,13 +333,11 @@ struct Expr {
 		base_size = (2 * n_arrays + n_temp) * array_max_size;
 		base = (double4 *)memalign(sizeof(double) * simd_block_size, sizeof(double) * simd_block_size * base_size);
 		ASSERT(base !=nullptr);
-		std::cout << "base: " << base << std::endl;
 		// Initialization
 		for(uint i=0; i<base_size; ++i)
 			for(uint j = 0, idx=0; j < simd_block_size; ++j) {
 			base[i][j] = i * simd_block_size + j;
 		}
-		//std::cout << "here" << std::endl;
 
 		for(uint i = 0; i < 2 * n_arrays; ++i) {
 			a_ptr[i] = base + i * array_max_size;
@@ -365,7 +357,6 @@ struct Expr {
 		make_subset(seed, subset);
 		for(uint i=0; i<n_blocks; ++i)
 			flat_subset[i] = i;
-		std::cout << "here" << std::endl;
 	}
 
 	double check() {
@@ -547,6 +538,42 @@ struct Sqrt {
 
 };
 
+
+//template <class A>
+//struct Condition {
+//	Expr<A> d;
+//	static const uint n_flop = 3;
+//
+//	void run_array(uint shift) {
+//
+//		d.a[0].output(d.a_ptr[shift+0], d.subset, d.n_blocks);
+//		d.a[1].input(d.a_ptr[shift+1], d.subset, d.n_blocks);
+//		d.a[2].input(d.a_ptr[shift+2], d.subset, d.n_blocks);
+//		d.a[3].input(d.a_ptr[shift+3], d.subset, d.n_blocks);
+//		d.a[4].middle(d.temp[0], d.flat_subset, d.n_blocks);
+//		d.a[5].middle(d.temp[1], d.flat_subset, d.n_blocks);
+//		d.a[6].middle(d.temp[2], d.flat_subset, d.n_blocks);
+//
+//
+//		d.a[0].sqrt_(d.a[1]);
+//
+//		d.a[0].copy_out(d.a_ptr[shift+0], d.subset, d.n_blocks);
+//
+//	}
+//
+//	void run_direct(uint shift) {
+//		double *a[4];
+//		a[0] = (double *)(& (d.a_ptr[shift+0][0]));
+//		a[1] = (double *)(& (d.a_ptr[shift+1][0]));
+//		a[2] = (double *)(& (d.a_ptr[shift+2][0]));
+//		a[3] = (double *)(& (d.a_ptr[shift+3][0]));
+//		for(uint i=0; i<array_sub_size * simd_block_size; ++i)
+//				a[0][i] = (a[1][i] > 12) ? a[2]  - a[3] : a[2] + a[3];
+//	}
+//
+//};
+
+
 int main() {
 	{
 	Sum<SubsetArray> subset;
@@ -555,32 +582,32 @@ int main() {
 	measure(flat);
 	}
 
-//	{
-//	Add<SubsetArray> subset;
-//	measure(subset);
-//	Add<FlatArray> flat;
-//	measure(flat);
-//	}
-//
-//	{
-//	AddScalar<SubsetArray> subset;
-//	measure(subset);
-//	AddScalar<FlatArray> flat;
-//	measure(flat);
-//	}
-//
-//	{
-//	NormSqr<SubsetArray> subset;
-//	measure(subset);
-//	NormSqr<FlatArray> flat;
-//	measure(flat);
-//	}
-//
-//	{
-//	Sqrt<SubsetArray> subset;
-//	measure(subset);
-//	Sqrt<FlatArray> flat;
-//	measure(flat);
-//	}
+	{
+	Add<SubsetArray> subset;
+	measure(subset);
+	Add<FlatArray> flat;
+	measure(flat);
+	}
+
+	{
+	AddScalar<SubsetArray> subset;
+	measure(subset);
+	AddScalar<FlatArray> flat;
+	measure(flat);
+	}
+
+	{
+	NormSqr<SubsetArray> subset;
+	measure(subset);
+	NormSqr<FlatArray> flat;
+	measure(flat);
+	}
+
+	{
+	Sqrt<SubsetArray> subset;
+	measure(subset);
+	Sqrt<FlatArray> flat;
+	measure(flat);
+	}
 
 }
