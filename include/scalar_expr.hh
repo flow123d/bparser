@@ -108,6 +108,7 @@ struct _add_ : public ScalarNode {
 	static const char n_eval_args = 3;
 	inline static void eval(double &res, double a, double b) {
 		res = a + b;
+		//std::cout << a << " -add-> " << res << "\n";
 	}
 };
 
@@ -116,6 +117,7 @@ struct _iadd_ : public ScalarNode {
 	static const char n_eval_args = 2;
 	inline static void eval(double &res, double a) {
 		res += a;
+		//std::cout << a << " -iadd-> " << res << "\n";
 	}
 };
 
@@ -127,6 +129,7 @@ struct _copy_ : public ScalarNode {
 	static const char n_eval_args = 2;
 	inline static void eval(double &res, double a) {
 		res = a;
+		//std::cout << a << " -copy-> " << res << "\n";
 	}
 };
 
@@ -134,7 +137,8 @@ struct _abs_ : public ScalarNode {
 	static const char op_code = 4;
 	static const char n_eval_args = 2;
 	inline static void eval(double &res, double a) {
-		res = fabs(a);
+		res = std::abs(a);
+		//std::cout << a << " -abs-> " << res << "\n";
 	}
 };
 
@@ -149,25 +153,26 @@ struct ScalarExpression {
 	NodeVec results;
 	uint n_constants;
 	uint n_values;
-	uint next_result_idx;
 	std::vector<uint> storage;
 
 	ScalarExpression()
-	: n_constants(0), n_values(0), next_result_idx(0)
+	: n_constants(0), n_values(0)
 	{}
 
 	// create const node
 	ScalarNode * create_const(double a) {
-		auto node = new ConstantNode(a);
+		ScalarNode * node = new ConstantNode(a);
 		nodes.push_back(node);
 		n_constants += 1;
+		return node;
 	}
 
 	// create value node
 	ScalarNode * create_value(double *a)  {
-		auto node = new ValueNode(a);
+		ScalarNode * node = new ValueNode(a);
 		nodes.push_back(node);
 		n_values += 1;
+		return node;
 	}
 
 	// create result node
@@ -176,9 +181,10 @@ struct ScalarExpression {
 			result = create<_copy_>(result);
 		}
 
-		auto node = new ResultNode(result, a);
+		ScalarNode * node = new ResultNode(result, a);
 		nodes.push_back(node);
 		results.push_back(node);
+		return node;
 	}
 
 	template <class T>
@@ -199,20 +205,29 @@ struct ScalarExpression {
 
 	// Perform topological sort, set temporary indices
 	NodeVec & sort_nodes() {
+        if (sorted.size() > 0)
+        	return sorted;
+
 		for(ScalarNode *node : nodes) node->n_dep_nodes_ = 0;
 		for(ScalarNode *node : nodes)
-			for(uint in=0; in < node->n_inputs_; ++in) node->inputs_[in]->n_dep_nodes_ += 1;
+			for(uint in=0; in < node->n_inputs_; ++in) {
+				node->inputs_[in]->n_dep_nodes_ += 1;
+				//std::cout << "  node: " << node->inputs_[in] << " n_dep: " << node->inputs_[in]->n_dep_nodes_ << "\n";
+			}
 
 		NodeVec stack(results.begin(), results.end());
+
 		while (stack.size() > 0) {
 			ScalarNode * node = stack.back();
+			//std::cout << "node: " << node << " res: " << node->result_storage << "\n";
 			stack.pop_back();
 			sorted.push_back(node);
 
 			for(uint in=0; in < node->n_inputs_; ++in) {
 				node->inputs_[in]->n_dep_nodes_ -= 1;
+				//std::cout << "  node: " << node->inputs_[in] << " n_dep: " << node->inputs_[in]->n_dep_nodes_ << "\n";
 				if (node->inputs_[in]->n_dep_nodes_ == 0)
-					stack.push_back(node);
+					stack.push_back(node->inputs_[in]);
 			}
 		}
 
@@ -231,7 +246,7 @@ struct ScalarExpression {
 			for(uint in=0; in < node->n_inputs_; ++in) {
 				node->inputs_[in]->n_dep_nodes_ -= 1;
 				if (node->inputs_[in]->n_dep_nodes_ == 0) {
-					deallocate_storage(node);
+					deallocate_storage(node->inputs_[in]);
 				}
 			}
 		}
@@ -263,6 +278,7 @@ struct ScalarExpression {
 				// can not follow ConstantNode or ValueNode
 			}
 		} else {
+			//std::cout << "node: " << node << " get slot: " << storage.size() << "\n";
 			node->result_idx_ = get_free_slot();
 		}
 	}
@@ -279,13 +295,14 @@ struct ScalarExpression {
 
 	void deallocate_storage(ScalarNode *node) {
 		if (node->result_storage == temporary) {
+			//std::cout << "dealoc node: " << node << " idx: " << node->result_idx_ << "\n";
 			storage[node->result_idx_] = 0;
 		}
 	}
 
 
 	uint n_vectors() {
-		return next_result_idx;
+		return storage.size();
 	}
 
 };

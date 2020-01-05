@@ -136,6 +136,7 @@ struct Vec {
 	}
 
 	double & value(uint i, uint j) {
+		//std::cout << "i: " << i << "j: " << j << " si: " << subset[i] << " v: " << values[subset[i]][j] << "\n";
 		return values[subset[i]][j];
 	}
 };
@@ -190,8 +191,11 @@ struct EvalImpl<2, T> {
 		Vec v0 = w.vector[op.arg[0]];
 		Vec v1 = w.vector[op.arg[1]];
 		for(uint i=0; i<w.subset_size; ++i)
-			for(uint j=0; j<simd_size; ++j)
-				T::eval(v0.value(i, j), v1.value(i, j));
+			for(uint j=0; j<simd_size; ++j) {
+				double & a0 = v0.value(i, j);
+				double & a1 = v1.value(i, j);
+				T::eval(a0, a1);
+			}
 	}
 };
 
@@ -247,9 +251,10 @@ struct Processor {
 		vector_size = (vector_size / simd_size) * simd_size;
 		uint simd_bytes = sizeof(double) * simd_size;
 		ScalarExpression::NodeVec & sorted_nodes = se.sort_nodes();
+		//std::cout << "n_nodes: " << sorted_nodes.size() << " n_vec: " << se.n_vectors() << "\n";
 		uint memory_est =
-				sizeof(Processor) / simd_bytes * simd_bytes +
-				sizeof(Operation) * (sorted_nodes.size() + 4) / simd_bytes * simd_bytes +
+				align_size(simd_bytes, sizeof(Processor)) +
+				align_size(simd_bytes, sizeof(Operation) * (sorted_nodes.size() + 4) ) +
 				sizeof(double) * vector_size * (se.n_vectors() + 4);
 		ArenaAlloc arena(simd_bytes, memory_est);
 		Processor * processor = arena.create<Processor>(arena, se, vector_size / simd_size);
@@ -268,9 +273,10 @@ struct Processor {
 		workspace_.const_subset = arena_.create_array<uint>(vec_size);
 		for(uint i=0; i<vec_size;++i) workspace_.const_subset[i] = 0;
 		workspace_.vec_subset = (uint *) arena_.allocate(sizeof(uint) * vec_size);
-		uint n_vectors = se.next_result_idx;
-		workspace_.vector = (Vec *) arena_.allocate(sizeof(Vec) * n_vectors);
-		uint n_temporaries = (n_vectors - se.n_constants - se.n_values);
+		//std::cout << "&vec_subset: " << &(workspace_.vec_subset) << "\n";
+		//std::cout << "aloc vec_subset: " << workspace_.vec_subset << " size: " << vec_size << "\n";
+		workspace_.vector = (Vec *) arena_.allocate(sizeof(Vec) * se.n_vectors());
+		uint n_temporaries = (se.n_vectors() - se.n_constants - se.n_values);
 		double4 * temp_base = (double4 *) arena_.allocate(sizeof(double) * simd_size * vec_size * n_temporaries);
 		double4 * temp_ptr = temp_base;
 		double4 * const_base = (double4 *) arena_.allocate(sizeof(double) * simd_size * se.n_constants);
@@ -279,7 +285,8 @@ struct Processor {
 		program_ = (Operation *) arena_.allocate(sizeof(Operation));
 
 		Operation *op = program_;
-		for(ScalarNode *node : se.sorted) {
+		for(auto it=se.sorted.rbegin(); it != se.sorted.rend(); ++it) {
+			ScalarNode * node = *it;
 			switch (node->result_storage) {
 			case constant: {
 				ASSERT(const_ptr < const_base + se.n_constants);
@@ -308,6 +315,10 @@ struct Processor {
 				ScalarNode * prev_node = node->inputs_[0];
 				ASSERT(prev_node->result_storage == temporary);
 				workspace_.vector[prev_node->result_idx_].set((double4 *)node->get_value(), workspace_.vec_subset);
+//				std::cout << " ir: " << prev_node->result_idx_ << " a0: "
+//						<< workspace_.vector[prev_node->result_idx_].values
+//						<< " gv: " << node->get_value()
+//						<< "\n";
 				continue;
 			}
 			ASSERT(op < program_ + n_operations);
@@ -328,7 +339,7 @@ struct Processor {
 		if (node->result_storage == temporary)
 			op.arg[i_arg++] = node->result_idx_;
 		for(uint j=0; j<node->n_inputs_; ++j)
-			op.arg[i_arg++] = node->inputs_[j]->result_storage;
+			op.arg[i_arg++] = node->inputs_[j]->result_idx_;
 		return op;
 	}
 
@@ -340,8 +351,14 @@ struct Processor {
 
 	void run() {
 		for(Operation * op = program_;;++op) {
+//			std::cout << "op: " << (int)(op->code)
+//					<< " ia0: " << (int)(op->arg[0])
+//					<< " a0: " << workspace_.vector[op->arg[0]].values
+//					<< " ia1: " << (int)(op->arg[1])
+//					<< " a1: " << workspace_.vector[op->arg[1]].values << "\n";
+
 			switch (op->code) {
-//			CODE(_abs_);
+			CODE(_abs_);
 //				CODE(_exp_);
 //				CODE(_pow2_);
 //				CODE(_pow10_);
@@ -371,8 +388,11 @@ struct Processor {
 	void set_subset(std::vector<uint> subset)
 	{
 		workspace_.subset_size = subset.size();
-		for(uint i=0; i<workspace_.subset_size; ++i)
+		//std::cout << "vec_subset: " << workspace_.vec_subset << "\n";
+		for(uint i=0; i<workspace_.subset_size; ++i) {
+			//std::cout << "vec_i: " << workspace_.vec_subset + i << " " << i << "\n";
 			workspace_.vec_subset[i] = subset[i];
+		}
 	}
 
 	ArenaAlloc arena_;

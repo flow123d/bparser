@@ -20,12 +20,14 @@ size_t align_size(size_t al, size_t size) {
 }
 
 struct ArenaAlloc {
-	ArenaAlloc(std::size_t align_size, std::size_t size)
-	: alignment_(align_size),
-	  size_(size)
+	ArenaAlloc(std::size_t alignment, std::size_t size)
+	: alignment_(alignment),
+	  size_(0)
 	{
-		base_ = memalign(alignment_, size_);
+		size_ = align_size(alignment_, size);
+		base_ = (char *)memalign(alignment_, size_);
 		ptr_ = base_;
+		//std::cout << "arena: " << (void *)base_ << " size: " << size_ << "\n";
 	}
 
 	void destroy() {
@@ -33,10 +35,11 @@ struct ArenaAlloc {
 	}
 
 	void * allocate(std::size_t size) {
-		size = align_size(alignment_, alignment_);
-		ASSERT(ptr_ + size <= base_ + size_);
+		size = align_size(alignment_, size);
+		ASSERT((char *)ptr_ + size <= (char *)base_ + size_);
 		void * ptr = ptr_;
 		ptr_ += size;
+		//std::cout << "allocated: " << ptr << " size: " << size << "\n";
 		return ptr;
 	}
 
@@ -55,8 +58,8 @@ struct ArenaAlloc {
 
 	std::size_t alignment_;
 	std::size_t size_;
-	void * base_;
-	void * ptr_;
+	char * base_;
+	char * ptr_;
 };
 
 } // namespace details
