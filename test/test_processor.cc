@@ -16,12 +16,7 @@
 
 
 
-
-
-
-
-int main()
-{
+void test_simple_expr() {
 	using namespace bparser;
 	using namespace bparser::details;
 
@@ -76,8 +71,8 @@ int main()
 	// v1 active: [ -6, -5, -4, -3; 2, 3, 4, 5; 6, 7, 8, 9 ]
 	// r1, e1     [  6   5   4   3  2  3  4  5  6  7  8  9 ]
 	// r2, e2     [  6   5   4   3  2  3  4  5  6  7  8  9 ]  + 100
-	for(uint i=0;i < vec_size; ++i)
-		std::cout << "i: " << i << " v2: " << v2_values[i]  << " v3: " <<v3_values[i] << "\n";
+//	for(uint i=0;i < vec_size; ++i)
+//		std::cout << "i: " << i << " v2: " << v2_values[i]  << " v3: " <<v3_values[i] << "\n";
 
 	ASSERT(v2_values[0] == -100);
 	ASSERT(v2_values[3] == -100);
@@ -101,9 +96,44 @@ int main()
 	ASSERT(v3_values[16] == 106);
 	ASSERT(v3_values[19] == 109);
 
-//	subset = {0, 2, 4};
-//	processor->set_subset(subset);
-//	processor->run();
+	// Change data and structure
+	for(uint i=0;i < vec_size; ++i)
+		v1_values[i] = (double)i - 12;
+	for(uint i=0;i < vec_size; ++i)
+		v2_values[i] = -200;
+	for(uint i=0;i < vec_size; ++i)
+		v3_values[i] = -200;
+	subset = {0, 4};
+	// v1 active: [ -12, -11, -10, -9; 4, 5, 6, 7 ]
+	// r1, e1     [  12   11   10   9  4  5  6  7 ]
+	// r2, e2       + 100
+
+
+
+	processor->set_subset(subset);
+	processor->run();
+
+	ASSERT(v2_values[0] == 12);
+	ASSERT(v2_values[3] == 9);
+	ASSERT(v2_values[4] ==  -200);
+	ASSERT(v2_values[15] == -200);
+	ASSERT(v2_values[16] == 4);
+	ASSERT(v2_values[19] == 7);
+
+	ASSERT(v3_values[0] == 112);
+	ASSERT(v3_values[3] == 109);
+	ASSERT(v3_values[4] ==  -200);
+	ASSERT(v3_values[15] == -200);
+	ASSERT(v3_values[16] == 104);
+	ASSERT(v3_values[19] == 107);
+
+}
+
+
+
+int main()
+{
+	test_simple_expr();
 
 }
 
