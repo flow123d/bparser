@@ -247,7 +247,13 @@ struct Processor {
 	 * - assigne result ids
 	 * - create processor
 	 */
-	static Processor *create(ScalarExpression &se, uint vector_size) {
+	static Processor *create(std::vector<ScalarNode *> results, uint vector_size) {
+		ScalarExpression se(results);
+		return create_processor_(se, vector_size);
+	}
+
+
+	static Processor *create_processor_(ScalarExpression &se, uint vector_size) {
 		vector_size = (vector_size / simd_size) * simd_size;
 		uint simd_bytes = sizeof(double) * simd_size;
 		ScalarExpression::NodeVec & sorted_nodes = se.sort_nodes();
@@ -257,7 +263,7 @@ struct Processor {
 				align_size(simd_bytes, sizeof(Operation) * (sorted_nodes.size() + 4) ) +
 				sizeof(double) * vector_size * (se.n_vectors() + 4);
 		ArenaAlloc arena(simd_bytes, memory_est);
-		Processor * processor = arena.create<Processor>(arena, se, vector_size / simd_size);
+		return arena.create<Processor>(arena, se, vector_size / simd_size);
 	}
 
 	/**

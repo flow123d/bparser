@@ -18,15 +18,18 @@
 int main() {
 	using bparser::expr;
 
-	Array s_const = Const(3.14);
-	Array v_const = Const({1, 2, 3});
-	Array t_const = Const({{1, 2, 3}, {2, 4, 5}, {3, 5, 6}});
+	// constant array, array of ConstNode
+	Array s_const = Array::constant(3.14);
+	Array v_const = Array::constant({1, 2, 3});
+	Array t_const = Array::constant({{1, 2, 3}, {2, 4, 5}, {3, 5, 6}});
 
-	Array sa = Shape(1);
-	Array vb = Shape(3);
-	Array tc = Shape(3, 3);
+	double v[20][3][3];
+	// variable arrays, array of ValueNode
+	Array sa = Array::value(v); // double* ptr, shape
+	Array vb = Array::value(v, {3});
+	Array tc = Array::value(v, {3,3});
 
-	// scalar expressions
+	// constant - vector expressions (no difference)
 	Array res1 = s_const + sa;
 	Array res2 = s_const * sa + sa;
 	Array res3 = sa * sa + s_const * sa;

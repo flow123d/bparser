@@ -35,6 +35,7 @@ enum ResultStorage {
  * ScalarNodes are not meant to be directly used.
  * Use Array class to construct general vector expressions.
  */
+
 struct ScalarNode {
 	static const char terminate_op_code = 0;
 
@@ -48,6 +49,25 @@ struct ScalarNode {
 	int result_idx_;
 	char op_code_;
 	double * values_;
+
+	/**
+	 * Factory functions fro special nodes.
+	 */
+	static ScalarNode * create_const(double a);
+	static ScalarNode * create_value(double *a);
+	static ScalarNode * create_result(ScalarNode *result, double *a);
+
+	/**
+	 * Generic factory functions for operation nodes.
+	 * Separate template for different number of inputs (incoming edges in the graph).
+	 */
+	template <class T>
+	static ScalarNode * create(ScalarNode *a);
+
+	template <class T>
+	static ScalarNode * create(ScalarNode *a, ScalarNode *b);
+
+
 
 	ScalarNode()
 	: result_storage(temporary),
@@ -70,6 +90,8 @@ struct ScalarNode {
 		return values_;
 	}
 };
+
+
 
 
 struct ConstantNode : public ScalarNode {
@@ -101,6 +123,13 @@ struct ResultNode : public ScalarNode {
 		result_storage = expr_result; // use slot of the result of value, i.e. inputs[0]
 	}
 };
+
+
+
+
+
+
+
 
 
 struct _add_ : public ScalarNode {
@@ -144,6 +173,67 @@ struct _abs_ : public ScalarNode {
 
 
 
+ScalarNode * ScalarNode::create_const(double a) {
+	return new ConstantNode(a);
+//		nodes.push_back(node);
+//		n_constants += 1;
+//		return node;
+}
+
+// create value node
+ScalarNode * ScalarNode::create_value(double *a)  {
+	return new ValueNode(a);
+//		nodes.push_back(node);
+//		n_values += 1;
+//		return node;
+}
+
+// create result node
+ScalarNode * ScalarNode::create_result(ScalarNode *result, double *a)  {
+	if (result->result_storage == constant || result->result_storage == value) {
+		result = ScalarNode::create<_copy_>(result);
+	}
+
+	return new ResultNode(result, a);
+//		nodes.push_back(node);
+//		results.push_back(node);
+//		return node;
+}
+
+template <class T>
+ScalarNode * ScalarNode::create(ScalarNode *a) {
+	T * node_ptr = new T();
+	node_ptr->op_code_ = T::op_code;
+	node_ptr->add_input(a);
+	if (T::n_eval_args == 1) {
+		node_ptr->result_storage = none;
+	} else {
+		ASSERT(T::n_eval_args == 2);
+		node_ptr->result_storage = temporary;
+	}
+
+//		nodes.push_back(node_ptr);
+	return node_ptr;
+}
+
+template <class T>
+ScalarNode * ScalarNode::create(ScalarNode *a, ScalarNode *b) {
+	T * node_ptr = new T();
+	node_ptr->op_code_ = T::op_code;
+	node_ptr->add_input(a);
+	node_ptr->add_input(b);
+	if (T::n_eval_args == 2) {
+		node_ptr->result_storage = none;
+	} else {
+		ASSERT(T::n_eval_args == 3);
+		node_ptr->result_storage = temporary;
+	}
+
+//		nodes.push_back(node_ptr);
+	return node_ptr;
+}
+
+
 
 struct ScalarExpression {
 	typedef std::vector<ScalarNode *> NodeVec;
@@ -155,46 +245,45 @@ struct ScalarExpression {
 	uint n_values;
 	std::vector<uint> storage;
 
-	ScalarExpression()
-	: n_constants(0), n_values(0)
-	{}
+	ScalarExpression(std::vector<ScalarNode *> res)
+	:
+		results(res.begin(), res.end()),
+		n_constants(0),
+		n_values(0)
+	{
+		// ScalarNode::reslut_idx_ == -1,
+		// we set it to -2 to identify passed nodes
+		nodes.clear();
+		for(ScalarNode * node : results)
+			add_node(node);
 
-	// create const node
-	ScalarNode * create_const(double a) {
-		ScalarNode * node = new ConstantNode(a);
-		nodes.push_back(node);
-		n_constants += 1;
-		return node;
-	}
+		for(uint i=0; i < nodes.size(); ++i) {
+			ScalarNode * node = nodes[i];
+			for(uint in=0; in < node->n_inputs_; ++in)  {
+				ScalarNode * other = node->inputs_[in];
+				if (other->result_idx_ != -2) {
+					ASSERT(other->result_idx_ == -1);
+					add_node(other);
+				}
+			}
 
-	// create value node
-	ScalarNode * create_value(double *a)  {
-		ScalarNode * node = new ValueNode(a);
-		nodes.push_back(node);
-		n_values += 1;
-		return node;
-	}
 
-	// create result node
-	ScalarNode * create_result(ScalarNode *result, double *a)  {
-		if (result->result_storage == constant || result->result_storage == value) {
-			result = create<_copy_>(result);
 		}
 
-		ScalarNode * node = new ResultNode(result, a);
-		nodes.push_back(node);
-		results.push_back(node);
-		return node;
+		ASSERT(sorted.size() == 0);
+		sort_nodes();
 	}
 
-	template <class T>
-	ScalarNode * create(ScalarNode *a);
+	void add_node(ScalarNode * node) {
+		node->result_idx_ = -2;
+		nodes.push_back(node);
+		if (node->result_storage == constant)
+			n_constants++;
+		if (node->result_storage == value)
+			n_values++;
 
-	template <class T>
-	ScalarNode * create(ScalarNode *a, ScalarNode *b);
+	}
 
-	template <class T, uint n_eval_args>
-	void check_eval();
 
 	~ScalarExpression() {
 		for(ScalarNode *node : nodes) {
@@ -310,44 +399,6 @@ struct ScalarExpression {
 
 
 
-/**
- * Sort of external constructor. We want to initialize members of the base class
- * according to the constants in the derived classes.
- *
- * List nodes: Constant, Value have own constructors.
- */
-template <class T>
-ScalarNode * ScalarExpression::create(ScalarNode *a) {
-	T * node_ptr = new T();
-	node_ptr->op_code_ = T::op_code;
-	node_ptr->add_input(a);
-	if (T::n_eval_args == 1) {
-		node_ptr->result_storage = none;
-	} else {
-		ASSERT(T::n_eval_args == 2);
-		node_ptr->result_storage = temporary;
-	}
-
-	nodes.push_back(node_ptr);
-	return node_ptr;
-}
-
-template <class T>
-ScalarNode * ScalarExpression::create(ScalarNode *a, ScalarNode *b) {
-	T * node_ptr = new T();
-	node_ptr->op_code_ = T::op_code;
-	node_ptr->add_input(a);
-	node_ptr->add_input(b);
-	if (T::n_eval_args == 2) {
-		node_ptr->result_storage = none;
-	} else {
-		ASSERT(T::n_eval_args == 3);
-		node_ptr->result_storage = temporary;
-	}
-
-	nodes.push_back(node_ptr);
-	return node_ptr;
-}
 
 
 } // namespace details

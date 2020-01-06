@@ -11,10 +11,11 @@
 #include <memory>
 #include <vector>
 #include "config.hh"
+#include "scalar_expr.hh"
 
 namespace bparser {
 namespace expr {
-
+using namespace ::bparser::details;
 
 
 /**
@@ -30,114 +31,132 @@ namespace expr {
  *  - explicit broadcasting -
  */
 struct Array {
-	typedef std::vector<int> VecInt;
-	typedef std::vector<uint> VecUint;
+	typedef ScalarNode * ScalarNodePtr;
 
-	struct IndexSubset {
-		virtual std::vector<uint> idx_list(uint size) const = 0;
-	};
+//	typedef std::vector<int> VecInt;
+//	typedef std::vector<uint> VecUint;
+//
+//	/**
+//	 * Base set of indices.
+//	 */
+//	struct IndexSubset {
+//		virtual std::vector<uint> idx_list(uint size) const = 0;
+//	};
+//
+//	const int none_int = std::numeric_limits<int>::max;
+//
+//	// Convertible to none index or none index set
+//	struct None {
+//		operator int() const {
+//			return none_int;
+//		}
+//
+//		operator IndexSubset() const {
+//			return IndexList({});
+//		}
+//	};
+//	const None none;
+//
+//
+//	/**
+//	 * Index set give by its list.
+//	 */
+//	struct IndexList : IndexSubset {
+//		IndexList(const VecUint &indices)
+//		: indices_(indices)
+//		{}
+//
+//		IndexList(std::initializer_list<uint> indices)
+//		: indices_(indices)
+//		{}
+//
+//		virtual VecUint idx_list(uint size) const {
+//			return indices_;
+//		}
+//	private:
+//		VecUint indices_;
+//	};
+//
+//	/**
+//	 * Convertible to the index subset provided size
+//	 */
+//	struct Slice : IndexSubset {
+//		Slice(int begin = 0, int end = none, int step = 1)
+//		: begin_(begin),
+//		  end_(end),
+//		  step_(step)
+//		{}
+//
+//		VecUint idx_list(uint size) const override {
+//			VecUint indices;
+//			if (begin_ < 0) begin_ += size;
+//			if (end_ == int(none)) end_ = size;
+//			if (end_ < 0) end_ += size;
+//			for(int i = begin_; (end_ - begin_) * step_ > 0; i+=step_)
+//				indices.push_back(i);
+//			return std::move(indices);
+//		}
+//
+//		int begin_, end_, step_;
+//	};
+//
+//	struct MultiIdx {
+//		MultiIdx(const VecUint &indices)
+//		: indices_(indices)
+//		{}
+//
+//		bool operator!=(const MultiIdx &other) {
+//			return indices_ != other.indices_;
+//		}
+//
+//		bool inc(const VecUint &shape) {
+//			ASSERT(shape.size() == indices_.size());
+//			for(uint i = 0; i < shape.size(); ++i) {
+//				indices_[i] += 1;
+//				if (indices_[i] == shape[i]) {
+//					indices_[i] = 0;
+//					continue;
+//				} else {
+//					return true;
+//				}
+//			}
+//			return false;
+//		}
+//
+//		VecUint indices_;
+//	};
+//
+//	struct MultiIdxRange {
+//		MultiIdxRange(const std::vector<IndexSubset> &range_spec) {
+//			for(IndexSubset subset : range_spec) ranges_.push_back(subset.idx_list());
+//		}
+//
+//		MultiIdx begin();
+//		MultiIdx end();
+//		std::vector<std::vector<uint>> ranges_;
+//	};
+//
 
-	const int none_int = std::numeric_limits<int>::max;
-
-	// Convertible to none index or none index set
-	struct None {
-		operator int() const {
-			return none_int;
-		}
-
-		operator IndexSubset() const {
-			return IndexList({});
-		}
-	};
-	const None none;
-
-
-	struct IndexList : IndexList {
-		IndexList(const VecUint &indices)
-		: indices_(indices)
-		{}
-
-		IndexList(std::initializer_list<uint> indices)
-		: indices_(indices)
-		{}
-
-		virtual VecUint idx_list(uint size) const {
-			return indices_;
-		}
-	private:
-		VecUint indices_;
-	};
 
 	/**
-	 * Convertible to the index subset provided size
+	 * ?? Do we need default constructor?
 	 */
-	struct Slice {
-		Slice(int begin = 0, int end = none, int step = 1)
-		: begin_(begin),
-		  end_(end),
-		  step_(step)
-		{}
-
-		VecUint idx_list(uint size) const override {
-			VecUint indices;
-			if (begin_ < 0) begin_ += size;
-			if (end_ == int(none)) end_ = size;
-			if (end_ < 0) end_ += size;
-			for(int i = begin_; (end_ - begin_) * step_ > 0; i+=step_)
-				indices.push_back(i);
-			return std::move(indices);
-		}
-
-		int begin_, end_, step_;
-	};
-
-	struct MultiIdx {
-		MultiIdx(const VecUint &indices)
-		: indices_(indices)
-		{}
-
-		bool operator!=(const MultiIdx &other) {
-			return indices_ != other.indices_;
-		}
-
-		bool inc(const VecUint &shape) {
-			ASSERT(shape.size() == indices_.size());
-			for(uint i = 0; i < shape.size(); ++i) {
-				indices_[i] += 1;
-				if (indices_[i] == shape[i]) {
-					indices_[i] = 0;
-					continue;
-				} else {
-					return true;
-				}
-			}
-			return false;
-		}
-
-		VecUint indices_;
-	};
-
-	struct MultiIdxRange {
-		MultiIdxRange(const std::vector<IndexSubset> &range_spec) {
-			for(IndexSubset subset : range_spec) ranges_.push_back(subset.idx_list());
-		}
-
-		MultiIdx begin();
-		MultiIdx end()
-		std::vector<std::vector<uint>> ranges_;
-	};
+	Array()
+	{}
 
 
-	typedef std::shared_ptr<ScalarNode> scalar_node_ptr;
 
 	// Const scalar node.
-	Array(double x);
+	Array(double x)
+	: elements_({Scalarode}){
 
-	// Const array node.
+	}
+
+	// Const 1D array node.
 	Array(std::initializer_list<double> list);
 
-	// Const array node.
-	Array(std::initializer_list list);
+	// Const 2D array node.
+	Array(std::initializer_list<std::initializer_list<double>> list);
 
 	static Array stick(Array column);
 
@@ -172,7 +191,7 @@ struct Array {
 	 }
 
 private:
-
+	ScalarExpression se;
 	std::vector<scalar_node_ptr> elements_;
 	std::vector<uint> shape_;
 

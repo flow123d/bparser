@@ -37,19 +37,19 @@ void test_simple_expr() {
 	//std::cout << "v3_ptr: " << v3_values << "\n";
 
 
-	ScalarExpression se;
-	ScalarNode * c1 = se.create_const(100);
-	ScalarNode * v1 = se.create_value(v1_values);
-	ScalarNode * e1 = se.create<_abs_>(v1);
-	ScalarNode * e2 = se.create<_add_>(e1, c1);
-	ScalarNode * r1 = se.create_result(e1, v2_values);
-	ScalarNode * r2 = se.create_result(e2, v3_values);
 
-	auto sorted = se.sort_nodes();
+	ScalarNode * c1 = ScalarNode::create_const(100);
+	ScalarNode * v1 = ScalarNode::create_value(v1_values);
+	ScalarNode * e1 = ScalarNode::create<_abs_>(v1);
+	ScalarNode * e2 = ScalarNode::create<_add_>(e1, c1);
+	ScalarNode * r1 = ScalarNode::create_result(e1, v2_values);
+	ScalarNode * r2 = ScalarNode::create_result(e2, v3_values);
+
 //	for(auto node : sorted) {
 //		std::cout << "node: " << node << " res: " << node->result_storage << " sidx: " << node->result_idx_ << "\n";
 //	}
-
+	ScalarExpression se({r1, r2});
+	ScalarExpression::NodeVec &sorted = se.sorted;
 	ASSERT(sorted[5] == v1);
 	ASSERT(v1->result_idx_ == 0);
 	ASSERT(sorted[4] == e1);
@@ -62,7 +62,7 @@ void test_simple_expr() {
 	ASSERT(e2->result_idx_ == 3);
 	ASSERT(sorted[0] == r2);
 	ASSERT(r2->result_idx_ == 3);
-	Processor * processor = Processor::create(se, vec_size);
+	Processor * processor = Processor::create_processor_(se, vec_size);
 
 
 	std::vector<uint> subset = {1, 3, 4};
@@ -127,6 +127,7 @@ void test_simple_expr() {
 	ASSERT(v3_values[16] == 104);
 	ASSERT(v3_values[19] == 107);
 
+	processor->~Processor();
 }
 
 
