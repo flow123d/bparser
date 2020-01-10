@@ -10,6 +10,7 @@
 
 #include <memory>
 #include <vector>
+#include <algorithm>
 #include "config.hh"
 #include "scalar_expr.hh"
 
@@ -32,6 +33,7 @@ using namespace ::bparser::details;
  */
 struct Array {
 	typedef ScalarNode * ScalarNodePtr;
+	typedef std::vector<uint> Shape;
 
 //	typedef std::vector<int> VecInt;
 //	typedef std::vector<uint> VecUint;
@@ -100,42 +102,188 @@ struct Array {
 //		int begin_, end_, step_;
 //	};
 //
-//	struct MultiIdx {
-//		MultiIdx(const VecUint &indices)
-//		: indices_(indices)
-//		{}
-//
-//		bool operator!=(const MultiIdx &other) {
-//			return indices_ != other.indices_;
+
+	struct MultiIdxRange {
+
+		MultiIdxRange(Shape shape)
+		: full_shape_(shape) {
+			// full range
+			for(uint axis=0; axis < full_shape_.size(); ++axis) {
+				std::vector<uint> full(full_shape_[axis]);
+				for(uint i=0; i < full_shape_[axis]; ++i) full[i] = i;
+				ranges_.push_back(full);
+			}
+		}
+
+//		void subset(const std::vector<IndexSubset> &range_spec) {
+//			ASSERT(range_spec.size() == full_shape_.size());
+//			for(IndexSubset subset : range_spec)
+//				ranges_.push_back(subset.idx_list(full_shape_));
 //		}
-//
-//		bool inc(const VecUint &shape) {
-//			ASSERT(shape.size() == indices_.size());
-//			for(uint i = 0; i < shape.size(); ++i) {
-//				indices_[i] += 1;
-//				if (indices_[i] == shape[i]) {
-//					indices_[i] = 0;
-//					continue;
-//				} else {
-//					return true;
-//				}
-//			}
-//			return false;
-//		}
-//
-//		VecUint indices_;
-//	};
-//
-//	struct MultiIdxRange {
-//		MultiIdxRange(const std::vector<IndexSubset> &range_spec) {
-//			for(IndexSubset subset : range_spec) ranges_.push_back(subset.idx_list());
-//		}
-//
-//		MultiIdx begin();
-//		MultiIdx end();
-//		std::vector<std::vector<uint>> ranges_;
-//	};
-//
+
+
+		/**
+		 * Broadcast the full range to the given shape.
+		 * 1. pad full shape from left by ones
+		 * 2. extend dimensions equal to one to the given shape
+		 * 3. other dimensions must match given shape
+		 * TODO: make all methods either pure or inplace
+		 */
+		MultiIdxRange broadcast(Shape other) {
+			int n_pad = other.size() - full_shape_.size();
+			if ( n_pad < 0) throw;
+			Shape res_shape(n_pad, 1);
+			res_shape.insert(res_shape.end(), full_shape_.begin(), full_shape_.end());
+
+			MultiIdxRange result(other);
+			for(uint ax=0; ax < res_shape.size(); ++ax) {
+				if (res_shape[ax] == 1)
+					result.ranges_[ax] = std::vector<uint>(other[ax], 0);
+				else if (res_shape[ax] != other[ax]) throw;
+			}
+			return result;
+		}
+
+		static Shape broadcast_common_shape(Shape a, Shape b) {
+			return a;
+		}
+
+		// Insert 'axis' with 'dimension' into range
+		// E.g. for axis=1, dimension=2:
+		// range [[1,2],[2,5,6]] -> [[1,2],[0,1],[2,5,6]]
+		void insert_axis(uint axis, uint dimension=1) {
+			full_shape_.insert(full_shape_.begin() + axis, dimension);
+			ranges_.insert(ranges_.begin() + axis, std::vector<uint>());
+			for(uint i=0; i<dimension; ++i)
+				ranges_[axis].push_back(i);
+		}
+
+		// Shift the range in given 'axis' by given 'shift'.
+		void shift_axis(uint axis, uint shift) {
+			for(uint &el : ranges_[axis]) el +=shift;
+		}
+
+		/**
+		 * repeat last element in 'axis' range
+		 */
+		void pad(uint n_items, uint axis) {
+			ranges_[axis].insert(ranges_[axis].end(), n_items, ranges_[axis].back());
+		}
+
+
+		/**
+		 * Range resulting shape.
+		 */
+		Shape sub_shape() const {
+			Shape shape(ranges_.size());
+			for(uint axis=0; axis < shape.size(); ++axis)
+				shape[axis] = ranges_[axis].size();
+			return shape;
+		}
+
+		std::vector<std::vector<uint>> ranges_;
+		Shape full_shape_;
+	};
+
+	struct MultiIdx {
+		typedef std::vector<uint> VecUint;
+
+		MultiIdx(MultiIdxRange range)
+		: range_(range), indices_(range.full_shape_.size(), 0)
+		{}
+
+
+		bool inc() {
+			for(uint axis = indices_.size(); axis > 0 ; )
+			{
+				--axis;
+				indices_[axis] += 1;
+				if (indices_[axis] == range_.ranges_[axis].size()) {
+					indices_[axis] = 0;
+					continue;
+				} else {
+					return true;
+				}
+			}
+			return false;
+		}
+
+		// Linear index into Array::elements_.
+		// Last index runs fastest.
+		uint linear_idx() {
+			uint lin_idx = 0;
+			for(uint axis = 0; axis < indices_.size(); ++axis) {
+				lin_idx *= range_.full_shape_[axis];
+				lin_idx += range_.ranges_[axis][indices_[axis]];
+			}
+			return lin_idx;
+		}
+
+		uint linear_subidx() {
+			uint lin_idx = 0;
+			for(uint axis = 0; axis < indices_.size(); ++axis) {
+				lin_idx *= range_.ranges_[axis].size();
+				lin_idx += indices_[axis];
+			}
+			return lin_idx;
+		}
+
+
+
+		// List of indices for every axis.
+		MultiIdxRange range_;
+		// Indirect multiindex index into range_.
+		// Last index runs fastest.
+		VecUint indices_;
+	};
+
+
+
+	MultiIdxRange range() const {
+		return MultiIdxRange(shape_);
+	}
+
+	ScalarNodePtr &operator[](MultiIdx idx) {
+		return elements_[idx.linear_idx()];
+	}
+
+	ScalarNodePtr operator[](MultiIdx idx) const {
+		return elements_[idx.linear_idx()];
+	}
+
+	template <class T>
+	static Array elementwise(const Array &a) {
+		Array result;
+		result._set_shape(a.shape_);
+		MultiIdx idx(a.range());
+		for(;;) {
+			result[idx] = ScalarNode::create<T>(a[idx]);
+			if (! idx.inc()) break;
+		}
+	}
+
+
+	template <class T>
+	static Array elementwise(const Array &a, const Array &b) {
+
+		Shape res_shape = MultiIdxRange::broadcast_common_shape(a.shape_, b.shape_);
+		MultiIdxRange a_range = a.range().broadcast(res_shape);
+		MultiIdxRange b_range = b.range().broadcast(res_shape);
+
+		MultiIdx a_idx(a_range);
+		MultiIdx b_idx(b_range);
+		Array result(res_shape);
+		for(;;) {
+			ASSERT(a_idx.linear_subidx() == b_idx.linear_subidx());
+			result.elements_[a_idx.linear_subidx()] =
+					ScalarNode::create<T>(
+							a.elements_[a_idx.linear_idx()],
+							b.elements_[b_idx.linear_idx()]);
+			if (!a_idx.inc() || !b_idx.inc()) break;
+		}
+
+	}
+
 
 
 	/**
@@ -144,23 +292,234 @@ struct Array {
 	Array()
 	{}
 
+	Array(const Shape &shape)
+	: shape_(shape)
+	{
+		uint shape_prod = 1;
+		for(uint dim : shape) shape_prod *= dim;
+		elements_.resize(shape_prod);
+	}
+
+	/**
+	 * Subshape constructor.
+	 */
+	Array(const Array &other, const MultiIdxRange &range)
+	: Array(range.sub_shape())
+	{
+		from_subset(other, range);
+	}
+
+	Shape minimal_shape(Shape other) {
+		Shape result;
+		for(uint e : other)
+			if (e > 1) result.push_back(e);
+		return result;
+	}
+
+	/**
+	 * Set subset of *this given by the range to values given by 'other'.
+	 * The shape of range have length same as 'shape_' but non 1 dimensions have to match
+	 * shape of other.
+	 */
+	void set_subset(const MultiIdxRange &range, const Array &other) {
+		Shape sub_shp = range.sub_shape();
+		Shape min_shape_a = minimal_shape(sub_shp);
+		Shape min_shape_b = minimal_shape(other.shape_);
+		ASSERT(min_shape_a == min_shape_b);
+		MultiIdx idx(range);
+		for(;;) {
+			elements_[idx.linear_idx()] = other.elements_[idx.linear_subidx()];
+			if (! idx.inc()) break;
+		}
+	}
+
+	/**
+	 * Fill all elements of *this to the subset of 'other' given by the 'range'.
+	 */
+	void from_subset(const Array &other, const MultiIdxRange &range) {
+		MultiIdx idx(range);
+		for(;;) {
+			elements_[idx.linear_subidx()] = other.elements_[idx.linear_idx()];
+			if (! idx.inc()) break;
+		}
+	}
+
+	Array(const Array &other)
+	: Array(other, other.range())
+	{}
+
+
+
+	void _set_shape(Shape shape) {
+		shape_ = shape;
+		uint shape_prod = 1;
+		for(uint dim : shape) shape_prod *= dim;
+		elements_.resize(shape_prod);
+	}
+
 
 
 	// Const scalar node.
-	Array(double x)
-	: elements_({Scalarode}){
+	static Array constant(double c) {
+		Shape s;
+		Array res(s);
+		res.elements_[0] = ScalarNode::create_const(c);
+		return res;
+	}
+
+
+	// Const 1D array node.
+	static Array constant1(const std::vector<double> &list)
+	{
+		std::vector<Array> ar_list;
+		std::transform(list.begin(), list.end(), std::back_inserter(ar_list), Array::constant);
+		return Array::stack(ar_list);
+	}
+
+	// Const 2D array node.
+	static Array constant2(const std::vector<std::vector<double>> &list)
+	{
+		std::vector<Array> ar_list;
+		std::transform(list.begin(), list.end(), std::back_inserter(ar_list), Array::constant1);
+		return Array::stack(ar_list);
+	}
+
+//	// Vector value scalar node
+//	static Array value(double *v, uint array_max_size) {
+//		Shape s;
+//		Array res(s);
+//		res.elements_[0] = ScalarNode::create_value(v);
+//		return res;
+//	}
+
+
+	// Vector value 1D array node.
+	// TODO: probably need different approach
+	// v - pointer to the buffer for the array, but we have
+	// to know the array max size to compute
+	// pointers to the component arrays
+	// However is size is passed then it can be inconsistent so we must check it ??
+	// So we start with
+	static Array value(double *v, uint array_max_size, Shape shape = {})
+	{
+		Array res(shape);
+		uint i_el=0;
+		Shape idx(shape.size(), 0);
+		int ax = idx.size() - 1;
+		for(;;) {
+			res.elements_[i_el++] = ScalarNode::create_value(v);
+			v += array_max_size;
+			for(;;) {
+				if (ax < 0) goto exit;
+				idx[ax]++;
+				if (idx[ax] < shape[ax]) {
+					ax = 0;
+					break;
+				} else {
+					idx[ax] = 0;
+					ax--;
+				}
+			}
+		}
+		exit:
+		return res;
+	}
+
+
+
+	/**
+	 * 1. broadcast slice to have same shape in other axes then 'axis'
+	 * 2.
+	 */
+	Array append(const Array &slice, uint axis=0)
+	{
+		return Array::stick({*this, slice}, axis);
+	}
+
+
+	static Array stack(const std::vector<Array> &list, uint axis=0) {
+		if (list.size() == 0) throw;
+		if (list.size() == 1) return list[0];
+		// same shape
+		for(auto ar : list) ar.shape_ == list[0].shape_;
+
+		// new shape
+		Shape res_shape = list[0].shape_;
+		if (axis < 0) axis = res_shape.size() + axis;
+		ASSERT(axis >= 0);
+		res_shape.insert(res_shape.begin() + axis, list.size());
+
+		// 3. broadcast arrays and concatenate
+		Array result = Array(res_shape);
+
+		for(uint ia=0; ia < list.size(); ++ia) {
+			MultiIdxRange bcast_range = list[0].range();
+			bcast_range.insert_axis(axis);
+			bcast_range.shift_axis(axis, ia);
+			result.set_subset(bcast_range, list[ia]);
+		}
+		return result;
 
 	}
 
-	// Const 1D array node.
-	Array(std::initializer_list<double> list);
 
-	// Const 2D array node.
-	Array(std::initializer_list<std::initializer_list<double>> list);
+	static Array stick(const std::vector<Array> &list, uint axis=0) {
+		if (list.size() == 0) throw;
+		if (list.size() == 1) return list[0];
 
-	static Array stick(Array column);
+		// TODO: iteratively prepare multi index ranges (can be modified in place)
+		// then apply at once
+		// Ranges - here we need to construct subranges for the new array
+		// TODO:
 
-	static Array broadcast();
+		// determine resulting shape
+		// 1. max shape length
+		size_t max_len=0;
+		for(auto ar : list) max_len = std::max(max_len, ar.shape_.size());
+		// 2. max shape
+		Shape res_shape(max_len, 1);
+		std::vector<MultiIdxRange> list_range;
+		uint axis_dimension = 0;
+		for(auto ar : list) {
+		    MultiIdxRange r = ar.range();
+		    uint sub_size = r.ranges_[axis].size();
+		    if ( sub_size < max_len -1) throw;
+		    if ( sub_size < max_len) {
+		    	r.insert_axis(axis);
+		    }
+			for(uint ax=0; ax < res_shape.size(); ++ax)
+				res_shape[ax] = std::max(res_shape[ax], (uint)(r.ranges_[ax].size()));
+			axis_dimension += r.ranges_[axis].size();
+			list_range.push_back(r);
+		}
+
+		// final shape, sum along axis
+		// first range, pad to final shape
+		res_shape[axis] = axis_dimension;
+		// 3. broadcast arrays and concatenate
+		Array result = Array(res_shape);
+		for(uint ia=1; ia < list.size(); ++ia) {
+			Shape s = list_range[0].sub_shape();
+			s[axis] = list[0].shape_[axis];
+			MultiIdxRange r = list_range[0].broadcast(s);
+			r.shift_axis(axis, 0);
+			result.set_subset(r, list[0]);
+		}
+		return result;
+	}
+
+
+
+	/**
+	 * - if this->shape_[i] == 1 the array is repeated in that axis according to other[i]
+	 * - this->shape_ is padded from the left by ones
+	 * - final array must have same shape as other
+	 */
+	Array broadcast(Shape other) {
+		MultiIdxRange bcast_range = range().broadcast(other);
+		return Array(*this, bcast_range);
+	}
+
 	/**
 	 * Need indexing syntax, preferably close to the Python syntax selected for the parser:
 	 *
@@ -180,22 +539,25 @@ struct Array {
 	 * TODO:
 	 * 1. variadic arguments for the operator() have to be converted to a vector of IndexSusets
 	 * 2. same we get from the parser
-	 * 3. Index Subsets (with known shape) converted to the vector of index sets, the we use the MultiIdx to iterate over
+	 * 3. Index Subsets (with known sub_shape) converted to the vector of index sets, the we use the MultiIdx to iterate over
 	 *  own and other Array.
 	 *
 	 *  Not clear how to apply operations.
 	 */
 
-	 void set_subarray_(MultiIdx idx_out, MultiIdx idx_in, Array other, in_subset, ...) {
-
-	 }
+//	 void set_subarray_(MultiIdx idx_out, MultiIdx idx_in, Array other, in_subset, ...) {
+//
+//	 }
 
 private:
-	ScalarExpression se;
-	std::vector<scalar_node_ptr> elements_;
-	std::vector<uint> shape_;
+	std::vector<ScalarNodePtr> elements_;
+	Shape shape_;
 
 };
+
+Array operator+(const Array &a,  const Array &b) {
+	return Array::elementwise<_add_>(a, b);
+}
 
 } // expr
 } // bparser
