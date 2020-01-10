@@ -6,6 +6,7 @@
 #include <sstream>
 #include <iostream>
 
+namespace bparser {
 
 class AssertExc : public std::exception {
 private:
@@ -45,6 +46,7 @@ public:
 };
 
 
+
 #ifdef NDEBUG
 	#define ASSERT(EXPRESSION) ((void)0)
 #else
@@ -52,5 +54,26 @@ public:
 		if ( !(EXPRESSION) ) throw AssertExc(#EXPRESSION, __FILE__, __LINE__)
 #endif
 
+
+class Exception: public std::exception
+{
+public:
+  std::string msg_;
+  Exception(const std::string &arg, const char *file, int line)
+  {
+      std::ostringstream o;
+      o << "Bparser error: " << arg << " : " << file << ":" << line << "\n";
+      msg_ = o.str();
+  }
+  ~Exception() throw() {}
+
+  virtual const char* what() const throw()
+  {
+    return msg_.c_str();
+  }
+};
+#define Throw(arg) throw Exception(arg, __FILE__, __LINE__);
+
+}
 
 #endif

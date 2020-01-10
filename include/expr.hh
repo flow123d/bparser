@@ -13,10 +13,12 @@
 #include <algorithm>
 #include "config.hh"
 #include "scalar_expr.hh"
+#include <exception>
 
 namespace bparser {
 namespace expr {
 using namespace ::bparser::details;
+
 
 
 /**
@@ -131,7 +133,12 @@ struct Array {
 		 */
 		MultiIdxRange broadcast(Shape other) {
 			int n_pad = other.size() - full_shape_.size();
-			if ( n_pad < 0) throw;
+			if ( n_pad < 0) {
+				std::ostringstream ss;
+				ss << "Broadcast from longer shape " << full_shape_.size() <<
+						" to shorter shape " << other.size() << ".\n";
+				Throw(ss.str());
+			}
 			Shape res_shape(n_pad, 1);
 			res_shape.insert(res_shape.end(), full_shape_.begin(), full_shape_.end());
 
@@ -139,7 +146,13 @@ struct Array {
 			for(uint ax=0; ax < res_shape.size(); ++ax) {
 				if (res_shape[ax] == 1)
 					result.ranges_[ax] = std::vector<uint>(other[ax], 0);
-				else if (res_shape[ax] != other[ax]) throw;
+				else if (res_shape[ax] != other[ax]) {
+					std::ostringstream ss;
+					ss << "Broadcast from " << res_shape[ax] << " to "
+					   << other[ax] << " in axis " << ax;
+					Throw(ss.str());
+				}
+
 			}
 			return result;
 		}

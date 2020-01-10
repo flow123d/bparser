@@ -11,23 +11,32 @@
 #include <cstdlib>
 #include <string>
 #include "expr.hh"
-
+#include "test_tools.hh"
 
 
 
 int main() {
 	using namespace bparser::expr;
+	// TODO: test MultiRange, MultiIdx
+	Array::MultiIdxRange r(Array::Shape({2,1}));
+	Array::MultiIdxRange bcast_r = r.broadcast(Array::Shape({4,2,3}));
+	ASSERT(bcast_r.full_shape_ == Array::Shape({4, 2, 3}));
+	ASSERT_THROW(r.broadcast(Array::Shape({4,3,3})),
+			"Bparser error: Broadcast from 2");
 
 	// constant array, array of ConstNode
 	Array s_const = Array::constant(3.14);
 	Array v_const = Array::constant1(std::vector<double>({1.0, 2, 3}));
-	//Array t_const = Array::constant({{1, 2, 3}, {2, 4, 5}, {3, 5, 6}});
+	Array t_const = Array::constant2({{1, 2, 3}, {2, 4, 5}, {3, 5, 6}});
 
 	double v[20][3][3];
 	// variable arrays, array of ValueNode
 	Array sa = Array::value((double *)v, 20); // double* ptr, shape
 	Array vb = Array::value((double *)v, 20, {3});
 	Array tc = Array::value((double *)v, 20, {3,3});
+
+	// TODO: implement and test equality function
+	// TODO: implement and test indexing and slicing
 
 //	// constant - vector expressions (no difference)
 //	Array res1 = s_const + sa;
