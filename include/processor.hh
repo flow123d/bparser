@@ -364,27 +364,53 @@ struct Processor {
 //					<< " a1: " << workspace_.vector[op->arg[1]].values << "\n";
 
 			switch (op->code) {
-			CODE(_abs_);
-//				CODE(_exp_);
-//				CODE(_pow2_);
-//				CODE(_pow10_);
-//				CODE(_log_);
-//				CODE(_log2_);
-//				CODE(_log10_);
-//				CODE(_sin_);
-//				CODE(_cos_);
-//				CODE(_tan_);
-//				CODE(_asin_);
-//				CODE(_acos_);
-//				CODE(_atan_);
-
+			CODE(_minus_);
 			CODE(_add_);
-//			CODE(_sub_);
-//			CODE(_mult_);
-//			CODE(_div_);
-//			CODE(_lt_);
-//			CODE(_le_);
-//			CODE(_condition_);
+			CODE(_sub_);
+			CODE(_mul_);
+			CODE(_div_);
+			CODE(_mod_);
+			CODE(_eq_);
+			CODE(_ne_);
+			CODE(_lt_);
+			CODE(_le_);
+			CODE(_neg_);
+			CODE(_or_);
+			CODE(_and_);
+			CODE(_abs_);
+			CODE(_sqrt_);
+			CODE(_exp_);
+			CODE(_log_);
+			CODE(_log10_);
+			CODE(_sin_);
+			CODE(_sinh_);
+			CODE(_asin_);
+			CODE(_cos_);
+			CODE(_cosh_);
+			CODE(_acos_);
+			CODE(_tan_);
+			CODE(_tanh_);
+			CODE(_atan_);
+			CODE(_ceil_);
+			CODE(_floor_);
+			CODE(_isnan_);
+			CODE(_isinf_);
+			CODE(_sgn_);
+			CODE(_copy_);
+//			CODE(__);
+//			CODE(__);
+//			CODE(__);
+//			CODE(__);
+//			CODE(__);
+//			CODE(__);
+//			CODE(__);
+//			CODE(__);
+//			CODE(__);
+//			CODE(__);
+//			CODE(__);
+//			CODE(__);
+//			CODE(__);
+//			CODE(__);
 			case (ScalarNode::terminate_op_code): return; // terminal operation
 			}
 		}

@@ -1,4 +1,7 @@
-# Based on [X3 fun](https://github.com/cierelabs/x3_fun).
+
+
+## Thanks
+Grammar based on [Henri Menke: boost_matheval](https://github.com/hmenke/boost_matheval)
 
 ## Design
 

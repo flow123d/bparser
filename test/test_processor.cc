@@ -13,12 +13,12 @@
 #include "processor.hh"
 
 
+using namespace bparser;
+using namespace bparser::details;
 
 
 
 void test_simple_expr() {
-	using namespace bparser;
-	using namespace bparser::details;
 
 	const uint vec_size = 20;
 	double v1_values[vec_size]; // 5 * double 4
@@ -42,6 +42,7 @@ void test_simple_expr() {
 	ScalarNode * v1 = ScalarNode::create_value(v1_values);
 	ScalarNode * e1 = ScalarNode::create<_abs_>(v1);
 	ScalarNode * e2 = ScalarNode::create<_add_>(e1, c1);
+
 	ScalarNode * r1 = ScalarNode::create_result(e1, v2_values);
 	ScalarNode * r2 = ScalarNode::create_result(e2, v3_values);
 
@@ -130,11 +131,166 @@ void test_simple_expr() {
 	processor->~Processor();
 }
 
+std::vector<double> v1_4() {
+	const uint vec_size = 4;
+	std::vector<double> res(vec_size);
+	res[0] = -2;
+	res[1] = -1;
+	res[2] = 0;
+	res[3] = 1;
+	return res;
+}
+
+std::vector<double> v2_4() {
+	const uint vec_size = 4;
+	std::vector<double> res(vec_size);
+	res[0] = 5;
+	res[1] = 6;
+	res[2] = 7;
+	res[3] = 8;
+	return res;
+}
+
+std::vector<double> v3_4() {
+	const uint vec_size = 4;
+	std::vector<double> res(vec_size);
+	res[0] = 5;
+	res[1] = 6;
+	res[2] = 0;
+	res[3] = 1;
+	return res;
+}
+
+std::vector<double> v4_4() {
+	const uint vec_size = 4;
+	std::vector<double> res(vec_size);
+	res[0] = -3;
+	res[1] = -3;
+	res[2] = 3;
+	res[3] = 1;
+	return res;
+}
+
+std::vector<double> v5_4() {
+	const uint vec_size = 4;
+	std::vector<double> res(vec_size);
+	res[0] = double_true;
+	res[1] = double_true;
+	res[2] = double_false;
+	res[3] = double_false;
+	return res;
+}
+
+std::vector<double> v6_4() {
+	const uint vec_size = 4;
+	std::vector<double> res(vec_size);
+	res[0] = double_true;
+	res[1] = double_false;
+	res[2] = double_true;
+	res[3] = double_false;
+	return res;
+}
+
+
+template <class Op>
+void test_un_op(std::vector<double> ref_res, std::vector<double> vv1 = v1_4()) {
+	const uint vec_size = 4;
+
+	std::cout << "\n" << "testing un op " << typeid(Op).name() << "\n";
+
+	double res_values[vec_size]; // 5 * double 4
+	for(uint i=0;i < vec_size; ++i)
+		res_values[i] = -100;
+
+	ScalarNode * v1 = ScalarNode::create_value(&(vv1[0]));
+	ScalarNode * e = ScalarNode::create<Op>(v1);
+	ScalarNode * r = ScalarNode::create_result(e, res_values);
+
+	Processor * processor = Processor::create({r}, vec_size);
+	std::vector<uint> subset = {0};
+	processor->set_subset(subset);
+	processor->run();
+
+	for(uint i=0; i< vec_size; ++i) {
+		std::cout << "i: " << i << " res: " << res_values[i]  << " ref: " << ref_res[i]
+                  << " mres: " << std::hex << double_to_mask(res_values[i])
+				  << " mref: " << std::hex << double_to_mask(ref_res[i]) << "\n";
+		ASSERT(double_to_mask(res_values[i]) == double_to_mask(ref_res[i]));
+	}
+
+	processor->~Processor();
+}
+
+
+template <class Op>
+void test_bin_op(std::vector<double> ref_res, std::vector<double> vv1 = v1_4(), std::vector<double> vv2=v2_4()) {
+	const uint vec_size = 4;
+
+	std::cout << "\n" << "testing bin op " << typeid(Op).name() << "\n";
+
+	double res_values[vec_size]; // 5 * double 4
+	for(uint i=0;i < vec_size; ++i)
+		res_values[i] = -100;
+
+	ScalarNode * v1 = ScalarNode::create_value(&(vv1[0]));
+	ScalarNode * v2 = ScalarNode::create_value(&(vv2[0]));
+	ScalarNode * e = ScalarNode::create<Op>(v1, v2);
+	ScalarNode * r = ScalarNode::create_result(e, res_values);
+
+	Processor * processor = Processor::create({r}, vec_size);
+	std::vector<uint> subset = {0};
+	processor->set_subset(subset);
+	processor->run();
+
+	for(uint i=0; i< vec_size; ++i) {
+		std::cout << "i: " << i << " res: " << res_values[i]  << " ref: " << ref_res[i]
+                  << " mres: " << std::hex << double_to_mask(res_values[i])
+				  << " mref: " << std::hex << double_to_mask(ref_res[i]) << "\n";
+		ASSERT(res_values[i] == ref_res[i]);
+	}
+
+	processor->~Processor();
+}
 
 
 int main()
 {
 	test_simple_expr();
+	test_un_op<_minus_>({2, 1, -0.0, -1});
+	test_bin_op<_add_>({3, 5, 7, 9});
+	test_bin_op<_sub_>({-7, -7, -7, -7});
+	test_bin_op<_mul_>({-10, -6, 0, 8});
+	test_bin_op<_div_>({-2.0 / 5, -1.0 / 6, 0, 1.0 / 8});
+
+	test_bin_op<_mod_>({fmod(-2.0, 5), -1.0, 0, 1.0});
+	test_bin_op<_eq_>({double_false, double_false, double_true, double_true}, v1_4(), v3_4());
+	test_bin_op<_ne_>({double_true, double_true, double_false, double_false}, v1_4(), v3_4());
+	test_bin_op<_lt_>({double_false, double_false, double_true, double_false}, v1_4(), v4_4());
+	test_bin_op<_le_>({double_false, double_false, double_true, double_true}, v1_4(), v4_4());
+
+	test_un_op<_neg_>({double_false, double_false, double_true, double_true}, v5_4());
+	test_bin_op<_or_>({double_true, double_true, double_true, double_false}, v5_4(), v6_4());
+	test_bin_op<_and_>({double_true, double_false, double_false, double_false}, v5_4(), v6_4());
+	test_un_op<_abs_>({2, 1, 0, 1});
+	test_un_op<_sqrt_>({sqrt(-2), sqrt(-1), sqrt(0), sqrt(1)});
+	test_un_op<_exp_>({exp(-2), exp(-1), exp(0), exp(1)});
+	test_un_op<_log_>({log(-2), log(-1), log(0), log(1)});
+	test_un_op<_log10_>({log10(-2), log10(-1), log10(-.0), log10(1)});
+	test_un_op<_sin_>({sin(-2), sin(-1), sin(0), sin(1)});
+	test_un_op<_sinh_>({sinh(-3.0), sinh(-3.0), sinh(3.0), sinh(1.0)}, v4_4()); // sinh(-2) was last bit off
+	test_un_op<_asin_>({asin(-2), asin(-1), asin(0), asin(1)});
+	test_un_op<_cos_>({cos(-2), cos(-1), cos(0), cos(1)});
+	test_un_op<_cosh_>({cosh(-2), cosh(-1), cosh(0), cosh(1)});
+	test_un_op<_acos_>({acos(-2), acos(-1), acos(0), acos(1)});
+	test_un_op<_tan_>({tan(-2), tan(-1), tan(0), tan(1)});
+	test_un_op<_tanh_>({tanh(-2), tanh(-1), tanh(0), tanh(1)});
+	test_un_op<_atan_>({atan(-2), atan(-1), atan(0), atan(1)});
+	test_un_op<_ceil_>({ceil(-2), ceil(-1), ceil(0), ceil(1)});
+	test_un_op<_floor_>({floor(-2), floor(-1), floor(0), floor(1)});
+//	test_un_op<_isnan_>({isnan(-2), isnan(-1), isnan(0), isnan(1)}, v5_4());
+//	test_un_op<_isinf_>({isinf(-2), isinf(-1), isinf(0), isinf(1)}, v5_4());
+//	test_un_op<_sgn_>({sgn(-2), sgn(-1), sgn(0), sgn(1)}, v5_4());
+
 
 }
 
