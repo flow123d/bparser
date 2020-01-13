@@ -291,6 +291,9 @@ int main()
 //	test_un_op<_isinf_>({isinf(-2), isinf(-1), isinf(0), isinf(1)}, v5_4());
 //	test_un_op<_sgn_>({sgn(-2), sgn(-1), sgn(0), sgn(1)}, v5_4());
 
-
+	auto v1 = v1_4();
+	auto v2 = v2_4();
+	test_bin_op<_atan2_>({atan2(v1[0], v2[0]), atan2(v1[1], v2[1]), atan2(v1[2], v2[2]), atan2(v1[3], v2[3])});
+	test_bin_op<_pow_>({pow(v1[0], v2[0]), pow(v1[1], v2[1]), pow(v1[2], v2[2]), pow(v1[3], v2[3])});
 }
 

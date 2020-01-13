@@ -83,14 +83,10 @@ test_processor:
 	#$(COMPILER) $(BASE_OPTIONS) -O3 -mavx2  -std=c++11 -I include  -o build/test_simd test/test_simd.cc
 	build/test_processor
 
+test_parser:
+	rm -f build/test_parser 2>/dev/null
+	$(COMPILER) $(BASE_OPTIONS) $(DBG_OPT)  -std=c++11 -I include  -o build/test_parser test/test_parser.cc
+	#$(COMPILER) $(BASE_OPTIONS) -O3 -mavx2  -std=c++11 -I include  -o build/test_simd test/test_simd.cc
+	build/test_parser
+
 	
-# test_loop:
-# 	#$(COMPILER) $(BASE_OPTIONS) -g -std=c++11 -I include test_array_loop.cc
-# 	#$(COMPILER) $(BASE_OPTIONS) -O2 -std=c++11 -I include test_array_loop.cc
-# 	$(COMPILER) $(BASE_OPTIONS) -O3 -std=c++11 -mavx2 -ffast-math -ftree-vectorizer-verbose=10 -I include test_array_loop.cc
-# 	#$(COMPILER) $(BASE_OPTIONS) -O3 -std=c++11 -mavx2  -ftree-vectorizer-verbose=10 -I include test_array_loop.cc
-# 	#$(COMPILER) $(BASE_OPTIONS) -O3 -march=native -std=c++11 -I include test_array_loop.cc
-# 	#$(COMPILER) $(BASE_OPTIONS) -O3 -mavx2 -std=c++11 -I include test_array_loop.cc
-# 	./a.out
-# 	./a.out
-# 	./a.out

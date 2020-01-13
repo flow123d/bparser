@@ -396,6 +396,8 @@ struct Processor {
 			CODE(_isnan_);
 			CODE(_isinf_);
 			CODE(_sgn_);
+			CODE(_atan2_);
+			CODE(_pow_);
 			CODE(_copy_);
 //			CODE(__);
 //			CODE(__);

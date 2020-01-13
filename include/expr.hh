@@ -11,9 +11,11 @@
 #include <memory>
 #include <vector>
 #include <algorithm>
+#include <cmath>
+#include <boost/math/constants/constants.hpp>
 #include "config.hh"
 #include "scalar_expr.hh"
-#include <exception>
+
 
 namespace bparser {
 namespace expr {
@@ -158,7 +160,24 @@ struct Array {
 		}
 
 		static Shape broadcast_common_shape(Shape a, Shape b) {
-			return a;
+			uint res_size = std::max(a.size(), b.size());
+			Shape res(res_size);
+			a.insert(a.begin(), res_size - a.size(), 1);
+			b.insert(b.begin(), res_size - b.size(), 1);
+			for(uint i=0; i<res_size; ++i) {
+				if (a[i]==1) a[i] = b[i];
+				if (b[i]==1) b[i] = a[i];
+				if (a[i] == b[i]) {
+					res[i] =  a[i];
+				} else {
+					std::ostringstream ss;
+					ss << "Common broadcast between " << a[i] << " and "
+					   << b[i] << " in axis " << i;
+					Throw(ss.str());
+				}
+
+			}
+			return res;
 		}
 
 		// Insert 'axis' with 'dimension' into range
@@ -264,20 +283,36 @@ struct Array {
 		return elements_[idx.linear_idx()];
 	}
 
+	//Array operator()()
+
+	static Array deg_to_rad_factor() {
+		static ConstantNode f( boost::math::constants::pi<double>() / 180 );
+		Array a;
+		a.elements_[0] = &f;
+		return a;
+	}
+
+	static Array rad_to_deg_factor() {
+		static ConstantNode f(  180 / boost::math::constants::pi<double>() );
+		Array a;
+		a.elements_[0] = &f;
+		return a;
+	}
+
 	template <class T>
-	static Array elementwise(const Array &a) {
-		Array result;
-		result._set_shape(a.shape_);
+	static Array unary_op(const Array &a) {
+		Array result(a.shape_);
 		MultiIdx idx(a.range());
 		for(;;) {
 			result[idx] = ScalarNode::create<T>(a[idx]);
 			if (! idx.inc()) break;
 		}
+		return result;
 	}
 
 
 	template <class T>
-	static Array elementwise(const Array &a, const Array &b) {
+	static Array binary_op(const Array &a, const Array &b) {
 
 		Shape res_shape = MultiIdxRange::broadcast_common_shape(a.shape_, b.shape_);
 		MultiIdxRange a_range = a.range().broadcast(res_shape);
@@ -294,7 +329,7 @@ struct Array {
 							b.elements_[b_idx.linear_idx()]);
 			if (!a_idx.inc() || !b_idx.inc()) break;
 		}
-
+		return result;
 	}
 
 
@@ -373,69 +408,62 @@ struct Array {
 
 
 	// Const scalar node.
-	static Array constant(double c) {
-		Shape s;
-		Array res(s);
-		res.elements_[0] = ScalarNode::create_const(c);
+	static Array constant(const std::vector<double> &values, Shape shape = {}) {
+		Array res(shape);
+		for(uint i_el=0; i_el < res.elements_.size(); ++i_el)
+			res.elements_[i_el] = ScalarNode::create_const(values[i_el]);
 		return res;
 	}
 
 
-	// Const 1D array node.
-	static Array constant1(const std::vector<double> &list)
-	{
-		std::vector<Array> ar_list;
-		std::transform(list.begin(), list.end(), std::back_inserter(ar_list), Array::constant);
-		return Array::stack(ar_list);
-	}
-
-	// Const 2D array node.
-	static Array constant2(const std::vector<std::vector<double>> &list)
-	{
-		std::vector<Array> ar_list;
-		std::transform(list.begin(), list.end(), std::back_inserter(ar_list), Array::constant1);
-		return Array::stack(ar_list);
-	}
-
-//	// Vector value scalar node
-//	static Array value(double *v, uint array_max_size) {
-//		Shape s;
-//		Array res(s);
-//		res.elements_[0] = ScalarNode::create_value(v);
-//		return res;
+//	// Const 1D array node.
+//	// TODO: do better possibly without transform it is unable to resolve overloaded methods
+//	static Array constant1(const std::vector<double> &list)
+//	{
+//		std::vector<Array> ar_list;
+//		std::transform(list.begin(), list.end(), std::back_inserter(ar_list), Array::constant);
+//		return Array::stack(ar_list);
+//	}
+//
+//	// Const 2D array node.
+//	static Array constant2(const std::vector<std::vector<double>> &list)
+//	{
+//		std::vector<Array> ar_list;
+//		std::transform(list.begin(), list.end(), std::back_inserter(ar_list), Array::constant1);
+//		return Array::stack(ar_list);
 //	}
 
 
-	// Vector value 1D array node.
-	// TODO: probably need different approach
-	// v - pointer to the buffer for the array, but we have
-	// to know the array max size to compute
-	// pointers to the component arrays
-	// However is size is passed then it can be inconsistent so we must check it ??
-	// So we start with
+	// Vector value array with given shape
 	static Array value(double *v, uint array_max_size, Shape shape = {})
 	{
 		Array res(shape);
-		uint i_el=0;
-		Shape idx(shape.size(), 0);
-		int ax = idx.size() - 1;
-		for(;;) {
-			res.elements_[i_el++] = ScalarNode::create_value(v);
+		for(uint i_el=0; i_el < res.elements_.size(); ++i_el) {
+			res.elements_[i_el] = ScalarNode::create_value(v);
 			v += array_max_size;
-			for(;;) {
-				if (ax < 0) goto exit;
-				idx[ax]++;
-				if (idx[ax] < shape[ax]) {
-					ax = 0;
-					break;
-				} else {
-					idx[ax] = 0;
-					ax--;
-				}
-			}
 		}
-		exit:
 		return res;
+
+//		uint i_el=0;
+//		Shape idx(shape.size(), 0);
+//		int ax = idx.size() - 1;
+//		for(;;) {
+//			res.elements_[i_el++] = ScalarNode::create_value(v);
+//			v += array_max_size;
+//			for(;;) {
+//				if (ax < 0) goto exit;
+//				idx[ax]++;
+//				if (idx[ax] < shape[ax]) {
+//					ax = 0;
+//					break;
+//				} else {
+//					idx[ax] = 0;
+//					ax--;
+//				}
+//			}
+//		}
+//		exit:
+//		return res;
 	}
 
 
@@ -542,15 +570,14 @@ struct Array {
 	 * a[:, 3]				a(Slice(), 3)
 	 * a[1:, 3]				a(Slice(1), 3)
 	 * a[:-1, 3]		    a(Slice(0, -1), 3)
-	 * a[::2, 3]		    a(Slice(0, None(), 2), 3)
+	 * a[::2, 3]		    a(Slice(0, None, 2), 3)
 	 *
-	 * a[None, :]			a(None(), Slice())
+	 * a[None, :]			a(None, Slice())
 	 *
 	 *
-	 * That is slice() is special, but then we haove only slice(start=0,
 	 *
 	 * TODO:
-	 * 1. variadic arguments for the operator() have to be converted to a vector of IndexSusets
+	 * 1. variadic arguments for the operator() have to be converted to a vector of IndexSubsets
 	 * 2. same we get from the parser
 	 * 3. Index Subsets (with known sub_shape) converted to the vector of index sets, the we use the MultiIdx to iterate over
 	 *  own and other Array.
@@ -568,8 +595,41 @@ private:
 
 };
 
+template <class Fn>
+Array func(const Array &x) {
+	return Array::unary_op<Fn>(x);
+}
+
+/**
+ * Special function
+ */
+Array deg_fn(const Array & rad) {
+	return Array::binary_op<_mul_>(rad, Array::deg_to_rad_factor());
+}
+
+Array rad_fn(const Array & deg) {
+	return Array::binary_op<_mul_>(deg, Array::rad_to_deg_factor());
+}
+
+expr::Array gt_op(const expr::Array & a, const expr::Array & b) {
+	return Array::binary_op<_lt_>(b, a);
+}
+
+expr::Array ge_op(const expr::Array & a, const expr::Array & b) {
+	return Array::binary_op<_le_>(b, a);
+}
+
+expr::Array unary_plus(const expr::Array & a) {
+	return a;
+}
+
+
 Array operator+(const Array &a,  const Array &b) {
-	return Array::elementwise<_add_>(a, b);
+	return Array::binary_op<_add_>(a, b);
+}
+
+Array operator*(const Array &a,  const Array &b) {
+	return Array::binary_op<_mul_>(a, b);
 }
 
 } // expr

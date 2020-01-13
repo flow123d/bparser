@@ -64,7 +64,9 @@ operation specific:
 - There is specific derived class for every kind of operation.
 - common features:
   
-
+# Boost spirit resources
+- [Important FAQs](http://boost-spirit.com/home/articles/doc-addendum/faq/#identifiers)
+- [Commented expression parser](https://stackoverflow.com/questions/47354226/how-to-provider-user-with-autocomplete-suggestions-for-given-boostspirit-gramm/47383910#47383910)
   
 
   

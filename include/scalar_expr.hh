@@ -321,6 +321,24 @@ struct _sgn_ : public ScalarNode {
 	}
 };
 
+struct _atan2_ : public ScalarNode {
+	static const char op_code = 39;
+	static const char n_eval_args = 3;
+	inline static void eval(double &res, double a, double b) {
+		// TODO: vectorize
+		res =  atan2(a, b);
+	}
+};
+
+struct _pow_ : public ScalarNode {
+	static const char op_code = 40;
+	static const char n_eval_args = 3;
+	inline static void eval(double &res, double a, double b) {
+		// TODO: vectorize
+		res =  pow(a, b);
+	}
+};
+
 //struct _iadd_ : public ScalarNode {
 //	static const char op_code = 2;
 //	static const char n_eval_args = 2;
@@ -343,7 +361,7 @@ struct _sgn_ : public ScalarNode {
 // Explicit copy is used only for expression result and only in the case that there is no
 // operation between inputs and the result.
 struct _copy_ : public ScalarNode {
-	static const char op_code = 40;
+	static const char op_code = 50;
 	static const char n_eval_args = 2;
 	inline static void eval(double &res, double a) {
 		res = a;

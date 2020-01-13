@@ -25,9 +25,9 @@ int main() {
 			"Bparser error: Broadcast from 2");
 
 	// constant array, array of ConstNode
-	Array s_const = Array::constant(3.14);
-	Array v_const = Array::constant1(std::vector<double>({1.0, 2, 3}));
-	Array t_const = Array::constant2({{1, 2, 3}, {2, 4, 5}, {3, 5, 6}});
+	Array s_const = Array::constant({3.14});
+	Array v_const = Array::constant({1.0, 2, 3}, {3});
+	Array t_const = Array::constant({1, 2, 3, 2, 4, 5, 3, 5, 6}, {3, 3});
 
 	double v[20][3][3];
 	// variable arrays, array of ValueNode
@@ -38,16 +38,16 @@ int main() {
 	// TODO: implement and test equality function
 	// TODO: implement and test indexing and slicing
 
-//	// constant - vector expressions (no difference)
-//	Array res1 = s_const + sa;
-//	Array res2 = s_const * sa + sa;
-//	Array res3 = sa * sa + s_const * sa;
-//
-//	// elementwise expressions - direct
-//	Array res10 = vb + vb;
-//	Array res11 = exp(vb);
-//	Array res20 = tb + tb;
-//	Array res21 = exp(tb);
+	// constant - vector expressions (no difference)
+	Array res1 = s_const + sa;
+	Array res2 = s_const * sa + sa;
+	Array res3 = sa * sa + s_const * sa;
+
+	// elementwise expressions - direct
+	Array res10 = vb + vb;
+	Array res11 = func<_exp_>(vb);
+	Array res20 = t_const + tc;
+	Array res21 = func<_exp_>(tc);
 //
 //	// broadcasting, slicing
 //	Array res30 = vb + sa(None());

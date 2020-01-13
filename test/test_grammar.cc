@@ -9,8 +9,9 @@
 #define TEST_TEST_PARSER_CC_
 
 #include <string>
+
+#include "../include/grammar_old.hh"
 #include "assert.hh"
-#include "grammar.hh"
 
 using boost::spirit::ascii::space;
 using boost::spirit::utree;
