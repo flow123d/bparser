@@ -267,7 +267,7 @@ struct Processor {
 	}
 
 	/**
-	 * Do not create processor directly, use the create static function.
+	 * Do not create processor directly, use the static 'create' method
 	 *
 	 * vec_size : number of simd blocks (double4).
 	 */

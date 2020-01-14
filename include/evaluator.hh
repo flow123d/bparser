@@ -113,76 +113,60 @@ namespace ast {
 //
 //
 
-//
-//
-//struct make_array {
-//    typedef expr::Array result_type;
-//
-//
-//    explicit make_array()
-//    {}
-//
-//
-//    result_type operator()(nil) const {
-//        BOOST_ASSERT(0);
-//        return expr::Array();
-//    }
-//
-//    result_type operator()(double x) const
-//    {
-//    	return expr::Array::constant({x});
-//    }
-//
-//    result_type operator()(std::string const &x) const  {
-//        auto it = expr_defs.find(x);
-//        if (it == expr_defs.end()) {
-//        	return it->second;
-//        } else {
-//        	std::ostringstream s;
-//        	s << "Undefined var: " << x << "\n";
-//        	// We do not call visitor for the assign_op so this must be error.
-//        	Throw(s.str());
-//        }
-//    }
-//
-//    result_type operator()(unary_op const &x) const {
-//        return x.op(boost::apply_visitor(*this, x.rhs));
-//    }
-//
-//    result_type operator()(binary_op const &x) const {
-//    	result_type lhs = boost::apply_visitor(*this, x.lhs);
-//    	result_type rhs = boost::apply_visitor(*this, x.rhs);
-//        return x.op(lhs, rhs);
-//    }
-//
-//    result_type operator()(assign_op x) const  {
-//    	//std::string& var_name = boos);
-//    	result_type rhs = boost::apply_visitor(*this, x.rhs);
-//    	expr_defs[x.lhs] = rhs;
-//        return rhs;
-//    }
-//
-//    result_type operator()(operation const &x, result_type lhs) const {
-//        return x.op(lhs, boost::apply_visitor(*this, x.rhs));
-//    }
-//
-//    result_type operator()(expression const &x) const {
-//    	result_type state = boost::apply_visitor(*this, x.lhs);
-//        for (std::list<operation>::const_iterator it = x.rhs.begin();
-//             it != x.rhs.end(); ++it) {
-//        	state = (*this)(*it, state);
-//        }
-//        return state;
-//    }
-//
-//
-//private:
-//    mutable std::map<std::string, expr::Array> expr_defs;
-//};
-//
-//
-//
-//
+
+
+struct make_array {
+    typedef expr::Array result_type;
+    mutable std::map<std::string, expr::Array> symbols;
+
+    explicit make_array(std::map<std::string, expr::Array> const &symbols)
+    : symbols(symbols)
+    {}
+
+    result_type operator()(nil) const {
+        BOOST_ASSERT(0);
+        return expr::Array();
+    }
+
+    result_type operator()(double x) const
+    {
+    	return expr::Array::constant({x});
+    }
+
+    result_type operator()(std::string const &x) const  {
+        auto it = symbols.find(x);
+        if (it == symbols.end()) {
+        	return it->second;
+        } else {
+        	std::ostringstream s;
+        	s << "Undefined var: " << x << "\n";
+        	// We do not call visitor for the assign_op's 'lhs' so this must be error.
+        	Throw(s.str());
+        }
+    }
+
+    result_type operator()(unary_op const &x) const {
+        return x.op.fn(boost::apply_visitor(*this, x.rhs));
+    }
+
+    result_type operator()(binary_op const &x) const {
+    	result_type lhs = boost::apply_visitor(*this, x.lhs);
+    	result_type rhs = boost::apply_visitor(*this, x.rhs);
+        return x.op.fn(lhs, rhs);
+    }
+
+    result_type operator()(assign_op x) const  {
+    	//std::string& var_name = boos);
+    	result_type rhs = boost::apply_visitor(*this, x.rhs);
+    	symbols[x.lhs] = rhs;
+        return rhs;
+    }
+
+};
+
+
+
+
 struct get_variables {
     typedef std::vector<std::string> result_type;
 

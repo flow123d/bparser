@@ -357,6 +357,19 @@ struct Array {
 		from_subset(other, range);
 	}
 
+	/// Create a result array from *this using storage of 'variable'.
+	Array make_result(const Array &variable) {
+		Array res(shape_);
+		for(uint i=0; i<elements_.size(); ++i)
+			res.elements_[i] = ScalarNode::create_result(elements_[i], variable.elements_[i]->values_);
+
+	}
+
+	const std::vector<ScalarNodePtr> &elements() const {
+		return elements_;
+	}
+
+
 	Shape minimal_shape(Shape other) {
 		Shape result;
 		for(uint e : other)

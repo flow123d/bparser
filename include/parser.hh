@@ -48,16 +48,21 @@ class Parser {
 	uint max_vec_size;
 	std::map<std::string, expr::Array> symbols_;
 	std::vector<std::string> free_variables;
+	expr::Array result_array;
+	Processor * processor;
 
 public:
     /// @brief Constructor
     Parser(uint max_vec_size)
-	: max_vec_size(max_vec_size)
+	: max_vec_size(max_vec_size), processor(nullptr)
 	{}
 
     /// @brief Destructor
     ~Parser() {}
 
+    void destroy_processor() {
+    	if (processor != nullptr) processor->~Processor();
+    }
     /// @brief Parse the mathematical expression into an abstract syntax tree
     ///
     /// @param[in] expr The expression given as a std::string
@@ -82,7 +87,7 @@ public:
         //ast = boost::apply_visitor(ast::remove_nil(), ast_);
         ast = ast_;
         //ASSERT(ast.type() != typeid(ast::nil));
-        //free_variables  = boost::apply_visitor(ast::get_variables(), ast);
+        free_variables  = boost::apply_visitor(ast::get_variables(), ast);
         //_optimize();
     }
 
@@ -90,9 +95,7 @@ public:
     	return ast::print(ast);
     }
 
-    void _get_free_vars() {
 
-    }
 
     void _optimize() {
     	//ast = boost::apply_visitor(ast::ConstantFolder(), ast);
@@ -126,9 +129,30 @@ public:
     /// @brief Create processor of the expression from the AST.
     ///
     /// All variable names have to be set before this call.
-//    Processor * make_processor() {
-//        return boost::apply_visitor(ast::eval(st), ast);
-//    }
+    /// TODO: set result variable
+    void compile() {
+    	auto res_it = symbols_.find("_result_");
+    	if (res_it == symbols_.end())
+    		Throw("No '_result_' set.");
+
+        expr::Array res_array = boost::apply_visitor(ast::make_array(symbols_), ast);
+        result_array = res_array.make_result(res_it->second);
+
+        destroy_processor();
+        processor = Processor::create(result_array.elements(), max_vec_size);
+    }
+
+
+    /// @brief Set new subset of the 'max_vec_size' vectors.
+    /// Only this subset is evuluated by the processor.
+    void set_subset(std::vector<uint> const &subset) {
+    	ASSERT(processor != nullptr);
+    	processor->set_subset(subset);
+    }
+
+    void run() {
+    	processor->run();
+    }
 
 
 };

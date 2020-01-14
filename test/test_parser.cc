@@ -72,11 +72,35 @@ void test_ast_cases() {
 
 	// program and assignment
 	test_ast("a=1;a+4", ";(a = 1, +(<a>, 4))");
+
+	// TODO: test error detection and reporting
+}
+
+void test_fv(std::string expr, std::vector<std::string> ref_vars) {
+	using namespace bparser;
+	Parser p(4);
+	p.parse(expr);
+	auto vars = p.variables();
+	std::cout << "\n";
+	std::cout << "Expr: " << expr << "\n";
+	for(std::string v : vars)
+		std::cout << v << ", ";
+	std::cout << "\n";
+	ASSERT(vars == ref_vars);
+	std::cout.flush();
+
+}
+
+void test_free_variables() {
+	test_fv("1+2", {});
+	test_fv("a+b", {"a", "b"});
+	test_fv("a=1;a+b", {"b"});
 }
 
 int main()
 {
 	test_ast_cases();
+	test_free_variables();
 
 }
 
