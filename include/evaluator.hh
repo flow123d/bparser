@@ -183,73 +183,103 @@ namespace ast {
 //
 //
 //
-//struct get_variables {
-//    typedef std::vector<std::string> result_type;
-//
-//    static result_type merge(result_type a, result_type b) {
-//    	result_type res(a.begin(), a.end());
-//    	res.insert(res.end(), b.begin(), b.end());
-//    	return res;
-//    }
-//
-//    explicit get_variables()
-//    {}
-//
-//
-//    result_type operator()(nil) const {
-//        BOOST_ASSERT(0);
-//        return {};
-//    }
-//
-//    result_type operator()(double x) const
-//    { return {}; }
-//
-//    result_type operator()(std::string const &x) const  {
-//        auto it = expr_defs.find(x);
-//        if (it == expr_defs.end()) {
-//        	return {x};
-//        }
-//        return {};
-//    }
-//
-//    result_type operator()(operation const &x, result_type lhs) const {
-//        return merge(lhs, boost::apply_visitor(*this, x.rhs));
-//    }
-//
-//    result_type operator()(unary_op const &x) const {
-//        return boost::apply_visitor(*this, x.rhs);
-//    }
-//
-//    result_type operator()(binary_op const &x) const {
-//    	result_type lhs = boost::apply_visitor(*this, x.lhs);
-//    	result_type rhs = boost::apply_visitor(*this, x.rhs);
-//        return merge(lhs, rhs);
-//    }
-//
-//    result_type operator()(assign_op const &x) const  {
-//    	result_type rhs = boost::apply_visitor(*this, x.rhs);
-//    	expr_defs.insert(x.lhs);
-//        return rhs;
-//    }
-//
-//    result_type operator()(expression const &x) const {
-//    	result_type state = boost::apply_visitor(*this, x.lhs);
-//        for (std::list<operation>::const_iterator it = x.rhs.begin();
-//             it != x.rhs.end(); ++it) {
-//        	state = (*this)(*it, state);
-//        }
-//        return state;
-//    }
-//
-//
-//private:
-//    mutable std::set<std::string> expr_defs;
-//};
-//
-//
-//
+struct get_variables {
+    typedef std::vector<std::string> result_type;
 
-// Evaluator
+    static result_type merge(result_type a, result_type b) {
+    	result_type res(a.begin(), a.end());
+    	res.insert(res.end(), b.begin(), b.end());
+    	return res;
+    }
+
+    explicit get_variables()
+    {}
+
+
+    result_type operator()(nil) const {
+        BOOST_ASSERT(0);
+        return {};
+    }
+
+    result_type operator()(double x) const
+    { return {}; }
+
+    result_type operator()(std::string const &x) const  {
+        auto it = expr_defs.find(x);
+        if (it == expr_defs.end()) {
+        	return {x};
+        }
+        return {};
+    }
+
+
+    result_type operator()(unary_op const &x) const {
+        return boost::apply_visitor(*this, x.rhs);
+    }
+
+    result_type operator()(binary_op const &x) const {
+    	result_type lhs = boost::apply_visitor(*this, x.lhs);
+    	result_type rhs = boost::apply_visitor(*this, x.rhs);
+        return merge(lhs, rhs);
+    }
+
+    result_type operator()(assign_op const &x) const  {
+    	result_type rhs = boost::apply_visitor(*this, x.rhs);
+    	expr_defs.insert(x.lhs);
+        return rhs;
+    }
+
+
+
+private:
+    mutable std::set<std::string> expr_defs;
+};
+
+
+struct remove_nil {
+    typedef operand result_type;
+
+
+    explicit remove_nil()
+    {}
+
+
+    result_type operator()(nil) const {
+        return nil();
+    }
+
+    result_type operator()(double x) const
+    { return x; }
+
+    result_type operator()(std::string const &x) const  {
+        return x;
+    }
+
+
+    result_type operator()(unary_op const &x) const {
+    	result_type rhs = boost::apply_visitor(*this, x.rhs);
+    	if (rhs.type() != typeid(nil)) return x;
+    	return rhs;
+    }
+
+    result_type operator()(binary_op const &x) const {
+    	result_type lhs = boost::apply_visitor(*this, x.lhs);
+    	if (lhs.type() != typeid(nil)) return x;
+    	result_type rhs = boost::apply_visitor(*this, x.rhs);
+    	if (rhs.type() != typeid(nil)) return x;
+    	return rhs;
+    }
+
+    result_type operator()(assign_op const &x) const  {
+    	ASSERT(x.lhs.size() > 0);
+    	result_type rhs = boost::apply_visitor(*this, x.rhs);
+    	ASSERT(rhs.type() != typeid(nil));
+        return x;
+    }
+
+
+
+};
 
 
 } // namespace ast

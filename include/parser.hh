@@ -74,16 +74,24 @@ public:
 
         if (!r || first != last) {
             std::string rest(first, last);
-            throw std::runtime_error("Parsing failed at " + rest); // NOLINT
+            Throw("Parsing failed at " + rest); // NOLINT
         }
+        //std::cout << "Parsing OK. : " << "\n";
+        //print(ast_);
 
+        //ast = boost::apply_visitor(ast::remove_nil(), ast_);
         ast = ast_;
-
-        _optimize();
+        //ASSERT(ast.type() != typeid(ast::nil));
+        //free_variables  = boost::apply_visitor(ast::get_variables(), ast);
+        //_optimize();
     }
+
+    std::string print_ast() {
+    	return ast::print(ast);
+    }
+
     void _get_free_vars() {
 
-    	//free_variables  = boost::apply_visitor(ast::get_variables(), ast);
     }
 
     void _optimize() {
@@ -93,8 +101,8 @@ public:
     /**
      * @brief Return names (undefined) variables in the expression.
      */
-    std::vector<std::string> variables() {
-
+    std::vector<std::string> const &variables() {
+    	return free_variables;
     }
 
     /**

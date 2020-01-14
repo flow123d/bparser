@@ -71,7 +71,9 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 
 
     qi::rule<Iterator, ast::operand(), ascii::space_type>
-    	primary, logical, equality, relational, additive, multiplicative, factor, unary, binary, program, definition, assignment, unary_op_r;
+    	primary, logical, equality, additive, multiplicative, factor, unary, binary, program, definition, assignment, unary_op_r;
+    qi::rule<Iterator, ast::operand(), qi::locals<std::string>, ascii::space_type> relational;
+
     qi::rule<Iterator, std::string()> variable;
 
 
@@ -171,8 +173,6 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
             BN_FN("**", binary_array<_pow_>())
             ;
 
-        ast::binary_fn semicol_fn = {";", &ast::semicol_fn};
-
 //        semicol_op.add
 //            (";", &ast::semicol_fn)  // TODO: possibly some special function
 //			;
@@ -202,36 +202,26 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
          * TODO: need to construct binary_op attribute, but
          * the order of opeartions doesn't match
          */
-        program =
-        	(definition >> ';' >> logical)[_val = ast::make_binary(semicol_fn, _1,  _2)]
-			| logical[_val = _1]
-        //program = -(definition > ';')[_val = _1] >> logical[_val = _1]
-			;
+        //program = -(definition > ';')[_val = _1] >> logical[_val = ast::make_binary(&ast::semicol_fn, _val,  _1)]
+//        program = -(definition > ';')[_val = _1] >> logical[_val = _1]
+//			;
+//
+//        definition =
+//        		assignment[_val = _1] >> *(semicol_op > definition)[_val = ast::make_binary(_1, _val, _2)]
+//				;
 
+//        assignment =
+//        	(variable > '=' > logical)[_val = ast::make_assign(_1, _2)]
+//			;
 
-
-
-        //program = definition.alias();
-        definition =
-        		assignment[_val = _1] >> *(';' >> assignment)[_val = ast::make_binary(semicol_fn, _val, _1)]
-				;
-
-        assignment =
-        	(variable >> '=' > logical)[_val = ast::make_assign(_1, _2)]
-			;
-
-        //program = logical.alias();
+        program = logical.alias();
 
         logical =
             equality[_val = _1] >> *(logical_op > equality)[_val = ast::make_binary(_1, _val, _2)]
             ;
 
-        equality =
-            relational[_val = _1] >> -(equality_op > relational)[_val = ast::make_binary(_1, _val, _2)]
-            ;
-
         relational =
-            additive[_val = _1] >> -(relational_op > additive)[_val = ast::make_binary(_1, _val, _2)]
+            additive[_val = _1] >> *(relational_op > additive)[_val = ast::make_relational(_1, _val, _2, _a), _a = _2]
             ;
 
         additive =
