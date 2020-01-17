@@ -282,6 +282,10 @@ struct Processor {
 		//std::cout << "&vec_subset: " << &(workspace_.vec_subset) << "\n";
 		//std::cout << "aloc vec_subset: " << workspace_.vec_subset << " size: " << vec_size << "\n";
 		workspace_.vector = (Vec *) arena_.allocate(sizeof(Vec) * se.n_vectors());
+		// TODO: seems that n_temporaries is only for single component of the vector operation
+		// however that should be enough as we have separate storage for results so
+		// actually we need only 2 temporary vectors
+		// need a mean to viasulaize 'se' graph.
 		uint n_temporaries = (se.n_vectors() - se.n_constants - se.n_values);
 		double4 * temp_base = (double4 *) arena_.allocate(sizeof(double) * simd_size * vec_size * n_temporaries);
 		double4 * temp_ptr = temp_base;

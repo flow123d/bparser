@@ -135,7 +135,7 @@ struct make_array {
 
     result_type operator()(std::string const &x) const  {
         auto it = symbols.find(x);
-        if (it == symbols.end()) {
+        if (it != symbols.end()) {
         	return it->second;
         } else {
         	std::ostringstream s;

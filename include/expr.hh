@@ -340,6 +340,18 @@ struct Array {
 	Array()
 	{}
 
+	Array(const Array &other)
+	: Array(other, other.range())
+	{}
+
+	Array operator=(const Array & other)
+	{
+		elements_ = other.elements_;
+		shape_ = other.shape_;
+		return *this;
+	}
+
+
 	Array(const Shape &shape)
 	: shape_(shape)
 	{
@@ -362,7 +374,7 @@ struct Array {
 		Array res(shape_);
 		for(uint i=0; i<elements_.size(); ++i)
 			res.elements_[i] = ScalarNode::create_result(elements_[i], variable.elements_[i]->values_);
-
+		return res;
 	}
 
 	const std::vector<ScalarNodePtr> &elements() const {
@@ -405,9 +417,6 @@ struct Array {
 		}
 	}
 
-	Array(const Array &other)
-	: Array(other, other.range())
-	{}
 
 
 

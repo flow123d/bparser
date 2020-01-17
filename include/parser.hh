@@ -102,6 +102,16 @@ public:
     }
 
     /**
+     * @brief Return names of known symbols.
+     */
+    std::vector<std::string> symbols() const {
+    	std::vector<std::string> keys;
+    	for(auto s : symbols_)
+    		keys.push_back(s.first);
+    	return keys;
+    }
+
+    /**
      * @brief Return names (undefined) variables in the expression.
      */
     std::vector<std::string> const &variables() {

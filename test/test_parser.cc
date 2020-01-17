@@ -97,11 +97,49 @@ void test_free_variables() {
 	test_fv("a=1;a+b", {"b"});
 }
 
+
+void test_expr(std::string expr) {
+	using namespace bparser;
+	uint vec_size = 8;
+	double m1[vec_size * 6];
+	double v1[vec_size * 3];
+	fill_const(v1, 3 * vec_size, 100);
+	double v2[vec_size * 3];
+	fill_const(v2, 3 * vec_size, 200);
+	double vres[vec_size * 3];
+	fill_const(vres, 3 * vec_size, -100);
+
+	Parser p(vec_size);
+	p.parse(expr);
+	p.set_constant("cs1", {}, 	{2});
+	p.set_constant("cv1", {3}, 	{1, 2, 3});
+	p.set_variable("v1", {3}, v1);
+	p.set_variable("v2", {3}, v2);
+	p.set_variable("_result_", {3}, vres);
+	std::cout << "Symbols: " << print_vector(p.symbols()) << "\n";
+	std::cout.flush();
+	p.compile();
+	p.run();
+	std::cout << print_vec(vres, 3*vec_size);
+}
+
+void test_expression() {
+	test_expr("1 * v1 + cs1 * v2");
+}
+
+
+void test_speed_cases() {
+
+}
+
 int main()
 {
-	test_ast_cases();
-	test_free_variables();
-
+	//test_ast_cases();
+	//test_free_variables();
+	test_expression();
+#ifdef NDEBUG
+	test_speed_cases();
+#endif
 }
 
 

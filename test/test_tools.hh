@@ -30,5 +30,31 @@
 }
 
 
+void fill_const(double *ptr, uint n, double v) {
+	for(uint i=0; i< n; ++i) ptr[i] = v;
+}
+
+void fill_seq(double *ptr, double a, double b, double st = 1) {
+	for(uint i=0; a<b; a+=st, ++i) ptr[i] = a;
+}
+
+std::string print_vec(double *ptr, uint size) {
+	std::stringstream s;
+	s << "[";
+	for(uint i=0; i<size; ++i)
+		s << ptr[i] << ", " << "\n";
+	s << "]";
+	return s.str();
+}
+
+template< class T>
+std::string print_vector(std::vector<T> x) {
+	std::stringstream s;
+	s << "[";
+	for(uint i=0; i<x.size(); ++i)
+		s << x[i] << ", " << "\n";
+	s << "]";
+	return s.str();
+}
 
 #endif /* TEST_TEST_TOOLS_HH_ */
