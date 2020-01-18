@@ -1,0 +1,19 @@
+name: C/C++ CI
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v1
+    - name: make test_simd
+      run: make test_simd
+    - name: make test_expr
+      run: make test_expr
+    - name: make test_processor
+      run: make test_processor
+    - name: make test_parser
+      run: make test_parser
