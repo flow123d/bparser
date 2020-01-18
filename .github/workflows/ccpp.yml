@@ -9,8 +9,6 @@ jobs:
     
     steps:
     - uses: actions/checkout@v1
-    - name: make test_simd
-      run: make test_simd
     - name: make test_expr
       run: make test_expr
     - name: make test_processor
