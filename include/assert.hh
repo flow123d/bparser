@@ -51,7 +51,7 @@ public:
 	#define ASSERT(EXPRESSION) ((void)0)
 #else
 	#define ASSERT(EXPRESSION) \
-		if ( !(EXPRESSION) ) throw AssertExc(#EXPRESSION, __FILE__, __LINE__)
+		if ( !(EXPRESSION) ) throw ::bparser::AssertExc(#EXPRESSION, __FILE__, __LINE__)
 #endif
 
 

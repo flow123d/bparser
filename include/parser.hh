@@ -149,7 +149,10 @@ public:
         result_array = res_array.make_result(res_it->second);
 
         destroy_processor();
-        processor = Processor::create(result_array.elements(), max_vec_size);
+		ScalarExpression se(result_array.elements());
+
+		se.print_in_dot();
+		processor = Processor::create_processor_(se, max_vec_size);
     }
 
 

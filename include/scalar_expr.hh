@@ -10,6 +10,7 @@
 
 #include <vector>
 #include <cmath>
+#include <map>
 #include "config.hh"
 #include "assert.hh"
 
@@ -48,6 +49,7 @@ struct ScalarNode {
 	// index of the result in workspace, can be reused
 	int result_idx_;
 	char op_code_;
+	std::string op_name_;
 	double * values_;
 
 	/**
@@ -75,6 +77,7 @@ struct ScalarNode {
 	  n_dep_nodes_(0),
 	  result_idx_(-1),
 	  op_code_(0xff),
+	  op_name_("none"),
 	  values_(nullptr)
 	{}
 
@@ -89,6 +92,12 @@ struct ScalarNode {
 		ASSERT(values_ != nullptr);
 		return values_;
 	}
+
+	void set_name(std::string str) {
+		uint a = str.find_first_of('_')+1;
+		uint b = str.find_last_of('_');
+		op_name_ = str.substr(a, b-a);
+	}
 };
 
 
@@ -98,6 +107,7 @@ struct ConstantNode : public ScalarNode {
 	ConstantNode(double v)
 	: value_(v)
 	{
+		op_name_ = "Const";
 		values_ = &value_;
 		result_storage = constant;
 	}
@@ -109,6 +119,7 @@ struct ConstantNode : public ScalarNode {
 struct ValueNode : public ScalarNode {
 	ValueNode(double *ptr)
 	{
+		op_name_ = "Value";
 		values_ = ptr;
 		result_storage = value;
 	}
@@ -118,6 +129,7 @@ struct ValueNode : public ScalarNode {
 struct ResultNode : public ScalarNode {
 	ResultNode(ScalarNode *result_node, double *storage)
 	{
+		op_name_ = "Result";
 		values_ = storage;
 		ScalarNode::add_input(result_node);
 		result_storage = expr_result; // use slot of the result of value, i.e. inputs[0]
@@ -395,20 +407,20 @@ ScalarNode * ScalarNode::create_value(double *a)  {
 
 // create result node
 ScalarNode * ScalarNode::create_result(ScalarNode *result, double *a)  {
-	if (result->result_storage == constant || result->result_storage == value) {
+	ASSERT(result->result_storage != none);
+	if (result->result_storage != temporary) {
 		result = ScalarNode::create<_copy_>(result);
 	}
-
-	return new ResultNode(result, a);
-//		nodes.push_back(node);
-//		results.push_back(node);
-//		return node;
+	result->values_ = a;
+	result->result_storage = expr_result;
+	return result;
 }
 
 template <class T>
 ScalarNode * ScalarNode::create(ScalarNode *a) {
 	T * node_ptr = new T();
 	node_ptr->op_code_ = T::op_code;
+	node_ptr->set_name(typeid(T).name());
 	node_ptr->add_input(a);
 	if (T::n_eval_args == 1) {
 		node_ptr->result_storage = none;
@@ -425,6 +437,7 @@ template <class T>
 ScalarNode * ScalarNode::create(ScalarNode *a, ScalarNode *b) {
 	T * node_ptr = new T();
 	node_ptr->op_code_ = T::op_code;
+	node_ptr->set_name(typeid(T).name());
 	node_ptr->add_input(a);
 	node_ptr->add_input(b);
 	if (T::n_eval_args == 2) {
@@ -444,53 +457,48 @@ ScalarNode * ScalarNode::create(ScalarNode *a, ScalarNode *b) {
  * to get order of operations.
  * TODO: optimize topological sort for the number of temporaries.
  */
-struct ScalarExpression {
+class ScalarExpression {
+public:
 	typedef std::vector<ScalarNode *> NodeVec;
 
+private:
+	/// All nodes in the expressions (reached from the results).
 	NodeVec nodes;
+	/// Backward topologicaly sorted nodes; results first, inputs last
 	NodeVec sorted;
+	/// Result nodes, given as input.
 	NodeVec results;
-	uint n_constants;
-	uint n_values;
+
+
+	/**
+	 * Used in the setup_result_storage to note number of unclosed nodes
+	 * dependent on the value. When this drops to zero the temporary may be reused.
+	 * TODO: use to reorder nodes in the topological sort to minimize number of temporaries
+	 */
 	std::vector<uint> storage;
+
+public:
+	/**
+	 * All input, temporary and result vectors (represented by bparser::details::Vec)
+	 * are assigned to the fixed position in the storage table of the Workspace.
+	 * First are constants, then external vectors (Value and Result) finally temporaries.
+	 */
+	/// End index of the constant vectors in storage.
+	uint constants_end;
+	/// End index of the values and result vectors in the storage.
+	uint values_end;
+	/// End index of the temporary vectors in storage.
+	uint temp_end;
+
 
 	ScalarExpression(std::vector<ScalarNode *> res)
 	:
 		results(res.begin(), res.end()),
-		n_constants(0),
-		n_values(0)
+		constants_end(0),
+		values_end(0),
+		temp_end(0)
 	{
-		// ScalarNode::reslut_idx_ == -1,
-		// we set it to -2 to identify passed nodes
-		nodes.clear();
-		for(ScalarNode * node : results)
-			add_node(node);
-
-		for(uint i=0; i < nodes.size(); ++i) {
-			ScalarNode * node = nodes[i];
-			for(uint in=0; in < node->n_inputs_; ++in)  {
-				ScalarNode * other = node->inputs_[in];
-				if (other->result_idx_ != -2) {
-					ASSERT(other->result_idx_ == -1);
-					add_node(other);
-				}
-			}
-
-
-		}
-
-		ASSERT(sorted.size() == 0);
 		sort_nodes();
-	}
-
-	void add_node(ScalarNode * node) {
-		node->result_idx_ = -2;
-		nodes.push_back(node);
-		if (node->result_storage == constant)
-			n_constants++;
-		if (node->result_storage == value)
-			n_values++;
-
 	}
 
 
@@ -500,21 +508,123 @@ struct ScalarExpression {
 		}
 	}
 
-
-	// Perform topological sort, set temporary indices
+	/**
+	 * Return nodes in the topological order (result nodes first).
+	 * It also assign position of the node results in the storage (result_idx_).
+	 */
 	NodeVec & sort_nodes() {
         if (sorted.size() > 0)
         	return sorted;
 
+        /**
+         * TODO: there is some infinite loop
+         */
+        _collect_nodes();
+		ASSERT(sorted.size() == 0);
+		_topological_sort();
+
+		_setup_result_storage();
+		temp_end += storage.size();
+		return sorted;
+	}
+
+
+	/**
+	 * Print ScalarExpression graph in the dot format.
+	 */
+	void print_in_dot() {
+		std::map<ScalarNode *, uint> i_node;
+		sort_nodes();
+		for(uint i=0; i<sorted.size(); ++i) i_node[sorted[i]] = i;
+
+
+		std::cout << "\n" << "----- begin cut here -----" << "\n";
+		std::cout << "digraph Expr {" << "\n";
+		for(uint i=0; i<sorted.size(); ++i) {
+			i_node[sorted[i]] = i;
+			//std::cout << i << " n: " << sorted[i]->n_inputs_ << "\n";
+			for(uint in=0; in<sorted[i]->n_inputs_; ++in ) {
+				std::cout << "    ";
+				_print_node(sorted[i]);
+				std::cout << " -> ";
+				_print_node(sorted[i]->inputs_[in]);
+				std::cout << "\n";
+			}
+		}
+		std::cout << "}" << "\n";
+		std::cout << "\n" << "----- end   cut here -----" << "\n";
+		std::cout.flush();
+	}
+
+	void _print_node(ScalarNode * node) {
+		std::cout << node->op_name_ <<  "_" << node->result_idx_;
+	}
+
+
+private:
+	void _print_i_node(uint i) {
+		std::cout << sorted[i]->op_name_ << "_" << i << "_"<< sorted[i]->result_idx_;
+	}
+
+
+
+	/**
+	 * Performs BFS to:
+	 * - collect all nodes in the expression graph
+	 * - count constants and values/results
+	 * - assign constant and value result_idx_ to the nodes.
+	 */
+	void _collect_nodes() {
+		// ScalarNode::reslut_idx_ == -1,
+		// we set it to -2 to identify passed nodes
+		nodes.clear();
+
+		// collect nodes
+		nodes.insert(nodes.begin(), results.begin(), results.end());
+		for(uint i=0; i < nodes.size(); ++i) {
+			ScalarNode * node = nodes[i];
+			for(uint in=0; in < node->n_inputs_; ++in)  {
+
+				ScalarNode * other = node->inputs_[in];
+				if (other->result_idx_ != -2) {
+					ASSERT(other->result_idx_ == -1);
+					other->result_idx_ = -2;
+					nodes.push_back(other);
+				}
+			}
+		}
+
+		// set result_idx_ of constant nodes
+		uint i_storage = 0;
+		for(ScalarNode * node : nodes)
+			if (node->result_storage == constant)
+				node->result_idx_ = i_storage++;
+		constants_end = i_storage;
+		// set result_idx_ of value/result nodes
+		for(ScalarNode * node : nodes)
+			if (node->result_storage == value || node->result_storage == expr_result)
+				node->result_idx_ = i_storage++;
+		values_end = i_storage;
+		temp_end = i_storage; // still empty
+	}
+
+
+	void _topological_sort() {
+
+		// in-degree of nodes (number of dependent nodes).
 		for(ScalarNode *node : nodes) node->n_dep_nodes_ = 0;
-		for(ScalarNode *node : nodes)
+		for(ScalarNode *node : nodes) {
 			for(uint in=0; in < node->n_inputs_; ++in) {
 				node->inputs_[in]->n_dep_nodes_ += 1;
-				//std::cout << "  node: " << node->inputs_[in] << " n_dep: " << node->inputs_[in]->n_dep_nodes_ << "\n";
 			}
+		}
 
+		// Kahn's algorithm for topo. sort
+		// Drawing nodes form the stack in different order leads to all possible topological orderings.
+		// However stack seems to reuse temporaries more efficiently then e.g. queue.
+		// Yet it is not optimal.
+		// TODO: probable optimal algorithm viz. TGH semestralky 2020
 		NodeVec stack(results.begin(), results.end());
-
 		while (stack.size() > 0) {
 			ScalarNode * node = stack.back();
 			//std::cout << "node: " << node << " res: " << node->result_storage << "\n";
@@ -529,26 +639,32 @@ struct ScalarExpression {
 			}
 		}
 
-		setup_result_storage();
-		return sorted;
 	}
 
-	void setup_result_storage() {
+	/**
+	 * Assign result_idx_ to the temporary nodes, reusing
+	 * storage positions.
+	 */
+	void _setup_result_storage() {
+		// in-degree of nodes (number of dependent nodes).
 		for(ScalarNode *node : nodes) node->n_dep_nodes_ = 0;
 		for(ScalarNode *node : nodes)
 			for(uint in=0; in < node->n_inputs_; ++in) node->inputs_[in]->n_dep_nodes_ += 1;
 
+		// Mimic expression evaluation, reversed topological order.
 		for(auto it=sorted.rbegin(); it != sorted.rend(); ++it) {
 			ScalarNode * node = *it;
-			allocate_storage(node);
+			_allocate_storage(node);
 			for(uint in=0; in < node->n_inputs_; ++in) {
 				node->inputs_[in]->n_dep_nodes_ -= 1;
 				if (node->inputs_[in]->n_dep_nodes_ == 0) {
-					deallocate_storage(node->inputs_[in]);
+					_deallocate_storage(node->inputs_[in]);
 				}
 			}
 		}
 	}
+
+
 	/**
 	 * forward processing in topological order
 	 * for all nodes set N.n_dep
@@ -562,46 +678,35 @@ struct ScalarExpression {
 	 * deallocate M if --M.n_dep == 0
 	 *
 	 */
-	void allocate_storage(ScalarNode *node) {
-
-		if (node->result_storage == none || node->result_storage == expr_result)
-		{
-			ScalarNode * reused_node = node->inputs_[0];
-			if (reused_node->result_storage == temporary || reused_node->result_storage == none) {
-				// reuse previous slot
-				node->result_idx_ = reused_node->result_idx_;
-			} else {
-				ASSERT(false);
-				// result and operations with none storage
-				// can not follow ConstantNode or ValueNode
-			}
-		} else {
-			//std::cout << "node: " << node << " get slot: " << storage.size() << "\n";
-			node->result_idx_ = get_free_slot();
-		}
-	}
-
-	uint get_free_slot() {
-		for(uint i=0; i<storage.size(); ++i)
-			if (storage[i] == 0) {
-				storage[i] = 1;
-				return i;
-			}
-		storage.push_back(1);
-		return storage.size() - 1;
-	}
-
-	void deallocate_storage(ScalarNode *node) {
+	void _allocate_storage(ScalarNode *node) {
 		if (node->result_storage == temporary) {
-			//std::cout << "dealoc node: " << node << " idx: " << node->result_idx_ << "\n";
-			storage[node->result_idx_] = 0;
+			for(uint i=0; i<storage.size(); ++i)
+				if (storage[i] == 0) {
+					storage[i] = 1;
+					node->result_idx_ = temp_end + i;
+					return;
+				}
+			node->result_idx_ = temp_end + storage.size();
+			storage.push_back(1);
+			return;
 		}
 	}
 
 
-	uint n_vectors() {
-		return storage.size();
+	void _deallocate_storage(ScalarNode *node) {
+		if (node->result_storage == temporary) {
+			storage[node->result_idx_ - temp_end] = 0;
+		}
 	}
+
+
+
+
+
+
+
+
+
 
 };
 

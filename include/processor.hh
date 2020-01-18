@@ -234,7 +234,7 @@ struct ProcessorSetup {
  */
 struct Processor {
 	/**
-	 *
+	 *hh
 	 * vector_size: maximum vector size in doubles
 	 *
 	 * TODO: reimplement full__ns to perform topological sort of nodes
@@ -249,6 +249,7 @@ struct Processor {
 	 */
 	static Processor *create(std::vector<ScalarNode *> results, uint vector_size) {
 		ScalarExpression se(results);
+
 		return create_processor_(se, vector_size);
 	}
 
@@ -260,8 +261,14 @@ struct Processor {
 		//std::cout << "n_nodes: " << sorted_nodes.size() << " n_vec: " << se.n_vectors() << "\n";
 		uint memory_est =
 				align_size(simd_bytes, sizeof(Processor)) +
-				align_size(simd_bytes, sizeof(Operation) * (sorted_nodes.size() + 4) ) +
-				sizeof(double) * vector_size * (se.n_vectors() + 4);
+				align_size(simd_bytes, sizeof(uint) * vector_size) +
+				align_size(simd_bytes, se.temp_end * sizeof(Vec)) +
+				sizeof(double) * vector_size * (se.temp_end - se.values_end) +
+				align_size(simd_bytes, sizeof(double4) * se.constants_end ) +
+				align_size(simd_bytes, sizeof(Operation) * (sorted_nodes.size() + 64) )
+
+
+				;
 		ArenaAlloc arena(simd_bytes, memory_est);
 		return arena.create<Processor>(arena, se, vector_size / simd_size);
 	}
@@ -281,55 +288,70 @@ struct Processor {
 		workspace_.vec_subset = (uint *) arena_.allocate(sizeof(uint) * vec_size);
 		//std::cout << "&vec_subset: " << &(workspace_.vec_subset) << "\n";
 		//std::cout << "aloc vec_subset: " << workspace_.vec_subset << " size: " << vec_size << "\n";
-		workspace_.vector = (Vec *) arena_.allocate(sizeof(Vec) * se.n_vectors());
+
+		workspace_.vector = (Vec *) arena_.allocate(sizeof(Vec) * se.temp_end);
+		double4 * temp_base = (double4 *) arena_.allocate(
+				sizeof(double) * vec_size * simd_size * (se.temp_end - se.values_end));
+		double4 * const_base = (double4 *) arena_.allocate(
+				sizeof(double4) * se.constants_end);
+		for(uint i=0; i< se.constants_end; ++i)
+			workspace_.vector[i].set(const_base + i, workspace_.const_subset);
+
+		for(uint i=se.values_end; i< se.temp_end; ++i)
+			workspace_.vector[i].set(temp_base + i*vec_size, workspace_.vec_subset);
+
+		// value vectors ... setup when processing the nodes, every value node processed exactly once
+		// we need the values pointer from these nodes.
+
 		// TODO: seems that n_temporaries is only for single component of the vector operation
 		// however that should be enough as we have separate storage for results so
 		// actually we need only 2 temporary vectors
-		// need a mean to viasulaize 'se' graph.
-		uint n_temporaries = (se.n_vectors() - se.n_constants - se.n_values);
-		double4 * temp_base = (double4 *) arena_.allocate(sizeof(double) * simd_size * vec_size * n_temporaries);
-		double4 * temp_ptr = temp_base;
-		double4 * const_base = (double4 *) arena_.allocate(sizeof(double) * simd_size * se.n_constants);
-		double4 * const_ptr = const_base;
-		uint n_operations = se.sorted.size();
-		program_ = (Operation *) arena_.allocate(sizeof(Operation));
+		// need a mean to visualize 'se' graph.
+	    auto sorted_nodes = se.sort_nodes();
+		uint n_operations = sorted_nodes.size();
+		program_ = (Operation *) arena_.allocate(sizeof(Operation) * n_operations);
 
+		/**
+		 * TODO separate setup of workspace - no dependence on the order
+		 * from composition of operations - top sort but no dep. on result_idx_
+		 */
 		Operation *op = program_;
-		for(auto it=se.sorted.rbegin(); it != se.sorted.rend(); ++it) {
+		for(auto it=sorted_nodes.rbegin(); it != sorted_nodes.rend(); ++it) {
+			se._print_node(*it);
 			ScalarNode * node = *it;
 			switch (node->result_storage) {
 			case constant: {
-				ASSERT(const_ptr < const_base + se.n_constants);
 				double c_val = *node->get_value();
+				double4 * c_ptr = workspace_.vector[node->result_idx_].values;
 				for(uint j=0; j<simd_size; ++j)
-					const_ptr[0][j] = c_val;
-				workspace_.vector[node->result_idx_].set(const_ptr, workspace_.const_subset);
-				const_ptr++;
-				continue;}
+					c_ptr[0][j] = c_val;
+				break;}
 			case value:
 				workspace_.vector[node->result_idx_].set((double4 *)node->get_value(), workspace_.vec_subset);
-				continue;
+				break;
 			case temporary:
-				ASSERT(temp_ptr < temp_base + vec_size *n_temporaries);
-				workspace_.vector[node->result_idx_].set(temp_ptr, workspace_.vec_subset);
-				temp_ptr += vec_size;
 				*op = make_operation(node);
 				++op;
 				break;
 			case none:
-				*op = make_operation(node);
-				++op;
+				ASSERT(false);
+				//*op = make_operation(node);
+				//++op;
 				break;
 			case expr_result:
-				ASSERT(node->n_inputs_ == 1);
-				ScalarNode * prev_node = node->inputs_[0];
-				ASSERT(prev_node->result_storage == temporary);
-				workspace_.vector[prev_node->result_idx_].set((double4 *)node->get_value(), workspace_.vec_subset);
-//				std::cout << " ir: " << prev_node->result_idx_ << " a0: "
-//						<< workspace_.vector[prev_node->result_idx_].values
-//						<< " gv: " << node->get_value()
-//						<< "\n";
-				continue;
+				workspace_.vector[node->result_idx_].set((double4 *)node->get_value(), workspace_.vec_subset);
+
+				*op = make_operation(node);
+				++op;
+
+				//ASSERT(node->n_inputs_ == 1);
+				//ScalarNode * prev_node = node->inputs_[0];
+				//ASSERT(prev_node->result_storage == temporary);
+				//workspace_.vector[prev_node->result_idx_].set((double4 *)node->get_value(), workspace_.vec_subset);
+				std::cout << " ir: " << node->result_idx_ << " a0: "
+						<< workspace_.vector[node->result_idx_].values
+						<< "\n";
+				break;
 			}
 			ASSERT(op < program_ + n_operations);
 		}
@@ -346,8 +368,8 @@ struct Processor {
 		Operation op;
 		op.code = node->op_code_;
 		uint i_arg = 0;
-		if (node->result_storage == temporary)
-			op.arg[i_arg++] = node->result_idx_;
+		//if (node->result_storage == temporary)
+		op.arg[i_arg++] = node->result_idx_;
 		for(uint j=0; j<node->n_inputs_; ++j)
 			op.arg[i_arg++] = node->inputs_[j]->result_idx_;
 		return op;
@@ -361,11 +383,13 @@ struct Processor {
 
 	void run() {
 		for(Operation * op = program_;;++op) {
-//			std::cout << "op: " << (int)(op->code)
-//					<< " ia0: " << (int)(op->arg[0])
-//					<< " a0: " << workspace_.vector[op->arg[0]].values
-//					<< " ia1: " << (int)(op->arg[1])
-//					<< " a1: " << workspace_.vector[op->arg[1]].values << "\n";
+			std::cout << "op: " << (int)(op->code)
+					<< " ia0: " << (int)(op->arg[0])
+					<< " a0: " << workspace_.vector[op->arg[0]].values
+					<< " ia1: " << (int)(op->arg[1])
+					<< " a1: " << workspace_.vector[op->arg[1]].values
+					<< " ia2: " << (int)(op->arg[2])
+					<< " a2: " << workspace_.vector[op->arg[2]].values << "\n";
 
 			switch (op->code) {
 			CODE(_minus_);

@@ -116,9 +116,11 @@ void test_expr(std::string expr) {
 	p.set_variable("v1", {3}, v1);
 	p.set_variable("v2", {3}, v2);
 	p.set_variable("_result_", {3}, vres);
+	std::cout << "vres: " << vres << ", " << vres + vec_size << ", " << vres + 2*vec_size << "\n";
 	std::cout << "Symbols: " << print_vector(p.symbols()) << "\n";
 	std::cout.flush();
 	p.compile();
+	p.set_subset({0, 1});
 	p.run();
 	std::cout << print_vec(vres, 3*vec_size);
 }
