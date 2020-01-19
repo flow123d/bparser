@@ -46,23 +46,22 @@ void test_simple_expr() {
 	ScalarNode * r1 = ScalarNode::create_result(e1, v2_values);
 	ScalarNode * r2 = ScalarNode::create_result(e2, v3_values);
 
+	ExpressionDAG se({r1, r2});
+	ExpressionDAG::NodeVec &sorted = se.sort_nodes();
 //	for(auto node : sorted) {
-//		std::cout << "node: " << node << " res: " << node->result_storage << " sidx: " << node->result_idx_ << "\n";
+//		se._print_node(node);
+//		std::cout << " ptr: " << node << " i_storage: " << node->result_idx_ << "\n";
 //	}
-	ScalarExpression se({r1, r2});
-	ScalarExpression::NodeVec &sorted = se.sorted;
-	ASSERT(sorted[5] == v1);
-	ASSERT(v1->result_idx_ == 0);
-	ASSERT(sorted[4] == e1);
+
+	se.print_in_dot();
+	ASSERT(sorted[3] == v1);
+	ASSERT(v1->result_idx_ == 3);
+	ASSERT(sorted[2] == e1);
 	ASSERT(e1->result_idx_ == 1);
-	ASSERT(sorted[3] == r1);
-	ASSERT(r1->result_idx_ == 1);
-	ASSERT(sorted[2] == c1);
-	ASSERT(c1->result_idx_ == 2);
-	ASSERT(sorted[1] == e2);
-	ASSERT(e2->result_idx_ == 3);
-	ASSERT(sorted[0] == r2);
-	ASSERT(r2->result_idx_ == 3);
+	ASSERT(sorted[1] == c1);
+	ASSERT(c1->result_idx_ == 0);
+	ASSERT(sorted[0] == e2);
+	ASSERT(e2->result_idx_ == 2);
 	Processor * processor = Processor::create_processor_(se, vec_size);
 
 

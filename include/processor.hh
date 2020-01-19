@@ -15,6 +15,7 @@
 #include "assert.hh"
 #include "arena_alloc.hh"
 #include "scalar_expr.hh"
+#include "expression_dag.hh"
 
 namespace bparser {
 using namespace details;
@@ -248,16 +249,16 @@ struct Processor {
 	 * - create processor
 	 */
 	static Processor *create(std::vector<ScalarNode *> results, uint vector_size) {
-		ScalarExpression se(results);
+		ExpressionDAG se(results);
 
 		return create_processor_(se, vector_size);
 	}
 
 
-	static Processor *create_processor_(ScalarExpression &se, uint vector_size) {
+	static Processor *create_processor_(ExpressionDAG &se, uint vector_size) {
 		vector_size = (vector_size / simd_size) * simd_size;
 		uint simd_bytes = sizeof(double) * simd_size;
-		ScalarExpression::NodeVec & sorted_nodes = se.sort_nodes();
+		ExpressionDAG::NodeVec & sorted_nodes = se.sort_nodes();
 		//std::cout << "n_nodes: " << sorted_nodes.size() << " n_vec: " << se.n_vectors() << "\n";
 		uint memory_est =
 				align_size(simd_bytes, sizeof(Processor)) +
@@ -278,7 +279,7 @@ struct Processor {
 	 *
 	 * vec_size : number of simd blocks (double4).
 	 */
-	Processor(ArenaAlloc arena, ScalarExpression &se, uint vec_size)
+	Processor(ArenaAlloc arena, ExpressionDAG &se, uint vec_size)
 	: arena_(arena)
 	{
 		workspace_.vector_size = vec_size;
@@ -317,7 +318,7 @@ struct Processor {
 		 */
 		Operation *op = program_;
 		for(auto it=sorted_nodes.rbegin(); it != sorted_nodes.rend(); ++it) {
-			se._print_node(*it);
+			//se._print_node(*it);
 			ScalarNode * node = *it;
 			switch (node->result_storage) {
 			case constant: {
@@ -348,9 +349,9 @@ struct Processor {
 				//ScalarNode * prev_node = node->inputs_[0];
 				//ASSERT(prev_node->result_storage == temporary);
 				//workspace_.vector[prev_node->result_idx_].set((double4 *)node->get_value(), workspace_.vec_subset);
-				std::cout << " ir: " << node->result_idx_ << " a0: "
-						<< workspace_.vector[node->result_idx_].values
-						<< "\n";
+//				std::cout << " ir: " << node->result_idx_ << " a0: "
+//						<< workspace_.vector[node->result_idx_].values
+//						<< "\n";
 				break;
 			}
 			ASSERT(op < program_ + n_operations);
@@ -383,13 +384,13 @@ struct Processor {
 
 	void run() {
 		for(Operation * op = program_;;++op) {
-			std::cout << "op: " << (int)(op->code)
-					<< " ia0: " << (int)(op->arg[0])
-					<< " a0: " << workspace_.vector[op->arg[0]].values
-					<< " ia1: " << (int)(op->arg[1])
-					<< " a1: " << workspace_.vector[op->arg[1]].values
-					<< " ia2: " << (int)(op->arg[2])
-					<< " a2: " << workspace_.vector[op->arg[2]].values << "\n";
+//			std::cout << "op: " << (int)(op->code)
+//					<< " ia0: " << (int)(op->arg[0])
+//					<< " a0: " << workspace_.vector[op->arg[0]].values
+//					<< " ia1: " << (int)(op->arg[1])
+//					<< " a1: " << workspace_.vector[op->arg[1]].values
+//					<< " ia2: " << (int)(op->arg[2])
+//					<< " a2: " << workspace_.vector[op->arg[2]].values << "\n";
 
 			switch (op->code) {
 			CODE(_minus_);

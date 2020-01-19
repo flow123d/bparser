@@ -11,7 +11,6 @@
 
 
 #include "ast.hh"
-#include "evaluator.hh"
 #include "processor.hh"
 #include "grammar.hh"
 #include "expr.hh"
@@ -149,7 +148,7 @@ public:
         result_array = res_array.make_result(res_it->second);
 
         destroy_processor();
-		ScalarExpression se(result_array.elements());
+		ExpressionDAG se(result_array.elements());
 
 		se.print_in_dot();
 		processor = Processor::create_processor_(se, max_vec_size);
