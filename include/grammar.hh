@@ -14,12 +14,8 @@
 //#define BOOST_SPIRIT_NO_PREDEFINED_TERMINALS
 #include <boost/spirit/include/qi.hpp>
 
-
+#include "array.hh"
 #include "ast.hh"
-#include "scalar_expr.hh"
-#include "expr.hh"
-//#include "math.hpp"
-
 
 
 namespace bparser {
@@ -35,12 +31,12 @@ namespace parser {
 
 template<class T>
 ast::unary_fn::type unary_array() {
-	return static_cast<ast::unary_fn::type>(&(expr::Array::unary_op<T>));
+	return static_cast<ast::unary_fn::type>(&(Array::unary_op<T>));
 }
 
 template<class T>
 ast::binary_fn::type binary_array() {
-	return static_cast<ast::binary_fn::type>(&(expr::Array::binary_op<T>));
+	return static_cast<ast::binary_fn::type>(&(Array::binary_op<T>));
 }
 
 
@@ -114,14 +110,14 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 			UN_FN("ceil" , unary_array<_ceil_>())
             UN_FN("cos"  , unary_array<_cos_>())
             UN_FN("cosh" , unary_array<_cosh_>())
-            UN_FN("deg"  , &expr::deg_fn)
+            UN_FN("deg"  , &deg_fn)
             UN_FN("exp"  , unary_array<_exp_>())
             UN_FN("floor", unary_array<_floor_>())
             UN_FN("isinf", unary_array<_isinf_>())
             UN_FN("isnan", unary_array<_isnan_>())
             UN_FN("log"  , unary_array<_log_>())
             UN_FN("log10", unary_array<_log10_>())
-            UN_FN("rad"  , &expr::rad_fn)
+            UN_FN("rad"  , &rad_fn)
             UN_FN("sgn"  , unary_array<_sgn_>())
             UN_FN("sin"  , unary_array<_sin_>())
             UN_FN("sinh" , unary_array<_sinh_>())
@@ -136,7 +132,7 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
             ;
 
         unary_op.add
-            UN_FN("+", &expr::unary_plus)
+            UN_FN("+", &unary_plus)
             UN_FN("-", unary_array<_minus_>())
             UN_FN("!", unary_array<_neg_>())
             ;
@@ -160,8 +156,8 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
         relational_op.add
             BN_FN("<" , binary_array<_lt_>())
             BN_FN("<=", binary_array<_le_>())
-            BN_FN(">" , &expr::gt_op)
-            BN_FN(">=", &expr::ge_op)
+            BN_FN(">" , &gt_op)
+            BN_FN(">=", &ge_op)
             BN_FN("==", binary_array<_eq_>())
             BN_FN("!=", binary_array<_ne_>())
             ;

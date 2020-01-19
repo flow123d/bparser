@@ -48,9 +48,9 @@ public:
 
 
 #ifdef NDEBUG
-	#define ASSERT(EXPRESSION) ((void)0)
+	#define BP_ASSERT(EXPRESSION) ((void)0)
 #else
-	#define ASSERT(EXPRESSION) \
+	#define BP_ASSERT(EXPRESSION) \
 		if ( !(EXPRESSION) ) throw ::bparser::AssertExc(#EXPRESSION, __FILE__, __LINE__)
 #endif
 

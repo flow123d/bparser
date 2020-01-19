@@ -7,7 +7,8 @@
 #include <boost/phoenix/phoenix.hpp>
 #include <boost/spirit/home/support/attributes.hpp>
 #include <boost/spirit/home/qi/domain.hpp>
-#include "expr.hh"
+
+#include "array.hh"
 
 
 
@@ -26,13 +27,13 @@ namespace ast {
 
 
 struct unary_fn {
-	typedef expr::Array (*type)(const expr::Array &);
+	typedef Array (*type)(const Array &);
 	std::string repr;
 	type fn;
 };
 
 struct binary_fn {
-	typedef expr::Array (*type)(const expr::Array &, const expr::Array &);
+	typedef Array (*type)(const Array &, const Array &);
 	std::string repr;
 	type fn;
 };
@@ -185,7 +186,7 @@ struct make_assign_f {
 ::boost::phoenix::function<make_assign_f> make_assign;
 
 
-expr::Array semicol_fn(const expr::Array &a, const expr::Array &b) {
+Array semicol_fn(const Array &a, const Array &b) {
 	return b;
 }
 
@@ -197,21 +198,21 @@ expr::Array semicol_fn(const expr::Array &a, const expr::Array &b) {
  * into scalar operations.
  */
 struct make_array {
-    typedef expr::Array result_type;
-    mutable std::map<std::string, expr::Array> symbols;
+    typedef Array result_type;
+    mutable std::map<std::string, Array> symbols;
 
-    explicit make_array(std::map<std::string, expr::Array> const &symbols)
+    explicit make_array(std::map<std::string, Array> const &symbols)
     : symbols(symbols)
     {}
 
     result_type operator()(nil) const {
         BOOST_ASSERT(0);
-        return expr::Array();
+        return Array();
     }
 
     result_type operator()(double x) const
     {
-    	return expr::Array::constant({x});
+    	return Array::constant({x});
     }
 
     result_type operator()(std::string const &x) const  {
@@ -345,9 +346,9 @@ struct remove_nil {
     }
 
     result_type operator()(assign_op const &x) const  {
-    	ASSERT(x.lhs.size() > 0);
+    	BP_ASSERT(x.lhs.size() > 0);
     	result_type rhs = boost::apply_visitor(*this, x.rhs);
-    	ASSERT(rhs.type() != typeid(nil));
+    	BP_ASSERT(rhs.type() != typeid(nil));
         return x;
     }
 

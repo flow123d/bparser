@@ -5,8 +5,8 @@
  *      Author: jb
  */
 
-#ifndef INCLUDE_SCALAR_EXPR_HH_
-#define INCLUDE_SCALAR_EXPR_HH_
+#ifndef INCLUDE_SCALAR_NODE_HH_
+#define INCLUDE_SCALAR_NODE_HH_
 
 #include <vector>
 #include <cmath>
@@ -83,13 +83,13 @@ struct ScalarNode {
 
 	void add_input(ScalarNode * in)
 	{
-		ASSERT(n_inputs_ < 3);
+		BP_ASSERT(n_inputs_ < 3);
 		inputs_[n_inputs_] = in;
 		n_inputs_+=1;
 	}
 
 	double * get_value() {
-		ASSERT(values_ != nullptr);
+		BP_ASSERT(values_ != nullptr);
 		return values_;
 	}
 
@@ -407,7 +407,7 @@ ScalarNode * ScalarNode::create_value(double *a)  {
 
 // create result node
 ScalarNode * ScalarNode::create_result(ScalarNode *result, double *a)  {
-	ASSERT(result->result_storage != none);
+	BP_ASSERT(result->result_storage != none);
 	if (result->result_storage != temporary) {
 		result = ScalarNode::create<_copy_>(result);
 	}
@@ -425,7 +425,7 @@ ScalarNode * ScalarNode::create(ScalarNode *a) {
 	if (T::n_eval_args == 1) {
 		node_ptr->result_storage = none;
 	} else {
-		ASSERT(T::n_eval_args == 2);
+		BP_ASSERT(T::n_eval_args == 2);
 		node_ptr->result_storage = temporary;
 	}
 
@@ -443,7 +443,7 @@ ScalarNode * ScalarNode::create(ScalarNode *a, ScalarNode *b) {
 	if (T::n_eval_args == 2) {
 		node_ptr->result_storage = none;
 	} else {
-		ASSERT(T::n_eval_args == 3);
+		BP_ASSERT(T::n_eval_args == 3);
 		node_ptr->result_storage = temporary;
 	}
 
@@ -456,4 +456,4 @@ ScalarNode * ScalarNode::create(ScalarNode *a, ScalarNode *b) {
 
 } // namespace details
 } // namespace bparser
-#endif /* INCLUDE_SCALAR_EXPR_HH_ */
+#endif /* INCLUDE_SCALAR_NODE_HH_ */

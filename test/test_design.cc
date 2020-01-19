@@ -103,7 +103,7 @@ void make_subset(uint seed, uint *subset) {
 		subset[i_block] = shift; // alligned shifts
 		shift += 1;
 		//std::cout << i_block << " " << subset[i_block] << " " << total_shift << "\n";
-		ASSERT(subset[i_block] < array_max_size );
+		BP_ASSERT(subset[i_block] < array_max_size );
 	}
 }
 
@@ -332,7 +332,7 @@ struct Expr {
 		//std::cout << "Expr constr" << "\n";
 		base_size = (2 * n_arrays + n_temp) * array_max_size;
 		base = (double4 *)memalign(sizeof(double) * simd_block_size, sizeof(double) * simd_block_size * base_size);
-		ASSERT(base !=nullptr);
+		BP_ASSERT(base !=nullptr);
 		// Initialization
 		for(uint i=0; i<base_size; ++i)
 			for(uint j = 0, idx=0; j < simd_block_size; ++j) {

@@ -1,3 +1,15 @@
+# BParser
+
+C++ parsing library for HPC.
+
+Features:
+- Python expressions including Numpy like arrays
+- compilation to bytecode, arena allocator for maximal memory locality
+- expression evaluation on vectors, amortizatiton of the bytecode interpreter 
+- usage of SIMD for maximal Flops on modern CPUs 
+
+
+
 
 
 ## Thanks
@@ -64,7 +76,7 @@ operation specific:
 - There is specific derived class for every kind of operation.
 - common features:
   
-# Boost spirit resources
+### Boost spirit resources
 - [Important FAQs](http://boost-spirit.com/home/articles/doc-addendum/faq/#identifiers)
 - [Commented expression parser](https://stackoverflow.com/questions/47354226/how-to-provider-user-with-autocomplete-suggestions-for-given-boostspirit-gramm/47383910#47383910)
   

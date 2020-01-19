@@ -13,9 +13,8 @@
 #include <cmath>
 #include <map>
 #include "config.hh"
+#include "scalar_node.hh"
 #include "assert.hh"
-#include "scalar_expr.hh"
-
 
 
 namespace bparser {
@@ -92,7 +91,7 @@ public:
          * TODO: there is some infinite loop
          */
         _collect_nodes();
-		ASSERT(sorted.size() == 0);
+		BP_ASSERT(sorted.size() == 0);
 		_topological_sort();
 
 		_setup_result_storage();
@@ -160,8 +159,8 @@ private:
 			for(uint in=0; in < node->n_inputs_; ++in)  {
 				ScalarNode * other = node->inputs_[in];
 				if (other->result_idx_ != -2) {
-					ASSERT(other->result_idx_ == -1);
-					ASSERT(other->result_storage != expr_result);
+					BP_ASSERT(other->result_idx_ == -1);
+					BP_ASSERT(other->result_storage != expr_result);
 					other->result_idx_ = -2;
 					nodes.push_back(other);
 				}

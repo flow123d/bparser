@@ -9,7 +9,7 @@
 
 #include <string>
 #include "assert.hh"
-#include "scalar_expr.hh"
+#include "scalar_node.hh"
 #include "processor.hh"
 
 
@@ -54,14 +54,14 @@ void test_simple_expr() {
 //	}
 
 	se.print_in_dot();
-	ASSERT(sorted[3] == v1);
-	ASSERT(v1->result_idx_ == 3);
-	ASSERT(sorted[2] == e1);
-	ASSERT(e1->result_idx_ == 1);
-	ASSERT(sorted[1] == c1);
-	ASSERT(c1->result_idx_ == 0);
-	ASSERT(sorted[0] == e2);
-	ASSERT(e2->result_idx_ == 2);
+	BP_ASSERT(sorted[3] == v1);
+	BP_ASSERT(v1->result_idx_ == 3);
+	BP_ASSERT(sorted[2] == e1);
+	BP_ASSERT(e1->result_idx_ == 1);
+	BP_ASSERT(sorted[1] == c1);
+	BP_ASSERT(c1->result_idx_ == 0);
+	BP_ASSERT(sorted[0] == e2);
+	BP_ASSERT(e2->result_idx_ == 2);
 	Processor * processor = Processor::create_processor_(se, vec_size);
 
 
@@ -74,27 +74,27 @@ void test_simple_expr() {
 //	for(uint i=0;i < vec_size; ++i)
 //		std::cout << "i: " << i << " v2: " << v2_values[i]  << " v3: " <<v3_values[i] << "\n";
 
-	ASSERT(v2_values[0] == -100);
-	ASSERT(v2_values[3] == -100);
-	ASSERT(v2_values[4] ==  6);
-	ASSERT(v2_values[7] ==  3);
-	ASSERT(v2_values[8] == -100);
-	ASSERT(v2_values[11] == -100);
-	ASSERT(v2_values[12] == 2);
-	ASSERT(v2_values[15] == 5);
-	ASSERT(v2_values[16] == 6);
-	ASSERT(v2_values[19] == 9);
+	BP_ASSERT(v2_values[0] == -100);
+	BP_ASSERT(v2_values[3] == -100);
+	BP_ASSERT(v2_values[4] ==  6);
+	BP_ASSERT(v2_values[7] ==  3);
+	BP_ASSERT(v2_values[8] == -100);
+	BP_ASSERT(v2_values[11] == -100);
+	BP_ASSERT(v2_values[12] == 2);
+	BP_ASSERT(v2_values[15] == 5);
+	BP_ASSERT(v2_values[16] == 6);
+	BP_ASSERT(v2_values[19] == 9);
 
-	ASSERT(v3_values[0] == -100);
-	ASSERT(v3_values[3] == -100);
-	ASSERT(v3_values[4] ==  106);
-	ASSERT(v3_values[7] ==  103);
-	ASSERT(v3_values[8] == -100);
-	ASSERT(v3_values[11] == -100);
-	ASSERT(v3_values[12] == 102);
-	ASSERT(v3_values[15] == 105);
-	ASSERT(v3_values[16] == 106);
-	ASSERT(v3_values[19] == 109);
+	BP_ASSERT(v3_values[0] == -100);
+	BP_ASSERT(v3_values[3] == -100);
+	BP_ASSERT(v3_values[4] ==  106);
+	BP_ASSERT(v3_values[7] ==  103);
+	BP_ASSERT(v3_values[8] == -100);
+	BP_ASSERT(v3_values[11] == -100);
+	BP_ASSERT(v3_values[12] == 102);
+	BP_ASSERT(v3_values[15] == 105);
+	BP_ASSERT(v3_values[16] == 106);
+	BP_ASSERT(v3_values[19] == 109);
 
 	// Change data and structure
 	for(uint i=0;i < vec_size; ++i)
@@ -113,19 +113,19 @@ void test_simple_expr() {
 	processor->set_subset(subset);
 	processor->run();
 
-	ASSERT(v2_values[0] == 12);
-	ASSERT(v2_values[3] == 9);
-	ASSERT(v2_values[4] ==  -200);
-	ASSERT(v2_values[15] == -200);
-	ASSERT(v2_values[16] == 4);
-	ASSERT(v2_values[19] == 7);
+	BP_ASSERT(v2_values[0] == 12);
+	BP_ASSERT(v2_values[3] == 9);
+	BP_ASSERT(v2_values[4] ==  -200);
+	BP_ASSERT(v2_values[15] == -200);
+	BP_ASSERT(v2_values[16] == 4);
+	BP_ASSERT(v2_values[19] == 7);
 
-	ASSERT(v3_values[0] == 112);
-	ASSERT(v3_values[3] == 109);
-	ASSERT(v3_values[4] ==  -200);
-	ASSERT(v3_values[15] == -200);
-	ASSERT(v3_values[16] == 104);
-	ASSERT(v3_values[19] == 107);
+	BP_ASSERT(v3_values[0] == 112);
+	BP_ASSERT(v3_values[3] == 109);
+	BP_ASSERT(v3_values[4] ==  -200);
+	BP_ASSERT(v3_values[15] == -200);
+	BP_ASSERT(v3_values[16] == 104);
+	BP_ASSERT(v3_values[19] == 107);
 
 	processor->~Processor();
 }
@@ -214,7 +214,7 @@ void test_un_op(std::vector<double> ref_res, std::vector<double> vv1 = v1_4()) {
 		std::cout << "i: " << i << " res: " << res_values[i]  << " ref: " << ref_res[i]
                   << " mres: " << std::hex << double_to_mask(res_values[i])
 				  << " mref: " << std::hex << double_to_mask(ref_res[i]) << "\n";
-		ASSERT(double_to_mask(res_values[i]) == double_to_mask(ref_res[i]));
+		BP_ASSERT(double_to_mask(res_values[i]) == double_to_mask(ref_res[i]));
 	}
 
 	processor->~Processor();
@@ -245,7 +245,7 @@ void test_bin_op(std::vector<double> ref_res, std::vector<double> vv1 = v1_4(), 
 		std::cout << "i: " << i << " res: " << res_values[i]  << " ref: " << ref_res[i]
                   << " mres: " << std::hex << double_to_mask(res_values[i])
 				  << " mref: " << std::hex << double_to_mask(ref_res[i]) << "\n";
-		ASSERT(res_values[i] == ref_res[i]);
+		BP_ASSERT(res_values[i] == ref_res[i]);
 	}
 
 	processor->~Processor();

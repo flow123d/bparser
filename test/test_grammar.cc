@@ -44,23 +44,23 @@ int main()
 
 
 	// Test that grammar match valid expressions and fails for invalid.
-	ASSERT(match(("123")));
-	ASSERT(match(("123.0")));
-	ASSERT(match(("1.23e2")));
-	ASSERT(match(("1.23e-2")));
-	ASSERT(match(("-1.23e-2")));
-	ASSERT(match(("1.23e-2 * 5.3")));
-	ASSERT(match(("-1.23e-2 * 5.3 / 4")));
-	ASSERT(match(("-1.23e-2 * 5.3 / 4 + 3 - 4")));
-	ASSERT(match(("-1.23e-2 * 5.3 / 4 + 2 * (3 - 4)")));
-	ASSERT(match(("((123))")));
-	ASSERT(match(("((123)*1)/4")));
-	ASSERT(match(("(1*2) / (3*4)")));
+	BP_ASSERT(match(("123")));
+	BP_ASSERT(match(("123.0")));
+	BP_ASSERT(match(("1.23e2")));
+	BP_ASSERT(match(("1.23e-2")));
+	BP_ASSERT(match(("-1.23e-2")));
+	BP_ASSERT(match(("1.23e-2 * 5.3")));
+	BP_ASSERT(match(("-1.23e-2 * 5.3 / 4")));
+	BP_ASSERT(match(("-1.23e-2 * 5.3 / 4 + 3 - 4")));
+	BP_ASSERT(match(("-1.23e-2 * 5.3 / 4 + 2 * (3 - 4)")));
+	BP_ASSERT(match(("((123))")));
+	BP_ASSERT(match(("((123)*1)/4")));
+	BP_ASSERT(match(("(1*2) / (3*4)")));
 
 	//ASSERT(! match(("-1.23e-2 * -5.3")));
 	//ASSERT(! match(("-1.23e-2 * -5.3")));
 	//ASSERT(! match(("+ -1.23e-2")));
-	ASSERT(! match(("+ + -1.23e-2")));
+	BP_ASSERT(! match(("+ + -1.23e-2")));
 }
 
 

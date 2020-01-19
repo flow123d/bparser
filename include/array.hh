@@ -5,8 +5,8 @@
  *      Author: jb
  */
 
-#ifndef INCLUDE_EXPR_HH_
-#define INCLUDE_EXPR_HH_
+#ifndef INCLUDE_ARRAY_HH_
+#define INCLUDE_ARRAY_HH_
 
 #include <memory>
 #include <vector>
@@ -14,98 +14,14 @@
 #include <cmath>
 #include <boost/math/constants/constants.hpp>
 #include "config.hh"
-#include "scalar_expr.hh"
+#include "scalar_node.hh"
 
 
 namespace bparser {
-namespace expr {
-using namespace ::bparser::details;
 
+typedef std::vector<uint> Shape;
 
-
-/**
- * Array nodes represents array operations (with array results) visible to user.
- * These are stored as Array of ScalarNodes, there are no derived classes to ArrayNode which simplifies implementation of operators.
- * We implement overloaded operators and other syntactic sugar in order to create the tree from the C++ code as well as from the parser.
- * This also makes operations from parser more readable.
- *
- * Operations:
- *  - elementwise: functions, operators, use common algorithm for expansion to the scalar nodes using related scalar nodes
- *  - stack - make a higher order from list of lower order
- *    stick - append new "column"
- *  - explicit broadcasting -
- */
-struct Array {
-	typedef ScalarNode * ScalarNodePtr;
-	typedef std::vector<uint> Shape;
-
-//	typedef std::vector<int> VecInt;
-//	typedef std::vector<uint> VecUint;
-//
-//	/**
-//	 * Base set of indices.
-//	 */
-//	struct IndexSubset {
-//		virtual std::vector<uint> idx_list(uint size) const = 0;
-//	};
-//
-//	const int none_int = std::numeric_limits<int>::max;
-//
-//	// Convertible to none index or none index set
-//	struct None {
-//		operator int() const {
-//			return none_int;
-//		}
-//
-//		operator IndexSubset() const {
-//			return IndexList({});
-//		}
-//	};
-//	const None none;
-//
-//
-//	/**
-//	 * Index set give by its list.
-//	 */
-//	struct IndexList : IndexSubset {
-//		IndexList(const VecUint &indices)
-//		: indices_(indices)
-//		{}
-//
-//		IndexList(std::initializer_list<uint> indices)
-//		: indices_(indices)
-//		{}
-//
-//		virtual VecUint idx_list(uint size) const {
-//			return indices_;
-//		}
-//	private:
-//		VecUint indices_;
-//	};
-//
-//	/**
-//	 * Convertible to the index subset provided size
-//	 */
-//	struct Slice : IndexSubset {
-//		Slice(int begin = 0, int end = none, int step = 1)
-//		: begin_(begin),
-//		  end_(end),
-//		  step_(step)
-//		{}
-//
-//		VecUint idx_list(uint size) const override {
-//			VecUint indices;
-//			if (begin_ < 0) begin_ += size;
-//			if (end_ == int(none)) end_ = size;
-//			if (end_ < 0) end_ += size;
-//			for(int i = begin_; (end_ - begin_) * step_ > 0; i+=step_)
-//				indices.push_back(i);
-//			return std::move(indices);
-//		}
-//
-//		int begin_, end_, step_;
-//	};
-//
+namespace details {
 
 	struct MultiIdxRange {
 
@@ -119,11 +35,11 @@ struct Array {
 			}
 		}
 
-//		void subset(const std::vector<IndexSubset> &range_spec) {
-//			ASSERT(range_spec.size() == full_shape_.size());
-//			for(IndexSubset subset : range_spec)
-//				ranges_.push_back(subset.idx_list(full_shape_));
-//		}
+	//		void subset(const std::vector<IndexSubset> &range_spec) {
+	//			ASSERT(range_spec.size() == full_shape_.size());
+	//			for(IndexSubset subset : range_spec)
+	//				ranges_.push_back(subset.idx_list(full_shape_));
+	//		}
 
 
 		/**
@@ -269,7 +185,29 @@ struct Array {
 		VecUint indices_;
 	};
 
+} // namespace details
 
+
+
+
+/**
+ * Array nodes represents array operations (with array results) visible to user.
+ * These are stored as Array of ScalarNodes, there are no derived classes to ArrayNode which simplifies implementation of operators.
+ * We implement overloaded operators and other syntactic sugar in order to create the tree from the C++ code as well as from the parser.
+ * This also makes operations from parser more readable.
+ *
+ * Operations:
+ *  - elementwise: functions, operators, use common algorithm for expansion to the scalar nodes using related scalar nodes
+ *  - stack - make a higher order from list of lower order
+ *    stick - append new "column"
+ *  - explicit broadcasting -
+ */
+struct Array {
+
+
+	typedef details::ScalarNode * ScalarNodePtr;
+	typedef details::MultiIdxRange MultiIdxRange;
+	typedef details::MultiIdx MultiIdx;
 
 	MultiIdxRange range() const {
 		return MultiIdxRange(shape_);
@@ -286,14 +224,14 @@ struct Array {
 	//Array operator()()
 
 	static Array deg_to_rad_factor() {
-		static ConstantNode f( boost::math::constants::pi<double>() / 180 );
+		static details::ConstantNode f( boost::math::constants::pi<double>() / 180 );
 		Array a;
 		a.elements_[0] = &f;
 		return a;
 	}
 
 	static Array rad_to_deg_factor() {
-		static ConstantNode f(  180 / boost::math::constants::pi<double>() );
+		static details::ConstantNode f(  180 / boost::math::constants::pi<double>() );
 		Array a;
 		a.elements_[0] = &f;
 		return a;
@@ -304,7 +242,7 @@ struct Array {
 		Array result(a.shape_);
 		MultiIdx idx(a.range());
 		for(;;) {
-			result[idx] = ScalarNode::create<T>(a[idx]);
+			result[idx] = details::ScalarNode::create<T>(a[idx]);
 			if (! idx.inc()) break;
 		}
 		return result;
@@ -322,9 +260,9 @@ struct Array {
 		MultiIdx b_idx(b_range);
 		Array result(res_shape);
 		for(;;) {
-			ASSERT(a_idx.linear_subidx() == b_idx.linear_subidx());
+			BP_ASSERT(a_idx.linear_subidx() == b_idx.linear_subidx());
 			result.elements_[a_idx.linear_subidx()] =
-					ScalarNode::create<T>(
+					details::ScalarNode::create<T>(
 							a.elements_[a_idx.linear_idx()],
 							b.elements_[b_idx.linear_idx()]);
 			if (!a_idx.inc() || !b_idx.inc()) break;
@@ -373,7 +311,7 @@ struct Array {
 	Array make_result(const Array &variable) {
 		Array res(shape_);
 		for(uint i=0; i<elements_.size(); ++i)
-			res.elements_[i] = ScalarNode::create_result(elements_[i], variable.elements_[i]->values_);
+			res.elements_[i] = details::ScalarNode::create_result(elements_[i], variable.elements_[i]->values_);
 		return res;
 	}
 
@@ -398,7 +336,7 @@ struct Array {
 		Shape sub_shp = range.sub_shape();
 		Shape min_shape_a = minimal_shape(sub_shp);
 		Shape min_shape_b = minimal_shape(other.shape_);
-		ASSERT(min_shape_a == min_shape_b);
+		BP_ASSERT(min_shape_a == min_shape_b);
 		MultiIdx idx(range);
 		for(;;) {
 			elements_[idx.linear_idx()] = other.elements_[idx.linear_subidx()];
@@ -433,7 +371,7 @@ struct Array {
 	static Array constant(const std::vector<double> &values, Shape shape = {}) {
 		Array res(shape);
 		for(uint i_el=0; i_el < res.elements_.size(); ++i_el)
-			res.elements_[i_el] = ScalarNode::create_const(values[i_el]);
+			res.elements_[i_el] = details::ScalarNode::create_const(values[i_el]);
 		return res;
 	}
 
@@ -461,7 +399,7 @@ struct Array {
 	{
 		Array res(shape);
 		for(uint i_el=0; i_el < res.elements_.size(); ++i_el) {
-			res.elements_[i_el] = ScalarNode::create_value(v);
+			res.elements_[i_el] = details::ScalarNode::create_value(v);
 			v += array_max_size;
 		}
 		return res;
@@ -509,7 +447,7 @@ struct Array {
 		// new shape
 		Shape res_shape = list[0].shape_;
 		if (axis < 0) axis = res_shape.size() + axis;
-		ASSERT(axis >= 0);
+		BP_ASSERT(axis >= 0);
 		res_shape.insert(res_shape.begin() + axis, list.size());
 
 		// 3. broadcast arrays and concatenate
@@ -626,36 +564,35 @@ Array func(const Array &x) {
  * Special function
  */
 Array deg_fn(const Array & rad) {
-	return Array::binary_op<_mul_>(rad, Array::deg_to_rad_factor());
+	return Array::binary_op<details::_mul_>(rad, Array::deg_to_rad_factor());
 }
 
 Array rad_fn(const Array & deg) {
-	return Array::binary_op<_mul_>(deg, Array::rad_to_deg_factor());
+	return Array::binary_op<details::_mul_>(deg, Array::rad_to_deg_factor());
 }
 
-expr::Array gt_op(const expr::Array & a, const expr::Array & b) {
-	return Array::binary_op<_lt_>(b, a);
+Array gt_op(const Array & a, const Array & b) {
+	return Array::binary_op<details::_lt_>(b, a);
 }
 
-expr::Array ge_op(const expr::Array & a, const expr::Array & b) {
-	return Array::binary_op<_le_>(b, a);
+Array ge_op(const Array & a, const Array & b) {
+	return Array::binary_op<details::_le_>(b, a);
 }
 
-expr::Array unary_plus(const expr::Array & a) {
+Array unary_plus(const Array & a) {
 	return a;
 }
 
 
 Array operator+(const Array &a,  const Array &b) {
-	return Array::binary_op<_add_>(a, b);
+	return Array::binary_op<details::_add_>(a, b);
 }
 
 Array operator*(const Array &a,  const Array &b) {
-	return Array::binary_op<_mul_>(a, b);
+	return Array::binary_op<details::_mul_>(a, b);
 }
 
-} // expr
+
 } // bparser
 
-
-#endif /* INCLUDE_EXPR_HH_ */
+#endif /* INCLUDE_ARRAY_HH_ */

@@ -36,7 +36,7 @@ struct ArenaAlloc {
 
 	void * allocate(std::size_t size) {
 		size = align_size(alignment_, size);
-		ASSERT((char *)ptr_ + size <= (char *)base_ + size_);
+		BP_ASSERT((char *)ptr_ + size <= (char *)base_ + size_);
 		void * ptr = ptr_;
 		ptr_ += size;
 		//std::cout << "allocated: " << ptr << " size: " << size << "\n";
@@ -63,7 +63,6 @@ struct ArenaAlloc {
 };
 
 } // namespace bparser
-
 
 
 #endif /* INCLUDE_ARENA_ALLOC_HH_ */

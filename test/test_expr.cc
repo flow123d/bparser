@@ -10,18 +10,20 @@
 #include <iostream>
 #include <cstdlib>
 #include <string>
-#include "expr.hh"
+
+#include "array.hh"
 #include "test_tools.hh"
 
 
 
 int main() {
-	using namespace bparser::expr;
+	using namespace bparser;
+	using namespace bparser::details;
 	// TODO: test MultiRange, MultiIdx
-	Array::MultiIdxRange r(Array::Shape({2,1}));
-	Array::MultiIdxRange bcast_r = r.broadcast(Array::Shape({4,2,3}));
-	ASSERT(bcast_r.full_shape_ == Array::Shape({4, 2, 3}));
-	ASSERT_THROW(r.broadcast(Array::Shape({4,3,3})),
+	MultiIdxRange r(Shape({2,1}));
+	MultiIdxRange bcast_r = r.broadcast(Shape({4,2,3}));
+	BP_ASSERT(bcast_r.full_shape_ == Shape({4, 2, 3}));
+	ASSERT_THROW(r.broadcast(Shape({4,3,3})),
 			"Bparser error: Broadcast from 2");
 
 	// constant array, array of ConstNode

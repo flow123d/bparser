@@ -14,8 +14,8 @@
 #include "config.hh"
 #include "assert.hh"
 #include "arena_alloc.hh"
-#include "scalar_expr.hh"
 #include "expression_dag.hh"
+#include "scalar_node.hh"
 
 namespace bparser {
 using namespace details;
@@ -335,7 +335,7 @@ struct Processor {
 				++op;
 				break;
 			case none:
-				ASSERT(false);
+				BP_ASSERT(false);
 				//*op = make_operation(node);
 				//++op;
 				break;
@@ -354,7 +354,7 @@ struct Processor {
 //						<< "\n";
 				break;
 			}
-			ASSERT(op < program_ + n_operations);
+			BP_ASSERT(op < program_ + n_operations);
 		}
 		op->code = ScalarNode::terminate_op_code;
 

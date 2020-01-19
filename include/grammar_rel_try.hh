@@ -14,10 +14,10 @@
 //#define BOOST_SPIRIT_NO_PREDEFINED_TERMINALS
 #include <boost/spirit/include/qi.hpp>
 
+#include "array.hh"
 
 #include "ast.hh"
 #include "scalar_expr.hh"
-#include "expr.hh"
 //#include "math.hpp"
 
 

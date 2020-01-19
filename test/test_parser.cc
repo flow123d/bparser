@@ -18,7 +18,7 @@ void test_ast(std::string expr, std::string ref_ast) {
 	std::cout << "\n";
 	std::cout << "Expr: " << expr << "\n";
 	std::cout << "AST: " << s << "\n";
-	ASSERT(s == ref_ast);
+	BP_ASSERT(s == ref_ast);
 	std::cout.flush();
 }
 
@@ -86,7 +86,7 @@ void test_fv(std::string expr, std::vector<std::string> ref_vars) {
 	for(std::string v : vars)
 		std::cout << v << ", ";
 	std::cout << "\n";
-	ASSERT(vars == ref_vars);
+	BP_ASSERT(vars == ref_vars);
 	std::cout.flush();
 
 }

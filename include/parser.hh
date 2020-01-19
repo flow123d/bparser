@@ -10,15 +10,13 @@
 #define INCLUDE_PARSER_HH_
 
 
-#include "ast.hh"
-#include "processor.hh"
-#include "grammar.hh"
-#include "expr.hh"
-
-
 #include <map>
 #include <memory>
 #include <string>
+#include "array.hh"
+#include "ast.hh"
+#include "processor.hh"
+#include "grammar.hh"
 
 namespace bparser {
 
@@ -45,9 +43,9 @@ class Parser {
 
 	ast::operand ast;
 	uint max_vec_size;
-	std::map<std::string, expr::Array> symbols_;
+	std::map<std::string, Array> symbols_;
 	std::vector<std::string> free_variables;
-	expr::Array result_array;
+	Array result_array;
 	Processor * processor;
 
 public:
@@ -123,7 +121,7 @@ public:
      *
      */
     void set_variable(std::string name, std::vector<uint> shape, double *variable_space) {
-    	symbols_[name] = expr::Array::value(variable_space, max_vec_size, shape);
+    	symbols_[name] = Array::value(variable_space, max_vec_size, shape);
     }
 
     /**
@@ -132,7 +130,7 @@ public:
      *
      */
     void set_constant(std::string name, std::vector<uint> shape, std::vector<double> const_value) {
-    	symbols_[name] = expr::Array::constant(const_value, shape);
+    	symbols_[name] = Array::constant(const_value, shape);
     }
 
     /// @brief Create processor of the expression from the AST.
@@ -144,7 +142,7 @@ public:
     	if (res_it == symbols_.end())
     		Throw("No '_result_' set.");
 
-        expr::Array res_array = boost::apply_visitor(ast::make_array(symbols_), ast);
+        Array res_array = boost::apply_visitor(ast::make_array(symbols_), ast);
         result_array = res_array.make_result(res_it->second);
 
         destroy_processor();
@@ -158,7 +156,7 @@ public:
     /// @brief Set new subset of the 'max_vec_size' vectors.
     /// Only this subset is evuluated by the processor.
     void set_subset(std::vector<uint> const &subset) {
-    	ASSERT(processor != nullptr);
+    	BP_ASSERT(processor != nullptr);
     	processor->set_subset(subset);
     }
 
@@ -171,7 +169,6 @@ public:
 
 
 } // namespace bparser
-
 
 
 
