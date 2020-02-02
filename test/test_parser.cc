@@ -136,8 +136,8 @@ void test_speed_cases() {
 
 int main()
 {
-	//test_ast_cases();
-	//test_free_variables();
+	test_ast_cases();
+	test_free_variables();
 	test_expression();
 #ifdef NDEBUG
 	test_speed_cases();

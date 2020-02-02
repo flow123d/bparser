@@ -85,7 +85,6 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
     grammar()
     : grammar::base_type(program)
     {
-    	using namespace qi;
 
 //        qi::alnum_type alnum;
 //        qi::alpha_type alpha;
@@ -199,9 +198,9 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
          * the order of opeartions doesn't match
          */
         program =
-        	(definition >> ';' >> logical)[_val = ast::make_binary(semicol_fn, _1,  _2)]
-			| logical[_val = _1]
-        //program = -(definition > ';')[_val = _1] >> logical[_val = _1]
+        	(definition >> ';' >> logical)[qi::_val = ast::make_binary(semicol_fn, qi::_1,  qi::_2)]
+			| logical[qi::_val = qi::_1]
+        //program = -(definition > ';')[qi::_val = _1] >> logical[qi::_val = _1]
 			;
 
 
@@ -209,62 +208,62 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 
         //program = definition.alias();
         definition =
-        		assignment[_val = _1] >> *(';' >> assignment)[_val = ast::make_binary(semicol_fn, _val, _1)]
+        		assignment[qi::_val = qi::_1] >> *(';' >> assignment)[qi::_val = ast::make_binary(semicol_fn, qi::_val, qi::_1)]
 				;
 
         assignment =
-        	(variable >> '=' > logical)[_val = ast::make_assign(_1, _2)]
+        	(variable >> '=' > logical)[qi::_val = ast::make_assign(qi::_1, qi::_2)]
 			;
 
         //program = logical.alias();
 
         logical =
-            equality[_val = _1] >> *(logical_op > equality)[_val = ast::make_binary(_1, _val, _2)]
+            equality[qi::_val = qi::_1] >> *(logical_op > equality)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)]
             ;
 
         equality =
-            relational[_val = _1] >> -(equality_op > relational)[_val = ast::make_binary(_1, _val, _2)]
+            relational[qi::_val = qi::_1] >> -(equality_op > relational)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)]
             ;
 
         relational =
-            additive[_val = _1] >> -(relational_op > additive)[_val = ast::make_binary(_1, _val, _2)]
+            additive[qi::_val = qi::_1] >> -(relational_op > additive)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)]
             ;
 
         additive =
-            multiplicative[_val = _1] >> *(additive_op > multiplicative)[_val = ast::make_binary(_1, _val, _2)]
+            multiplicative[qi::_val = qi::_1] >> *(additive_op > multiplicative)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)]
             ;
 
         multiplicative =
-            factor[_val = _1] >> *(multiplicative_op > factor)[_val = ast::make_binary(_1, _val, _2)]
+            factor[qi::_val = qi::_1] >> *(multiplicative_op > factor)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)]
             ;
 
         factor =
-            primary[_val = _1] >> -(power > factor)[_val = ast::make_binary(_1, _val, _2)]
+            primary[qi::_val = qi::_1] >> -(power > factor)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)]
 
         ;
         unary =
-            (ufunc > '(' > logical > ')')[_val = ast::make_unary(_1, _2)]
+            (ufunc > '(' > logical > ')')[qi::_val = ast::make_unary(qi::_1, qi::_2)]
             ;
 
         binary =
-            (bfunc > '(' > logical > ',' > logical > ')')[_val = ast::make_binary(_1, _2, _3)]
+            (bfunc > '(' > logical > ',' > logical > ')')[qi::_val = ast::make_binary(qi::_1, qi::_2, qi::_3)]
             ;
 
         variable =
-            raw[lexeme[alpha >> *(alnum | '_')]]
+        		qi::raw[qi::lexeme[qi::alpha >> *(qi::alnum | '_')]]
             ;
 
-        unary_op_r = (unary_op > primary)[_val = ast::make_unary(_1, _2)];
+        unary_op_r = (unary_op > primary)[qi::_val = ast::make_unary(qi::_1, qi::_2)];
 
         primary =
-              double_
+        		qi::double_
             | ('(' > logical > ')')
             | unary_op_r
             | binary
             | unary
             | constant
             | variable
-			| eps
+			| qi::eps
             ;
 
         // TODO:
@@ -291,9 +290,9 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
         unary.name("unary");
         binary.name("binary");
 
-        on_error<fail>(
+        qi::on_error<qi::fail>(
             program,
-            boost::phoenix::bind(boost::phoenix::ref(err_handler), _3, _2, _4));
+            boost::phoenix::bind(boost::phoenix::ref(err_handler), qi::_3, qi::_2, qi::_4));
 
     }
 };
