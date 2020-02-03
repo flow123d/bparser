@@ -10,8 +10,8 @@ namespace bparser {
 
 class AssertExc : public std::exception {
 private:
-    const char* expression;
-    const char* file;
+    std::string expression;
+    std::string file;
     int line;
     std::string message;
 
@@ -24,11 +24,15 @@ public:
         , file(file)
         , line(line)
         , message(message)
-    {}
+    {
+
+     }
 
     /// The assertion message
     virtual const char* what() const throw()
     {
+    	static std::string out_message(1024,' ');
+
         std::ostringstream outputStream;
 
         if (!message.empty()) {
@@ -37,7 +41,8 @@ public:
         outputStream << "Assert: '" << expression << "'";
         outputStream << " failed in file '" << file << "' line " << line;
         std::cerr << outputStream.str();
-        return outputStream.str().c_str();
+        out_message =  outputStream.str();
+        return out_message.c_str();
     }
 
 

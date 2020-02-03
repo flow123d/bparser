@@ -137,7 +137,11 @@ struct Vec {
 	}
 
 	double & value(uint i, uint j) {
-		//std::cout << "i: " << i << "j: " << j << " si: " << subset[i] << " v: " << values[subset[i]][j] << "\n";
+//		std::cout << "self: " << this << std::endl;
+//		std::cout << "v: " << values << "s: " << subset << std::endl;
+//		std::cout << "i: " << i << "j: " << j << std::endl;
+//		std::cout << " si: " << subset[i] << std::endl;
+//		std::cout << " v: " << values[subset[i]][j] << "\n";
 		return values[subset[i]][j];
 	}
 };
@@ -148,9 +152,10 @@ struct Vec {
 struct Workspace {
 	uint vector_size;
 
+	// Array of vectors. Temporaries, input vectors and result vectors.
 	Vec *vector;
-	uint subset_size;
 
+	uint subset_size;
 	uint *const_subset;
 	uint *vec_subset;
 
@@ -207,6 +212,9 @@ struct EvalImpl<3, T> {
 		Vec v0 = w.vector[op.arg[0]];
 		Vec v1 = w.vector[op.arg[1]];
 		Vec v2 = w.vector[op.arg[2]];
+//		std::cout << "iv0:" << uint(op.arg[0])
+//				<< "iv1:" << uint(op.arg[1])
+//				<< "iv2:" << uint(op.arg[2]) << std::endl;
 		for(uint i=0; i<w.subset_size; ++i)
 			for(uint j=0; j<simd_size; ++j)
 				T::eval(v0.value(i, j), v1.value(i, j), v2.value(i, j));
@@ -296,10 +304,11 @@ struct Processor {
 		double4 * const_base = (double4 *) arena_.allocate(
 				sizeof(double4) * se.constants_end);
 		for(uint i=0; i< se.constants_end; ++i)
-			workspace_.vector[i].set(const_base + i, workspace_.const_subset);
+			vec_set(i, const_base + i, workspace_.const_subset);
 
-		for(uint i=se.values_end; i< se.temp_end; ++i)
-			workspace_.vector[i].set(temp_base + i*vec_size, workspace_.vec_subset);
+		uint i_tmp = 0;
+		for(uint i=se.values_end; i< se.temp_end; ++i, ++i_tmp)
+			vec_set(i, temp_base + i_tmp*vec_size, workspace_.vec_subset);
 
 		// value vectors ... setup when processing the nodes, every value node processed exactly once
 		// we need the values pointer from these nodes.
@@ -328,7 +337,7 @@ struct Processor {
 					c_ptr[0][j] = c_val;
 				break;}
 			case value:
-				workspace_.vector[node->result_idx_].set((double4 *)node->get_value(), workspace_.vec_subset);
+				vec_set(node->result_idx_, (double4 *)node->get_value(), workspace_.vec_subset);
 				break;
 			case temporary:
 				*op = make_operation(node);
@@ -340,7 +349,7 @@ struct Processor {
 				//++op;
 				break;
 			case expr_result:
-				workspace_.vector[node->result_idx_].set((double4 *)node->get_value(), workspace_.vec_subset);
+				vec_set(node->result_idx_, (double4 *)node->get_value(), workspace_.vec_subset);
 
 				*op = make_operation(node);
 				++op;
@@ -359,6 +368,11 @@ struct Processor {
 		op->code = ScalarNode::terminate_op_code;
 
 
+	}
+
+	void vec_set(uint ivec, double4 * v, uint * s) {
+		// std::cout << "Set vec: " << ivec << " ptr: " << &(workspace_.vector[ivec]) << " v: " << v << " s: " << s <<std::endl;
+		workspace_.vector[ivec].set(v, s);
 	}
 
 	~Processor() {
@@ -448,14 +462,18 @@ struct Processor {
 	}
 
 	// Set subset indices of active double4 blocks.
-	void set_subset(std::vector<uint> subset)
+	// TODO: Provide getter for pointer to the workspace subset in order to
+	// fill it (some where), can be passed together with fixed size as std::span
+	void set_subset(std::vector<uint> const &subset)
 	{
+		BP_ASSERT( (subset.size() <= workspace_.vector_size) );
 		workspace_.subset_size = subset.size();
 		//std::cout << "vec_subset: " << workspace_.vec_subset << "\n";
 		for(uint i=0; i<workspace_.subset_size; ++i) {
 			//std::cout << "vec_i: " << workspace_.vec_subset + i << " " << i << "\n";
 			workspace_.vec_subset[i] = subset[i];
 		}
+		// std::cout << "subset: " << workspace_.vec_subset << std::endl;
 	}
 
 	ArenaAlloc arena_;

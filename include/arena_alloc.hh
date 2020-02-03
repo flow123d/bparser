@@ -27,19 +27,23 @@ struct ArenaAlloc {
 		size_ = align_size(alignment_, size);
 		base_ = (char *)memalign(alignment_, size_);
 		ptr_ = base_;
-		//std::cout << "arena: " << (void *)base_ << " size: " << size_ << "\n";
+		//std::cout << "arena begin: " << (void *)base_ << " end: " << end() << std::endl;
 	}
 
 	void destroy() {
 		free(base_);
 	}
 
+	void *end() {
+		return base_ + size_;
+	}
+
 	void * allocate(std::size_t size) {
 		size = align_size(alignment_, size);
-		BP_ASSERT((char *)ptr_ + size <= (char *)base_ + size_);
 		void * ptr = ptr_;
 		ptr_ += size;
-		//std::cout << "allocated: " << ptr << " size: " << size << "\n";
+		BP_ASSERT(ptr_ <= end());
+		//std::cout << "allocated: " << ptr << " end: " << (void *)ptr_ << " aend: " << end() << "\n";
 		return ptr;
 	}
 
