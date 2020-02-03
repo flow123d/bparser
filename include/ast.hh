@@ -127,7 +127,7 @@ struct print_vis : public boost::static_visitor<> {
 /**
  * Print AST function
  */
-std::string print(operand const& ast_root) {
+inline std::string print(operand const& ast_root) {
 	print_vis pv;
 	boost::apply_visitor(pv, ast_root);
 	return pv.ss.str();
@@ -144,7 +144,7 @@ struct print_ast_t {
 		return true;
 	}
 };
-boost::phoenix::function<print_ast_t> lazy_print;
+inline boost::phoenix::function<print_ast_t> lazy_print;
 
 
 
@@ -155,7 +155,7 @@ struct make_unary_f {
 		return {op, lhs};
 	}
 };
-boost::phoenix::function<make_unary_f> make_unary;
+inline boost::phoenix::function<make_unary_f> make_unary;
 
 
 // binary expression factory
@@ -165,7 +165,7 @@ struct make_binary_f {
 		return {op, lhs, rhs};
 	}
 };
-::boost::phoenix::function<make_binary_f> make_binary;
+inline boost::phoenix::function<make_binary_f> make_binary;
 
 struct make_relational_f {
 	binary_op operator()(binary_fn op, operand const& lhs, operand const& rhs, operand const& chained) const {
@@ -173,7 +173,7 @@ struct make_relational_f {
 		return {op, lhs, rhs};
 	}
 };
-::boost::phoenix::function<make_relational_f> make_relational;
+inline boost::phoenix::function<make_relational_f> make_relational;
 
 
 
@@ -183,10 +183,10 @@ struct make_assign_f {
 		return {lhs, rhs};
 	}
 };
-::boost::phoenix::function<make_assign_f> make_assign;
+inline boost::phoenix::function<make_assign_f> make_assign;
 
 
-Array semicol_fn(const Array &a, const Array &b) {
+inline Array semicol_fn(const Array &a, const Array &b) {
 	return b;
 }
 

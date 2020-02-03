@@ -15,7 +15,7 @@
 namespace bparser {
 
 
-size_t align_size(size_t al, size_t size) {
+inline size_t align_size(size_t al, size_t size) {
 	return (size + al -1) / al * al;
 }
 

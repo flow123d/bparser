@@ -563,32 +563,32 @@ Array func(const Array &x) {
 /**
  * Special function
  */
-Array deg_fn(const Array & rad) {
+inline Array deg_fn(const Array & rad) {
 	return Array::binary_op<details::_mul_>(rad, Array::deg_to_rad_factor());
 }
 
-Array rad_fn(const Array & deg) {
+inline Array rad_fn(const Array & deg) {
 	return Array::binary_op<details::_mul_>(deg, Array::rad_to_deg_factor());
 }
 
-Array gt_op(const Array & a, const Array & b) {
+inline Array gt_op(const Array & a, const Array & b) {
 	return Array::binary_op<details::_lt_>(b, a);
 }
 
-Array ge_op(const Array & a, const Array & b) {
+inline Array ge_op(const Array & a, const Array & b) {
 	return Array::binary_op<details::_le_>(b, a);
 }
 
-Array unary_plus(const Array & a) {
+inline Array unary_plus(const Array & a) {
 	return a;
 }
 
 
-Array operator+(const Array &a,  const Array &b) {
+inline Array operator+(const Array &a,  const Array &b) {
 	return Array::binary_op<details::_add_>(a, b);
 }
 
-Array operator*(const Array &a,  const Array &b) {
+inline Array operator*(const Array &a,  const Array &b) {
 	return Array::binary_op<details::_mul_>(a, b);
 }
 

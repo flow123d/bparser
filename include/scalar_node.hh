@@ -143,11 +143,11 @@ struct ResultNode : public ScalarNode {
  * Operation Nodes.
  */
 
-double mask_to_double(int64_t x) {
+inline double mask_to_double(int64_t x) {
 	return *(reinterpret_cast<const double *>(& x));
 }
 
-int64_t double_to_mask(double x) {
+inline int64_t double_to_mask(double x) {
 	return *(reinterpret_cast<const int64_t *>(& x));
 }
 
@@ -157,7 +157,7 @@ static const double double_false = mask_to_double(bitmask_false);
 static const double double_true = mask_to_double(bitmask_true);
 
 
-double double_bool(bool x) {
+inline double double_bool(bool x) {
 	return x ? double_true : double_false;
 }
 
@@ -390,7 +390,7 @@ struct _copy_ : public ScalarNode {
 
 
 
-ScalarNode * ScalarNode::create_const(double a) {
+inline ScalarNode * ScalarNode::create_const(double a) {
 	return new ConstantNode(a);
 //		nodes.push_back(node);
 //		n_constants += 1;
@@ -398,7 +398,7 @@ ScalarNode * ScalarNode::create_const(double a) {
 }
 
 // create value node
-ScalarNode * ScalarNode::create_value(double *a)  {
+inline ScalarNode * ScalarNode::create_value(double *a)  {
 	return new ValueNode(a);
 //		nodes.push_back(node);
 //		n_values += 1;
@@ -406,7 +406,7 @@ ScalarNode * ScalarNode::create_value(double *a)  {
 }
 
 // create result node
-ScalarNode * ScalarNode::create_result(ScalarNode *result, double *a)  {
+inline ScalarNode * ScalarNode::create_result(ScalarNode *result, double *a)  {
 	BP_ASSERT(result->result_storage != none);
 	if (result->result_storage != temporary) {
 		result = ScalarNode::create<_copy_>(result);

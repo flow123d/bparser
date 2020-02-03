@@ -44,12 +44,18 @@ BUILD_LIST       := $(BUILD_SRC:%.cpp=%)
 
 	
 clean:
-	rm -f core.* *~ *.o *.bak *stackdump gmon.out *.gcda *.gcno *.gcnor *.gch
+	cd build && rm -f *
+
+
 	
-test_grammar:
-	$(COMPILER) $(BASE_OPTIONS) $(ASAN_OPT)  -std=c++11 -I include  -o build/test_grammar test/test_grammar.cc
-	build/test_grammar
+build/grammar.o:
+	$(COMPILER) $(BASE_OPTIONS) -std=c++11 -I include  -o build/grammar.o -c include/grammar.cc
 	
+grammar: build/grammar.o
+
+
+## Proof of concept snippets.
+
 test_design:
 	rm -f build/test_design 2>/dev/null
 	#$(COMPILER) $(BASE_OPTIONS) $(DBG_OPT)  -std=c++11 -I include  -o build/test_design test/test_design.cc
@@ -61,7 +67,6 @@ test_design:
 #test_design:	
 #	$(COMPILER) $(BASE_OPTIONS) -S -fverbose-asm -O2 -mavx2  -std=c++11 -I include  -o build/test_design.S test/test_design.cc
 #	as -alhnd build/test_design.S > build/test_design.info.S
-	
 
 test_simd:
 	rm -f build/test_simd 2>/dev/null
@@ -71,22 +76,32 @@ test_simd:
 	#build/test_design
 	#build/test_design
 
-test_expr:
-	rm -f build/test_expr 2>/dev/null
-	$(COMPILER) $(BASE_OPTIONS) $(DBG_OPT)  -std=c++11 -I include  -o build/test_expr test/test_expr.cc
-	#$(COMPILER) $(BASE_OPTIONS) -O3 -mavx2  -std=c++11 -I include  -o build/test_simd test/test_simd.cc
-	build/test_expr
 
+
+## Unit tests.
+
+test_array:
+	rm -f build/test_array 2>/dev/null
+	$(COMPILER) $(BASE_OPTIONS) $(DBG_OPT)  -std=c++11 -I include  -o build/test_array test/test_array.cc
+	build/test_array
+	
 test_processor:
 	rm -f build/test_processor 2>/dev/null
 	$(COMPILER) $(BASE_OPTIONS) $(DBG_OPT)  -std=c++11 -I include  -o build/test_processor test/test_processor.cc
 	#$(COMPILER) $(BASE_OPTIONS) -O3 -mavx2  -std=c++11 -I include  -o build/test_simd test/test_simd.cc
 	build/test_processor
 
-test_parser:
+test_parser: grammar
 	rm -f build/test_parser 2>/dev/null
-	$(COMPILER) $(BASE_OPTIONS) $(DBG_OPT)  -std=c++11 -I include  -o build/test_parser test/test_parser.cc
+	$(COMPILER) $(BASE_OPTIONS) $(DBG_OPT)  -std=c++11 -I include  -o build/test_parser build/grammar.o test/test_parser.cc
 	#$(COMPILER) $(BASE_OPTIONS) -O3 -mavx2  -std=c++11 -I include  -o build/test_simd test/test_simd.cc
 	build/test_parser
 
 	
+test_speed: grammar
+	rm -f build/test_speed 2>/dev/null
+	$(COMPILER) $(BASE_OPTIONS) $(DBG_OPT)  -std=c++11 -I include  -o build/test_speed build/grammar.o test/test_parser_speed.cc
+	#$(COMPILER) $(BASE_OPTIONS) -O3 -mavx2  -std=c++11 -I include  -o build/test_simd test/test_simd.cc
+	build/test_speed
+
+tests: test_array test_processor test_parser test_speed

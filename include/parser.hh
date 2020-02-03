@@ -64,25 +64,10 @@ public:
     ///
     /// @param[in] expr The expression given as a std::string
     void parse(std::string const &expr) {
-        ast::operand ast_;
-
-        std::string::const_iterator first = expr.begin();
-        std::string::const_iterator last = expr.end();
-
-        boost::spirit::ascii::space_type space;
-        bool r = qi::phrase_parse(
-            first, last, grammar(), space,
-            ast_);
-
-        if (!r || first != last) {
-            std::string rest(first, last);
-            Throw("Parsing failed at " + rest); // NOLINT
-        }
+    	parse_expr(expr, ast);
         //std::cout << "Parsing OK. : " << "\n";
         //print(ast_);
 
-        //ast = boost::apply_visitor(ast::remove_nil(), ast_);
-        ast = ast_;
         //ASSERT(ast.type() != typeid(ast::nil));
         free_variables  = boost::apply_visitor(ast::get_variables(), ast);
         //_optimize();
