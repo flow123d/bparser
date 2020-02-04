@@ -12,6 +12,8 @@ jobs:
       run: |
           sudo apt install libboost-all-dev
     - uses: actions/checkout@v1
+    - name: build dir
+      run: mkdir build  
     - name: make test_expr
       run: make test_expr
     - name: make test_processor
