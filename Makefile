@@ -100,8 +100,8 @@ test_parser: grammar
 	
 test_speed: grammar
 	rm -f build/test_speed 2>/dev/null
-	$(COMPILER) $(BASE_OPTIONS) $(DBG_OPT)  -std=c++11 -I include  -o build/test_speed build/grammar.o test/test_parser_speed.cc
-	#$(COMPILER) $(BASE_OPTIONS) -O3 -mavx2  -std=c++11 -I include  -o build/test_simd test/test_simd.cc
+	#$(COMPILER) $(BASE_OPTIONS) $(DBG_OPT)  -std=c++11 -I include  -o build/test_speed build/grammar.o test/test_parser_speed.cc
+	$(COMPILER) $(BASE_OPTIONS) -O3 -mavx2  -std=c++11 -I include  -o build/test_speed build/grammar.o test/test_parser_speed.cc
 	build/test_speed
 
 tests: test_array test_processor test_parser test_speed

@@ -65,14 +65,14 @@ void expr1(ExprData &data) {
 
 void test_expr(std::string expr) {
 	using namespace bparser;
-	uint block_size = 16; // number of floats
+	uint block_size = 1024; // number of floats
 	uint vec_size = 1*block_size;
 
 	// TODO: allow changing variable pointers, between evaluations
 	// e.g. p.set_variable could return pointer to that pointer
 	// not so easy for vector and tensor variables, there are many pointers to set
 	// Rather modify the test to fill the
-	uint n_repeats = 1;
+	uint n_repeats = 1000000;
 
 	ArenaAlloc arena_1(32, 10*vec_size *sizeof(double));
 	ExprData data1(arena_1, vec_size);
@@ -98,14 +98,16 @@ void test_expr(std::string expr) {
 		p.run();
 	}
 	auto end_time = std::chrono::high_resolution_clock::now();
-	double parser_time  = (end_time - start_time)/std::chrono::milliseconds(1);
+	double parser_time  =
+			std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time).count();
 
 	start_time = std::chrono::high_resolution_clock::now();
 	for(uint i_rep=0; i_rep < n_repeats; i_rep++) {
 		expr1(data2);
 	}
 	end_time = std::chrono::high_resolution_clock::now();
-	double cpp_time  = (end_time - start_time)/std::chrono::milliseconds(1);
+	double cpp_time  =
+			std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time).count();
 
 	// check
 	double p_sum = 0;
@@ -124,8 +126,13 @@ void test_expr(std::string expr) {
 
 
 	std::cout << "Diff: " << diff << " parser: " << p_sum << " c++: " << c_sum << "\n";
-	std::cout << "parser time: " << parser_time << "\n";
-	std::cout << "c++ time   : " << cpp_time << "\n";
+	std::cout << "parser time : " << parser_time << "\n";
+	std::cout << "c++ time    : " << cpp_time << "\n";
+	std::cout << "fraction: " << parser_time/cpp_time << "\n";
+	double n_flop = n_repeats * vec_size * 9;
+	std::cout << "parser FLOPS: " << n_flop / parser_time << "\n";
+	std::cout << "c++ FLOPS   : " << n_flop / cpp_time << "\n";
+
 }
 
 

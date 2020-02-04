@@ -136,13 +136,13 @@ struct Vec {
 		subset = s;
 	}
 
-	double & value(uint i, uint j) {
+	inline double4 & value(uint i) {
 //		std::cout << "self: " << this << std::endl;
 //		std::cout << "v: " << values << "s: " << subset << std::endl;
 //		std::cout << "i: " << i << "j: " << j << std::endl;
 //		std::cout << " si: " << subset[i] << std::endl;
 //		std::cout << " v: " << values[subset[i]][j] << "\n";
-		return values[subset[i]][j];
+		return values[subset[i]];
 	}
 };
 
@@ -182,42 +182,50 @@ struct EvalImpl;
 
 template <class T>
 struct EvalImpl<1, T> {
-	static void eval(Operation op,  Workspace &w) {
+	inline static void eval(Operation op,  Workspace &w) {
 		Vec v0 = w.vector[op.arg[0]];
-		for(uint i=0; i<w.subset_size; ++i)
-			for(uint j=0; j<simd_size; ++j)
-				T::eval(v0.value(i, j));
+		for(uint i=0; i<w.subset_size; ++i) {
+			double4 & v0i = v0.value(i);
+			for(uint j=0; j<simd_size; ++j) {
+				T::eval(v0i[j]);
+			}
+		}
 	}
 };
 
 
 template <class T>
 struct EvalImpl<2, T> {
-	static void eval(Operation op,  Workspace &w) {
+	inline static void eval(Operation op,  Workspace &w) {
 		Vec v0 = w.vector[op.arg[0]];
 		Vec v1 = w.vector[op.arg[1]];
-		for(uint i=0; i<w.subset_size; ++i)
+		for(uint i=0; i<w.subset_size; ++i) {
+			double4 & v0i = v0.value(i);
+			double4 & v1i = v1.value(i);
 			for(uint j=0; j<simd_size; ++j) {
-				double & a0 = v0.value(i, j);
-				double & a1 = v1.value(i, j);
-				T::eval(a0, a1);
+				T::eval(v0i[j], v1i[j]);
 			}
+		}
 	}
 };
 
 
 template <class T>
 struct EvalImpl<3, T> {
-	static void eval(Operation op,  Workspace &w) {
+	inline static void eval(Operation op,  Workspace &w) {
 		Vec v0 = w.vector[op.arg[0]];
 		Vec v1 = w.vector[op.arg[1]];
 		Vec v2 = w.vector[op.arg[2]];
 //		std::cout << "iv0:" << uint(op.arg[0])
 //				<< "iv1:" << uint(op.arg[1])
 //				<< "iv2:" << uint(op.arg[2]) << std::endl;
-		for(uint i=0; i<w.subset_size; ++i)
+		for(uint i=0; i<w.subset_size; ++i) {
+			double4 &v0i = v0.value(i);
+			double4 &v1i = v1.value(i);
+			double4 &v2i = v2.value(i);
 			for(uint j=0; j<simd_size; ++j)
-				T::eval(v0.value(i, j), v1.value(i, j), v2.value(i, j));
+				T::eval(v0i[j], v1i[j], v2i[j]);
+		}
 	}
 };
 
