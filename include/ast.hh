@@ -8,6 +8,7 @@
 #include <boost/spirit/home/support/attributes.hpp>
 #include <boost/spirit/home/qi/domain.hpp>
 
+#include "config.hh"
 #include "array.hh"
 
 
@@ -90,7 +91,7 @@ struct print_vis : public boost::static_visitor<> {
     {}
 
 
-    void operator()(nil x) const {
+    void operator()(nil UNUSED(x)) const {
     	ss << "NULL";
     }
 
@@ -146,7 +147,7 @@ struct print_ast_t {
 };
 // this and following declarations can be used with C++17
 //inline boost::phoenix::function<print_ast_t> lazy_print;
-BOOST_PHOENIX_ADAPT_CALLABLE(lazy_print, print_ast_t, 1);
+BOOST_PHOENIX_ADAPT_CALLABLE(lazy_print, print_ast_t, 1)
 
 
 
@@ -158,7 +159,7 @@ struct make_unary_f {
 	}
 };
 //inline boost::phoenix::function<make_unary_f> make_unary;
-BOOST_PHOENIX_ADAPT_CALLABLE(make_unary, make_unary_f, 2);
+BOOST_PHOENIX_ADAPT_CALLABLE(make_unary, make_unary_f, 2)
 
 // binary expression factory
 struct make_binary_f {
@@ -168,7 +169,7 @@ struct make_binary_f {
 	}
 };
 //inline boost::phoenix::function<make_binary_f> make_binary;
-BOOST_PHOENIX_ADAPT_CALLABLE(make_binary, make_binary_f, 3);
+BOOST_PHOENIX_ADAPT_CALLABLE(make_binary, make_binary_f, 3)
 
 struct make_relational_f {
 	binary_op operator()(binary_fn op, operand const& lhs, operand const& rhs, operand const& chained) const {
@@ -177,7 +178,7 @@ struct make_relational_f {
 	}
 };
 //inline boost::phoenix::function<make_relational_f> make_relational;
-BOOST_PHOENIX_ADAPT_CALLABLE(make_relational, make_relational_f, 4);
+BOOST_PHOENIX_ADAPT_CALLABLE(make_relational, make_relational_f, 4)
 
 
 // assign expression factory
@@ -187,10 +188,10 @@ struct make_assign_f {
 	}
 };
 //inline boost::phoenix::function<make_assign_f> make_assign;
-BOOST_PHOENIX_ADAPT_CALLABLE(make_asign, make_assign_f, 2);
+BOOST_PHOENIX_ADAPT_CALLABLE(make_assign, make_assign_f, 2)
 
 
-inline Array semicol_fn(const Array &a, const Array &b) {
+inline Array semicol_fn(const Array & UNUSED(a), const Array &b) {
 	return b;
 }
 
@@ -274,7 +275,7 @@ struct get_variables {
         return {};
     }
 
-    result_type operator()(double x) const
+    result_type operator()(double UNUSED(x)) const
     { return {}; }
 
     result_type operator()(std::string const &x) const  {

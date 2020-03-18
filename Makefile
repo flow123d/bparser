@@ -8,7 +8,8 @@
 COMPILER         := -g++
 #COMPILER        := -clang++
 OPTIMIZATION_OPT := -O1
-BASE_OPTIONS     := -fmax-errors=5 #-pedantic-errors -Wall -Wextra -Werror -Wno-long-long
+#BASE_OPTIONS     := -fmax-errors=5 #-pedantic-errors -Wall -Wextra -Werror -Wno-long-long
+BASE_OPTIONS     := -pedantic-errors -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing
 OPTIONS          := $(BASE_OPTIONS) $(OPTIMIZATION_OPT)
 LINKER_OPT       := -L/usr/lib -lstdc++ -lm
 DBG_OPT			 := -g -DDEBUG #-fsanitize=address -static-libasan  -fno-omit-frame-pointer

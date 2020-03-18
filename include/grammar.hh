@@ -8,7 +8,7 @@
 
 namespace bparser {
 
-bool parse_expr(std::string expr, ast::operand &ast);
+void parse_expr(std::string expr, ast::operand &ast);
 
 } // namespace bparser
 

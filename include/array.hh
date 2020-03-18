@@ -438,7 +438,16 @@ struct Array {
 	}
 
 
-	static Array stack(const std::vector<Array> &list, uint axis=0) {
+	static Array stack(const std::vector<Array> &list, int axis=0) {
+		/**
+		 * Stack a list of M arrays of common shape (after broadcasting) (N0, ...)
+		 * along given axis. Producing array of higher dimension of shape:
+		 * (N0, ... Na ...) where Na is on the 'axis' position and Na == M.
+		 *
+		 * Axis can be negative to count from the end.
+		 *
+		 * List must have at least 1 item.
+		 */
 		if (list.size() == 0) throw;
 		if (list.size() == 1) return list[0];
 		// same shape

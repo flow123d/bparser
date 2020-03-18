@@ -388,7 +388,7 @@ struct Processor {
 	}
 
 	Operation make_operation(ScalarNode * node) {
-		Operation op;
+		Operation op = {(unsigned char)0xff, {0,0,0}}  ;
 		op.code = node->op_code_;
 		uint i_arg = 0;
 		//if (node->result_storage == temporary)

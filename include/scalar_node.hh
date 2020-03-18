@@ -48,7 +48,7 @@ struct ScalarNode {
 	uint n_dep_nodes_;
 	// index of the result in workspace, can be reused
 	int result_idx_;
-	char op_code_;
+	unsigned char op_code_;
 	std::string op_name_;
 	double * values_;
 
@@ -76,7 +76,7 @@ struct ScalarNode {
 	  n_inputs_(0),
 	  n_dep_nodes_(0),
 	  result_idx_(-1),
-	  op_code_(0xff),
+	  op_code_((unsigned char)0xff),
 	  op_name_("none"),
 	  values_(nullptr)
 	{}
@@ -143,12 +143,16 @@ struct ResultNode : public ScalarNode {
  * Operation Nodes.
  */
 
+union DoubleMask {
+	int64_t	mask;
+	double  value;
+};
 inline double mask_to_double(int64_t x) {
-	return *(reinterpret_cast<const double *>(& x));
+	return reinterpret_cast<double &>(x);
 }
 
 inline int64_t double_to_mask(double x) {
-	return *(reinterpret_cast<const int64_t *>(& x));
+	return reinterpret_cast<int64_t &>(x);
 }
 
 static const int64_t bitmask_false = 0x0000000000000000L;
@@ -168,7 +172,7 @@ inline double double_bool(bool x) {
 		inline static void eval(double &res, double a) {				\
 			res = FN(a);												\
 		}																\
-	};
+	}
 
 struct _minus_ : public ScalarNode {
 	static const char op_code = 1;

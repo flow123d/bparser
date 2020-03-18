@@ -12,7 +12,7 @@
 
 namespace bparser {
 
-bool parse_expr(std::string expr, ast::operand &ast) {
+void parse_expr(std::string expr, ast::operand &ast) {
     std::string::const_iterator first = expr.begin();
     std::string::const_iterator last = expr.end();
 
