@@ -14,9 +14,11 @@ jobs:
     - uses: actions/checkout@v1
     - name: build dir
       run: mkdir build  
-    - name: make test_expr
-      run: make test_expr
+    - name: make test_array
+      run: make test_array
     - name: make test_processor
       run: make test_processor
     - name: make test_parser
       run: make test_parser
+    - name: make test_speed
+      run: make test_speed
