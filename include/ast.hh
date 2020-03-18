@@ -168,7 +168,7 @@ struct make_binary_f {
 	}
 };
 //inline boost::phoenix::function<make_binary_f> make_binary;
-BOOST_PHOENIX_ADAPT_CALLABLE(make_binary, make_binary_f, 2);
+BOOST_PHOENIX_ADAPT_CALLABLE(make_binary, make_binary_f, 3);
 
 struct make_relational_f {
 	binary_op operator()(binary_fn op, operand const& lhs, operand const& rhs, operand const& chained) const {
