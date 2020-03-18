@@ -101,12 +101,12 @@ void test_free_variables() {
 void test_expr(std::string expr) {
 	using namespace bparser;
 	uint vec_size = 8;
-	double m1[vec_size * 6];
-	double v1[vec_size * 3];
+	//auto m1 = new double[vec_size * 6];
+	auto v1 = new double[vec_size * 3];
 	fill_const(v1, 3 * vec_size, 100);
-	double v2[vec_size * 3];
+	auto v2 = new double[vec_size * 3];
 	fill_const(v2, 3 * vec_size, 200);
-	double vres[vec_size * 3];
+	auto vres = new double[vec_size * 3];
 	fill_const(vres, 3 * vec_size, -100);
 
 	Parser p(vec_size);

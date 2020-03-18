@@ -9,11 +9,15 @@
 #define INCLUDE_CONFIG_HH_
 
 #ifndef DEBUG
+#ifndef NDEBUG
 #define NDEBUG
+#endif
 #endif
 
 #ifndef NDEBUG
+#ifndef DEBUG
 #define DEBUG
+#endif
 #endif
 
 #define SIMD_OPERATION_SIZE 4
