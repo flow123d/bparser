@@ -144,7 +144,9 @@ struct print_ast_t {
 		return true;
 	}
 };
-inline boost::phoenix::function<print_ast_t> lazy_print;
+// this and following declarations can be used with C++17
+//inline boost::phoenix::function<print_ast_t> lazy_print;
+BOOST_PHOENIX_ADAPT_CALLABLE(lazy_print, print_ast_t, 1);
 
 
 
@@ -155,8 +157,8 @@ struct make_unary_f {
 		return {op, lhs};
 	}
 };
-inline boost::phoenix::function<make_unary_f> make_unary;
-
+//inline boost::phoenix::function<make_unary_f> make_unary;
+BOOST_PHOENIX_ADAPT_CALLABLE(make_unary, make_unary_f, 2);
 
 // binary expression factory
 struct make_binary_f {
@@ -165,7 +167,8 @@ struct make_binary_f {
 		return {op, lhs, rhs};
 	}
 };
-inline boost::phoenix::function<make_binary_f> make_binary;
+//inline boost::phoenix::function<make_binary_f> make_binary;
+BOOST_PHOENIX_ADAPT_CALLABLE(make_binary, make_binary_f, 2);
 
 struct make_relational_f {
 	binary_op operator()(binary_fn op, operand const& lhs, operand const& rhs, operand const& chained) const {
@@ -173,8 +176,8 @@ struct make_relational_f {
 		return {op, lhs, rhs};
 	}
 };
-inline boost::phoenix::function<make_relational_f> make_relational;
-
+//inline boost::phoenix::function<make_relational_f> make_relational;
+BOOST_PHOENIX_ADAPT_CALLABLE(make_relational, make_relational_f, 4);
 
 
 // assign expression factory
@@ -183,7 +186,8 @@ struct make_assign_f {
 		return {lhs, rhs};
 	}
 };
-inline boost::phoenix::function<make_assign_f> make_assign;
+//inline boost::phoenix::function<make_assign_f> make_assign;
+BOOST_PHOENIX_ADAPT_CALLABLE(make_asign, make_assign_f, 2);
 
 
 inline Array semicol_fn(const Array &a, const Array &b) {
