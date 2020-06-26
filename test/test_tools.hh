@@ -18,11 +18,11 @@
     try {                                                       \
         expression;                                             \
     } catch (const bparser::Exception & e) {                    \
-    	std::string subwhat = std::string(e.what()).substr(0, std::string(msg).size()); \
-		if (msg == subwhat ) \
-			success = true;									    \
-		else													\
+    	size_t pos = std::string(e.what()).find(std::string(msg)); \
+		if (pos == std::string::npos) \
 			std::cout << "Wrong exception msg: " << e.what() << "\n";	\
+		else	\
+			success = true;									    \
     } catch (const std::exception &e) {                          \
     	throw e;												\
     }                                                           \

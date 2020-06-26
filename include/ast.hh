@@ -225,10 +225,8 @@ struct make_array {
         if (it != symbols.end()) {
         	return it->second;
         } else {
-        	std::ostringstream s;
-        	s << "Undefined var: " << x << "\n";
         	// We do not call visitor for the assign_op's 'lhs' so this must be error.
-        	Throw(s.str());
+        	Throw() << "Undefined var: " << x << "\n";
         }
     }
 

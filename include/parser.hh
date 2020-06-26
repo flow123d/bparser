@@ -125,7 +125,7 @@ public:
     void compile() {
     	auto res_it = symbols_.find("_result_");
     	if (res_it == symbols_.end())
-    		Throw("No '_result_' set.");
+    		Throw() << "Missing '_result_' definition.";
 
         Array res_array = boost::apply_visitor(ast::make_array(symbols_), ast);
         result_array = res_array.make_result(res_it->second);

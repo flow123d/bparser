@@ -23,7 +23,7 @@ void parse_expr(std::string expr, ast::operand &ast) {
 
     if (!r || first != last) {
         std::string rest(first, last);
-        Throw("Parsing failed at " + rest); // NOLINT
+        Throw() << "Parsing failed at: " << rest; // NOLINT
     }
 
 }

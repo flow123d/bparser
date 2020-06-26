@@ -52,10 +52,8 @@ namespace details {
 		MultiIdxRange broadcast(Shape other) {
 			int n_pad = other.size() - full_shape_.size();
 			if ( n_pad < 0) {
-				std::ostringstream ss;
-				ss << "Broadcast from longer shape " << full_shape_.size() <<
-						" to shorter shape " << other.size() << ".\n";
-				Throw(ss.str());
+				Throw() << "Broadcast from longer shape " << full_shape_.size()
+					<< " to shorter shape " << other.size() << ".\n";
 			}
 			Shape res_shape(n_pad, 1);
 			res_shape.insert(res_shape.end(), full_shape_.begin(), full_shape_.end());
@@ -65,10 +63,8 @@ namespace details {
 				if (res_shape[ax] == 1)
 					result.ranges_[ax] = std::vector<uint>(other[ax], 0);
 				else if (res_shape[ax] != other[ax]) {
-					std::ostringstream ss;
-					ss << "Broadcast from " << res_shape[ax] << " to "
-					   << other[ax] << " in axis " << ax;
-					Throw(ss.str());
+					Throw() << "Broadcast from " << res_shape[ax] << " to "
+					    << other[ax] << " in axis " << ax;
 				}
 
 			}
@@ -86,10 +82,8 @@ namespace details {
 				if (a[i] == b[i]) {
 					res[i] =  a[i];
 				} else {
-					std::ostringstream ss;
-					ss << "Common broadcast between " << a[i] << " and "
+					Throw() << "Common broadcast between " << a[i] << " and "
 					   << b[i] << " in axis " << i;
-					Throw(ss.str());
 				}
 
 			}

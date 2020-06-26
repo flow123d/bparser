@@ -24,7 +24,7 @@ int main() {
 	MultiIdxRange bcast_r = r.broadcast(Shape({4,2,3}));
 	BP_ASSERT(bcast_r.full_shape_ == Shape({4, 2, 3}));
 	ASSERT_THROW(r.broadcast(Shape({4,3,3})),
-			"Bparser error: Broadcast from 2");
+			"Broadcast from 2 to 3");
 
 	// constant array, array of ConstNode
 	Array s_const = Array::constant({3.14});

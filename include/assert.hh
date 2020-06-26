@@ -63,21 +63,53 @@ public:
 class Exception: public std::exception
 {
 public:
-  std::string msg_;
-  Exception(const std::string &arg, const char *file, int line)
+  mutable std::ostringstream out;
+  Exception(const char *file, int line)
   {
-      std::ostringstream o;
-      o << "Bparser error: " << arg << " : " << file << ":" << line << "\n";
-      msg_ = o.str();
+
+	  out << "Bparser, " << file << ":" << line << std::endl;
+	  out << "Error: ";
   }
+
+  Exception(const Exception &other)
+  : out(other.out.str())
+  {}
+
   ~Exception() throw() {}
 
   virtual const char* what() const throw()
   {
-    return msg_.c_str();
+     // have preallocated some space for error message we want to return
+     // Is there any difference, if we move this into ExceptionBase ??
+     static std::string message(1024,' ');
+
+     // Be sure that this function do not throw.
+     try {
+         message = out.str();
+         return message.c_str();
+
+     } catch (std::exception &exc) {
+         std::cerr << "*** Exception encountered in exception handling routines ***" << std::endl << "*** Message is " << std::endl
+                 << exc.what() << std::endl << "*** Aborting! ***" << std::endl;
+         std::abort();
+     } catch (...) {
+         std::cerr << "*** Exception encountered in exception handling routines ***" << std::endl << "*** Aborting! ***"
+                 << std::endl;
+         std::abort();
+     }
+     return 0;
+
+
   }
 };
-#define Throw(arg) throw Exception(arg, __FILE__, __LINE__);
+
+template <class T>
+const Exception &operator<<(const Exception &ex, const T &v) {
+	ex.out << v;
+	return ex;
+}
+
+#define Throw(arg) throw Exception(__FILE__, __LINE__)
 
 }
 

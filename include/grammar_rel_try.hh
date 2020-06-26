@@ -54,11 +54,8 @@ struct expectation_handler {
     template <typename Iterator>
     void operator()(Iterator first, Iterator last,
                     boost::spirit::info const &info) const {
-        std::stringstream msg;
-        msg << "Expected " << info << " at \"" << std::string(first, last)
-            << "\"";
-
-        Throw(msg.str()); // NOLINT
+        Throw() << "Expected " << info << " at \"" << std::string(first, last)
+        << "\""; // NOLINT
     }
 };
 
