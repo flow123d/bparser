@@ -7,12 +7,14 @@
 
 COMPILER         := -g++
 #COMPILER        := -clang++
-OPTIMIZATION_OPT := -O1
+OPTIMIZATION_OPT :=  -O3 -mavx2
 #BASE_OPTIONS     := -fmax-errors=5 #-pedantic-errors -Wall -Wextra -Werror -Wno-long-long
-BASE_OPTIONS     := -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing
-OPTIONS          := $(BASE_OPTIONS) $(OPTIMIZATION_OPT)
-LINKER_OPT       := -L/usr/lib -lstdc++ -lm
+INCLUDES		 := -I include
+BASE_OPTIONS     := $(INCLUDES) -std=c++11 -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing
 DBG_OPT			 := -g -DDEBUG #-fsanitize=address -static-libasan  -fno-omit-frame-pointer
+#OPTIONS          := $(BASE_OPTIONS) $(OPTIMIZATION_OPT)
+OPTIONS          := $(BASE_OPTIONS) $(DBG_OPT)
+LINKER_OPT       := -L/usr/lib -lstdc++ -lm
 
 ASAN_OPT         := -g -fsanitize=address -static-libasan -fno-omit-frame-pointer
 MSAN_OPT         := -g -fsanitize=memory    -fno-omit-frame-pointer
@@ -49,8 +51,8 @@ clean:
 
 
 	
-build/grammar.o:
-	$(COMPILER) $(BASE_OPTIONS) -std=c++11 -I include  -o build/grammar.o -c include/grammar.cc
+build/grammar.o: include/grammar.hh include/grammar.cc include/grammar.impl.hh
+	$(COMPILER) $(OPTIONS) -o build/grammar.o -c include/grammar.cc
 	
 grammar: build/grammar.o
 
@@ -60,7 +62,7 @@ grammar: build/grammar.o
 test_design:
 	rm -f build/test_design 2>/dev/null
 	#$(COMPILER) $(BASE_OPTIONS) $(DBG_OPT)  -std=c++11 -I include  -o build/test_design test/test_design.cc
-	$(COMPILER) $(BASE_OPTIONS) -O3 -mavx2  -std=c++11 -I include  -o build/test_design test/test_design.cc
+	$(COMPILER) $(OPTIONS) -o build/test_design test/test_design.cc
 	build/test_design
 	#build/test_design
 	#build/test_design
@@ -72,7 +74,7 @@ test_design:
 test_simd:
 	rm -f build/test_simd 2>/dev/null
 	#$(COMPILER) $(BASE_OPTIONS) $(DBG_OPT)  -std=c++11 -I include  -o build/test_design test/test_design.cc
-	$(COMPILER) $(BASE_OPTIONS) -O3 -mavx2  -std=c++11 -I include  -o build/test_simd test/test_simd.cc
+	$(COMPILER) $(OPTIONS) -o build/test_simd test/test_simd.cc
 	build/test_simd
 	#build/test_design
 	#build/test_design
@@ -83,18 +85,23 @@ test_simd:
 
 test_array:
 	rm -f build/test_array 2>/dev/null
-	$(COMPILER) $(BASE_OPTIONS) $(DBG_OPT)  -std=c++11 -I include  -o build/test_array test/test_array.cc
+	$(COMPILER) $(OPTIONS) -o build/test_array test/test_array.cc
 	build/test_array
 	
 test_processor:
 	rm -f build/test_processor 2>/dev/null
-	$(COMPILER) $(BASE_OPTIONS) $(DBG_OPT)  -std=c++11 -I include  -o build/test_processor test/test_processor.cc
+	$(COMPILER) $(OPTIONS) -o build/test_processor test/test_processor.cc
 	#$(COMPILER) $(BASE_OPTIONS) -O3 -mavx2  -std=c++11 -I include  -o build/test_simd test/test_simd.cc
 	build/test_processor
 
+test_grammar: grammar
+	rm -f build/test_grammar 2>/dev/null
+	$(COMPILER) $(OPTIONS) -o build/test_grammar build/grammar.o test/test_grammar.cc
+	build/test_grammar
+
 test_parser: grammar
 	rm -f build/test_parser 2>/dev/null
-	$(COMPILER) $(BASE_OPTIONS) $(DBG_OPT)  -std=c++11 -I include  -o build/test_parser build/grammar.o test/test_parser.cc
+	$(COMPILER) $(OPTIONS) -o build/test_parser build/grammar.o test/test_parser.cc
 	#$(COMPILER) $(BASE_OPTIONS) -O3 -mavx2  -std=c++11 -I include  -o build/test_simd test/test_simd.cc
 	build/test_parser
 
@@ -102,7 +109,7 @@ test_parser: grammar
 test_speed: grammar
 	rm -f build/test_speed 2>/dev/null
 	#$(COMPILER) $(BASE_OPTIONS) $(DBG_OPT)  -std=c++11 -I include  -o build/test_speed build/grammar.o test/test_parser_speed.cc
-	$(COMPILER) $(BASE_OPTIONS) -O3 -mavx2  -std=c++11 -I include  -o build/test_speed build/grammar.o test/test_parser_speed.cc
+	$(COMPILER) $(OPTIONS) -o build/test_speed build/grammar.o test/test_parser_speed.cc
 	build/test_speed
 
 tests: test_array test_processor test_parser test_speed

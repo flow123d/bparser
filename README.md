@@ -8,6 +8,9 @@ Features:
 - expression evaluation on vectors, amortizatiton of the bytecode interpreter 
 - usage of SIMD for maximal Flops on modern CPUs 
 
+## Build
+SIMD instructions in particular AVX is supported from certain versions of compilers, e.g.
+GCC 4.6, Clang 3.5
 
 ## Usage:
 
@@ -53,13 +56,28 @@ Features:
 	std::cout << print_vec(vres, 3*vec_size);
 ```
 
+## Speed
+
+[Intel(R) Core(TM) i7-6820HQ](https://en.wikichip.org/wiki/intel/core_i7/i7-6820hq):
+
+freq. 2.7GHz, turbo boost 3.4GHz, memory bandwith 31.79 GiB/s
+L1 data 128KiB, instruction 128KiB,  8 way associative
+L2 1MiB, 4 way associative
+L3 8MiB
+supports AVX instructions, 4 double operations in single tact
+
+theoretical computational power is 10.8 double precision GFLOPs
+necessary bandwith for a 2 argument operation (i.e. 12 doubles per SIMD instruction) is
+120GiB/s that is about four times what is available so at least 4 operations should be performed on 
+the data available in the cache. TODO: experiments with various size of vectors.
+
 
 
 ## Acknowledgements
 
 - Grammar based on [Henri Menke: boost_matheval](https://github.com/hmenke/boost_matheval)
-- Other essential pieces taken from [a commented expression parser]
-  (https://stackoverflow.com/questions/47354226/how-to-provider-user-with-autocomplete-suggestions-for-given-boostspirit-gramm/47383910#47383910)
+- Other essential pieces taken from 
+[a commented expression parser](https://stackoverflow.com/questions/47354226/how-to-provider-user-with-autocomplete-suggestions-for-given-boostspirit-gramm/47383910#47383910)
 
 
 ## Design
