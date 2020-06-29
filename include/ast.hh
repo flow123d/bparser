@@ -59,11 +59,13 @@ typedef boost::variant<
 operand;
 // clang-format on
 
+/// a function: Array -> Array
 struct unary_op {
     unary_fn op;
     operand rhs;
 };
 
+/// a function: (Array, Array) -> Array
 struct binary_op {
     binary_fn op;
     operand lhs;
@@ -76,6 +78,8 @@ struct assign_op {
     operand rhs;
 };
 
+
+
 /**
  * operand visitors
  */
@@ -86,9 +90,12 @@ struct print_vis : public boost::static_visitor<> {
 	 * Print AST.
 	 */
 	mutable std::stringstream ss;
+	bool recursive_;
 
-    explicit print_vis()
+    explicit print_vis(bool recursive = true)
+    : recursive_(recursive)
     {}
+
 
 
     void operator()(nil UNUSED(x)) const {
@@ -99,27 +106,27 @@ struct print_vis : public boost::static_visitor<> {
     {ss << x; }
 
     void operator()(std::string const &x) const  {
-    	ss << "<" << x << ">";
+    	ss << "`" << x << "`";
     }
 
 
     void operator()(unary_op const &x) const {
-    	ss << x.op.repr << "(";
-    	boost::apply_visitor(*this, x.rhs);
+    	ss << '<' << x.op.repr << '>' << "(";
+    	if (recursive_) boost::apply_visitor(*this, x.rhs);
     	ss << ")";
     }
 
     void operator()(binary_op const &x) const {
-    	ss << x.op.repr << "(";
-    	boost::apply_visitor(*this, x.lhs);
+    	ss << '<' << x.op.repr << '>' << "(";
+    	if (recursive_) boost::apply_visitor(*this, x.lhs);
     	ss << ", ";
-    	boost::apply_visitor(*this, x.rhs);
+    	if (recursive_) boost::apply_visitor(*this, x.rhs);
     	ss << ")";
     }
 
     void operator()(assign_op const &x) const  {
     	ss << x.lhs << " = ";
-    	boost::apply_visitor(*this, x.rhs);
+    	if (recursive_) boost::apply_visitor(*this, x.rhs);
     }
 
 
@@ -132,6 +139,13 @@ inline std::string print(operand const& ast_root) {
 	print_vis pv;
 	boost::apply_visitor(pv, ast_root);
 	return pv.ss.str();
+}
+
+inline std::ostream &operator<<(std::ostream &os, const operand& a) {
+	print_vis pv(true);
+	boost::apply_visitor(pv, a);
+    os << pv.ss.str();
+    return os;
 }
 
 /**
@@ -158,8 +172,8 @@ struct make_unary_f {
 		return {op, lhs};
 	}
 };
-//inline boost::phoenix::function<make_unary_f> make_unary;
 BOOST_PHOENIX_ADAPT_CALLABLE(make_unary, make_unary_f, 2)
+
 
 // binary expression factory
 struct make_binary_f {
@@ -168,8 +182,8 @@ struct make_binary_f {
 		return {op, lhs, rhs};
 	}
 };
-//inline boost::phoenix::function<make_binary_f> make_binary;
 BOOST_PHOENIX_ADAPT_CALLABLE(make_binary, make_binary_f, 3)
+
 
 struct make_relational_f {
 	binary_op operator()(binary_fn op, operand const& lhs, operand const& rhs, operand const& chained) const {
@@ -177,8 +191,9 @@ struct make_relational_f {
 		return {op, lhs, rhs};
 	}
 };
-//inline boost::phoenix::function<make_relational_f> make_relational;
 BOOST_PHOENIX_ADAPT_CALLABLE(make_relational, make_relational_f, 4)
+
+
 
 
 // assign expression factory
@@ -187,7 +202,6 @@ struct make_assign_f {
 		return {lhs, rhs};
 	}
 };
-//inline boost::phoenix::function<make_assign_f> make_assign;
 BOOST_PHOENIX_ADAPT_CALLABLE(make_assign, make_assign_f, 2)
 
 

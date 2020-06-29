@@ -30,36 +30,36 @@ void test_ast_cases() {
 	// double
 	test_ast("123.0", "123");
 	// variable
-	test_ast("xyz", "<xyz>");
+	test_ast("xyz", "`xyz`");
 	// constant
 	test_ast("pi", "3.14159");
 	// unary op
-	test_ast("+sin(1)", "+(sin(1))");
-	test_ast("-sin(1)", "-(sin(1))");
+	test_ast("+sin(1)", "<+>(<sin>(1))");
+	test_ast("-sin(1)", "<->(<sin>(1))");
 	// unary_fn
-	test_ast("sin(123.0)", "sin(123)");
+	test_ast("sin(123.0)", "<sin>(123)");
 	// binary_fn
-	test_ast("pow(1.2, 3.4)", "pow(1.2, 3.4)");
+	test_ast("pow(1.2, 3.4)", "<pow>(1.2, 3.4)");
 	// parenthesis
-	test_ast("1.2 ** (3.4 ** 5.6)", "**(1.2, **(3.4, 5.6))"); // explicit
-	test_ast("(1.2 ** 3.4) ** 5.6", "**(**(1.2, 3.4), 5.6)"); // explicit
+	test_ast("1.2 ** (3.4 ** 5.6)", "<**>(1.2, <**>(3.4, 5.6))"); // explicit
+	test_ast("(1.2 ** 3.4) ** 5.6", "<**>(<**>(1.2, 3.4), 5.6)"); // explicit
 
 	// factor rule - right associativity of power
 	// -----------
 
-	test_ast("1.2 ** 3.4", "**(1.2, 3.4)");
-	test_ast("1.2 ** 3.4 ** 5.6", "**(1.2, **(3.4, 5.6))"); // yet wrong power associativity
+	test_ast("1.2 ** 3.4", "<**>(1.2, 3.4)");
+	test_ast("1.2 ** 3.4 ** 5.6", "<**>(1.2, <**>(3.4, 5.6))"); // yet wrong power associativity
 
 	// multiplicative, additive, relational, equality, logical
 	// -----------
 	// multiplicative
-	test_ast("1 * 2**1 / 3", "/(*(1, **(2, 1)), 3)");
+	test_ast("1 * 2**1 / 3", "</>(<*>(1, <**>(2, 1)), 3)");
 	// additive
-	test_ast("1 + 2*1 - 3", "-(+(1, *(2, 1)), 3)");
+	test_ast("1 + 2*1 - 3", "<->(<+>(1, <*>(2, 1)), 3)");
 	// relational
-	test_ast("1 + 2 < 2", "<(+(1, 2), 2)");
+	test_ast("1 + 2 < 2", "<<>(<+>(1, 2), 2)");
 	// equality
-	test_ast("1 + 2 == 2", "==(+(1, 2), 2)");
+	test_ast("1 + 2 == 2", "<==>(<+>(1, 2), 2)");
 	//test_ast("1 == 2 != 3 < 4", "");
 	//ASSERT_THROW(test_ast("1 == 2 != 3", ""), "Parsing failed at != 3");
 	// TODO: capture all parser errors and throuw bparser exception
@@ -71,7 +71,7 @@ void test_ast_cases() {
 //	test_ast("1 * 2**1 * 3", "bin(bin(1, bin(2, 1)), 3)");
 
 	// program and assignment
-	test_ast("a=1;a+4", ";(a = 1, +(<a>, 4))");
+	test_ast("a=1;a+4", "<;>(a = 1, <+>(`a`, 4))");
 
 	// TODO: test error detection and reporting
 }

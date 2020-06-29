@@ -133,7 +133,7 @@ public:
         destroy_processor();
 		ExpressionDAG se(result_array.elements());
 
-		se.print_in_dot();
+		//se.print_in_dot();
 		processor = Processor::create_processor_(se, max_vec_size);
     }
 
