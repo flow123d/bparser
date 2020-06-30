@@ -14,8 +14,10 @@
 #include <limits>
 #include <sstream>
 #include <string>
+
 #include <boost/math/constants/constants.hpp>
 #include <boost/spirit/include/phoenix.hpp>
+
 
 //#define BOOST_SPIRIT_NO_PREDEFINED_TERMINALS
 #include <boost/spirit/include/qi.hpp>
@@ -38,15 +40,18 @@ namespace parser {
 
 
 template<class T>
-ast::unary_fn::type unary_array() {
-	return static_cast<ast::unary_fn::type>(&(Array::unary_op<T>));
+ast::unary_fn::function_type unary_array() {
+	return static_cast<ast::unary_fn::function_type>(&(Array::unary_op<T>));
 }
 
 template<class T>
-ast::binary_fn::type binary_array() {
-	return static_cast<ast::binary_fn::type>(&(Array::binary_op<T>));
+ast::binary_fn::function_type binary_array() {
+	return static_cast<ast::binary_fn::function_type>(&(Array::binary_op<T>));
 }
 
+ast::binary_fn::function_type append_to() {
+	return static_cast<ast::binary_fn::function_type>(&(Array::append_to));
+}
 
 
 struct expectation_handler {
@@ -74,39 +79,46 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 
 
     qi::rule<Iterator, ast::operand(), ascii::space_type>
-    	primary, logical, equality, relational, additive, multiplicative, factor, unary, binary, program, definition, assignment, unary_op_r;
-    qi::rule<Iterator, std::string()> variable;
-
-
-    qi::symbols<typename std::iterator_traits<Iterator>::value_type, double>
-        constant;
-    qi::symbols<typename std::iterator_traits<Iterator>::value_type,
-                ast::unary_fn>
+		program,
+		definition,
+		assignment,
+		logical,
+		equality,
+		relational,
+		additive,
+		multiplicative,
+		factor,
+		signed_opt,
+		signed_unary,
+		array_slice,
+		unary,
+		binary,
+		array_constr,
+		array_constr_list,
+		enclosure,
+		literal,
+		atom
+    	;
+    qi::rule<Iterator, std::string()>
+    	identifier;
+    qi::symbols<typename std::iterator_traits<Iterator>::value_type, ast::unary_fn>
         ufunc, unary_op;
-    qi::symbols<typename std::iterator_traits<Iterator>::value_type,
-                ast::binary_fn>
-        bfunc, additive_op, multiplicative_op, logical_op, relational_op,
-		equality_op, power, semicol_op;
+    qi::symbols<typename std::iterator_traits<Iterator>::value_type, ast::binary_fn>
+        bfunc,
+		additive_op,
+		multiplicative_op,
+		logical_op,
+		relational_op,
+		equality_op,
+		power,
+		semicol_op,
+		array_constr_comma_op;
 
 
     grammar()
-    : grammar::base_type(program)
+    : grammar::base_type(program, "bparser_program")
     {
 
-//        qi::alnum_type alnum;
-//        qi::alpha_type alpha;
-//        qi::double_type double_;
-//        qi::lexeme_type lexeme;
-//        qi::raw_type raw;
-
-        // clang-format off
-
-        constant.add
-            ("e"      , boost::math::constants::e<double>())
-            ("epsilon", std::numeric_limits<double>::epsilon())
-            ("phi"    , boost::math::constants::phi<double>())
-            ("pi"     , boost::math::constants::pi<double>())
-            ;
 
         ufunc.add
             UN_FN("abs"  , unary_array<_abs_>())
@@ -159,6 +171,12 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
             BN_FN("||", binary_array<_or_>())
             ;
 
+        ast::binary_fn append_to_fn = {",", append_to()};
+        array_constr_comma_op.add(",", append_to_fn);
+
+//        array_slice_comma_op.add
+//			BN_FN(",", &append_slice_list);
+
         relational_op.add
             BN_FN("<" , binary_array<_lt_>())
             BN_FN("<=", binary_array<_le_>())
@@ -168,12 +186,13 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
             BN_FN("!=", binary_array<_ne_>())
             ;
 
-
         power.add
             BN_FN("**", binary_array<_pow_>())
             ;
 
         ast::binary_fn semicol_fn = {";", &ast::semicol_fn};
+
+
 
 //        semicol_op.add
 //            (";", &ast::semicol_fn)  // TODO: possibly some special function
@@ -199,12 +218,28 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
          * http://boost-spirit.com/home/articles/attribute_handling/the-magical-power-of-attributes-in-spirit-primitives/
          * ... and sequels.
          */
+#define RULE(r_name) r_name.name(#r_name); r_name
 
-        /**
-         * TODO: need to construct binary_op attribute, but
-         * the order of opeartions doesn't match
-         */
-        program =
+//	    RULE(op_rule_t, definition);
+//	    RULE(op_rule_t, assignment);
+//	    RULE(op_rule_t, logical);
+//	    RULE(op_rule_t, equality);
+//	    RULE(op_rule_t, relational);
+//	    RULE(op_rule_t, additive);
+//	    RULE(op_rule_t, multiplicative);
+//	    RULE(op_rule_t, factor);
+//	    RULE(op_rule_t, signed_slice_opt);
+//	    RULE(op_rule_t, signed_slice);
+//	    RULE(op_rule_t, array_slice);
+//	    RULE(op_rule_t, unary);
+//	    RULE(op_rule_t, binary);
+//	    RULE(var_rule_t, variable);
+//	    RULE(op_rule_t, array_constr);
+//	    RULE(op_rule_t, array_constr_list);
+//	    RULE(op_rule_t, primary);
+
+
+        RULE(program) =
         	(definition >> ';' >> logical)[qi::_val = ast::make_binary(semicol_fn, qi::_1,  qi::_2)]
 			| logical[qi::_val = qi::_1]
         //program = -(definition > ';')[qi::_val = _1] >> logical[qi::_val = _1]
@@ -214,64 +249,98 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 
 
         //program = definition.alias();
-        definition =
+        RULE(definition) =
         		assignment[qi::_val = qi::_1] >> *(';' >> assignment)[qi::_val = ast::make_binary(semicol_fn, qi::_val, qi::_1)]
 				;
 
-        assignment =
-        	(variable >> '=' > logical)[qi::_val = ast::make_assign(qi::_1, qi::_2)]
+        RULE(assignment) =
+        	(identifier >> '=' > logical)[qi::_val = ast::make_assign(qi::_1, qi::_2)]
 			;
 
         //program = logical.alias();
 
-        logical =
+        RULE(logical) =
             equality[qi::_val = qi::_1] >> *(logical_op > equality)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)]
             ;
 
-        equality =
+        RULE(equality) =
             relational[qi::_val = qi::_1] >> -(equality_op > relational)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)]
             ;
 
-        relational =
+        RULE(relational) =
             additive[qi::_val = qi::_1] >> -(relational_op > additive)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)]
             ;
 
-        additive =
+        RULE(additive) =
             multiplicative[qi::_val = qi::_1] >> *(additive_op > multiplicative)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)]
             ;
 
-        multiplicative =
+        RULE(multiplicative) =
             factor[qi::_val = qi::_1] >> *(multiplicative_op > factor)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)]
             ;
 
-        factor =
-            primary[qi::_val = qi::_1] >> -(power > factor)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)]
+        RULE(factor) =
+        		signed_opt[qi::_val = qi::_1] >> -(power > factor)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)]
+            ;
+        // '-(...)' optional
 
-        ;
-        unary =
-            (ufunc > '(' > logical > ')')[qi::_val = ast::make_unary(qi::_1, qi::_2)]
+        //signed_slice_opt = primary.alias();
+
+        RULE(signed_opt) = signed_unary | atom;
+
+        RULE(signed_unary) =
+        		(unary_op > atom)[qi::_val = ast::make_unary(qi::_1, qi::_2)];
+
+        //RULE(array_slice) = primary.alias();
+        /**
+
+        // indexed array
+        array_slice = primary >> '[' >> slice_list >> ']';
+**/
+
+        //------------------
+        RULE(unary) =
+            (qi::no_skip[ufunc > '('] > logical > ')')[qi::_val = ast::make_unary(qi::_1, qi::_2)]
             ;
 
-        binary =
-            (bfunc > '(' > logical > ',' > logical > ')')[qi::_val = ast::make_binary(qi::_1, qi::_2, qi::_3)]
+        RULE(binary) =
+            (qi::no_skip[bfunc > '('] > logical > ',' > logical > ')')[qi::_val = ast::make_binary(qi::_1, qi::_2, qi::_3)]
             ;
 
-        variable =
-        		qi::raw[qi::lexeme[qi::alpha >> *(qi::alnum | '_')]]
-            ;
 
-        unary_op_r = (unary_op > primary)[qi::_val = ast::make_unary(qi::_1, qi::_2)];
+        RULE(array_constr) = '[' >> array_constr_list >> ']';
 
-        primary =
-        		qi::double_
-            | ('(' > logical > ')')
-            | unary_op_r
-            | binary
-            | unary
-            | constant
-            | variable
-			| qi::eps
-            ;
+        RULE(array_constr_list) =
+        		additive[qi::_val = ast::make_binary(append_to_fn, ast::make_none(0), qi::_1)]
+						 >> *(array_constr_comma_op > additive)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)]
+		        ;
+
+
+        RULE(enclosure) = ('(' > logical > ')') | binary | unary | array_constr;
+
+        RULE(identifier) =
+        		qi::raw[qi::lexeme[(qi::alpha | '_') >> *(qi::alnum | '_')]];
+
+        RULE(literal) = qi::double_;
+
+        RULE(atom) =
+        	enclosure
+			| literal
+            | identifier
+			;
+
+
+
+        /*
+         * grammar
+- potrebuji zpetne identifikovat vektorove a maticove promennepotential reconstruction
+- problem odlisit co je konstrukce pole a so jsou indexy
+- array >> multiindex
+- array = (array_var | array_constr)
+
+sin([1,2,3])[0]
+         *
+         */
 
         // TODO:
         // Problem that we allow logical expressions even where
@@ -284,22 +353,19 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 
         // clang-format on
 
-        program.name("program");
-        assignment.name("assignment");
-        logical.name("logical");
-        equality.name("equality");
-        relational.name("relational");
-        additive.name("additive");
-        multiplicative.name("multiplicative");
-        factor.name("factor");
-        variable.name("variable");
-        primary.name("primary");
-        unary.name("unary");
-        binary.name("binary");
 
         qi::on_error<qi::fail>(
             program,
             boost::phoenix::bind(boost::phoenix::ref(err_handler), qi::_3, qi::_2, qi::_4));
+
+//        qi::debug(additive);
+//        qi::debug(variable);
+//        qi::debug(unary);
+//        qi::debug(binary);
+//        qi::debug(logical);
+//        qi::debug(primary);
+//        qi::debug(array_constr);
+//        qi::debug(array_constr_list);
 
     }
 };

@@ -70,6 +70,14 @@ public:
 
         //ASSERT(ast.type() != typeid(ast::nil));
         free_variables  = boost::apply_visitor(ast::get_variables(), ast);
+
+        // dafault constants
+        set_constant("e", {}, {boost::math::constants::e<double>()});
+        set_constant("pi", {}, {boost::math::constants::pi<double>()});
+        //set_constant("phi", {}, {boost::math::constants::phi<double>()});
+        // rounding precision
+        set_constant("epsilon", {}, {std::numeric_limits<double>::epsilon()});
+
         //_optimize();
     }
 

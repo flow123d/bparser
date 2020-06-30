@@ -29,6 +29,12 @@
 	if ( ! success) throw;								\
 }
 
+#define EXPECT(EXPRESSION) \
+	if ( !(EXPRESSION) ) {\
+		std::cout << "Failed EXPECT, " <<  __FILE__ << ":" << __LINE__ << "\n\n"; \
+	}
+
+
 
 void fill_const(double *ptr, uint n, double v) {
 	for(uint i=0; i< n; ++i) ptr[i] = v;

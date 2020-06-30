@@ -28,15 +28,15 @@ namespace ast {
 
 
 struct unary_fn {
-	typedef Array (*type)(const Array &);
+	typedef Array (*function_type)(const Array &);
 	std::string repr;
-	type fn;
+	function_type fn;
 };
 
 struct binary_fn {
-	typedef Array (*type)(const Array &, const Array &);
+	typedef Array (*function_type)(const Array &, const Array &);
 	std::string repr;
-	type fn;
+	function_type fn;
 };
 
 
@@ -80,6 +80,8 @@ struct assign_op {
 
 
 
+
+
 /**
  * operand visitors
  */
@@ -111,15 +113,15 @@ struct print_vis : public boost::static_visitor<> {
 
 
     void operator()(unary_op const &x) const {
-    	ss << '<' << x.op.repr << '>' << "(";
+    	ss << x.op.repr <<  "(";
     	if (recursive_) boost::apply_visitor(*this, x.rhs);
     	ss << ")";
     }
 
     void operator()(binary_op const &x) const {
-    	ss << '<' << x.op.repr << '>' << "(";
+    	ss << x.op.repr << "(";
     	if (recursive_) boost::apply_visitor(*this, x.lhs);
-    	ss << ", ";
+    	ss << "_";
     	if (recursive_) boost::apply_visitor(*this, x.rhs);
     	ss << ")";
     }
@@ -164,50 +166,6 @@ struct print_ast_t {
 BOOST_PHOENIX_ADAPT_CALLABLE(lazy_print, print_ast_t, 1)
 
 
-
-// unary expression factory
-struct make_unary_f {
-	unary_op operator()(unary_fn op, operand const& lhs) const {
-		// std::cout << "make_unary: " << lhs.which() << "\n";
-		return {op, lhs};
-	}
-};
-BOOST_PHOENIX_ADAPT_CALLABLE(make_unary, make_unary_f, 2)
-
-
-// binary expression factory
-struct make_binary_f {
-	binary_op operator()(binary_fn op, operand const& lhs, operand const& rhs) const {
-		// std::cout << "make_binary: " << lhs.which() << ", " << rhs.which() << "\n";
-		return {op, lhs, rhs};
-	}
-};
-BOOST_PHOENIX_ADAPT_CALLABLE(make_binary, make_binary_f, 3)
-
-
-struct make_relational_f {
-	binary_op operator()(binary_fn op, operand const& lhs, operand const& rhs, operand const& chained) const {
-		std::cout << "make_binary: " << lhs.which() << ", " << rhs.which() << ", " << print(chained) << "\n";
-		return {op, lhs, rhs};
-	}
-};
-BOOST_PHOENIX_ADAPT_CALLABLE(make_relational, make_relational_f, 4)
-
-
-
-
-// assign expression factory
-struct make_assign_f {
-	assign_op operator()(std::string lhs, operand const& rhs) const {
-		return {lhs, rhs};
-	}
-};
-BOOST_PHOENIX_ADAPT_CALLABLE(make_assign, make_assign_f, 2)
-
-
-inline Array semicol_fn(const Array & UNUSED(a), const Array &b) {
-	return b;
-}
 
 
 
@@ -372,6 +330,76 @@ struct remove_nil {
 
 
 };
+
+
+
+// unary expression factory
+struct make_none_f {
+	unary_op operator()(int UNUSED(any)) const {
+		// std::cout << "make_none " << "\n";
+		ast::unary_fn none_array_fn = {"None", &(Array::none_array)};
+		return {none_array_fn, 0.0};
+	}
+};
+BOOST_PHOENIX_ADAPT_CALLABLE(make_none, make_none_f, 1)
+
+
+// unary expression factory
+struct make_unary_f {
+	unary_op operator()(unary_fn op, operand const& lhs) const {
+		// std::cout << "make_unary: " << lhs.which() << "\n";
+		return {op, lhs};
+	}
+};
+BOOST_PHOENIX_ADAPT_CALLABLE(make_unary, make_unary_f, 2)
+
+
+// binary expression factory
+struct make_binary_f {
+	binary_op operator()(binary_fn op, operand const& lhs, operand const& rhs) const {
+		// std::cout << "make_binary: " << lhs.which() << ", " << rhs.which() << "\n";
+		return {op, lhs, rhs};
+	}
+};
+BOOST_PHOENIX_ADAPT_CALLABLE(make_binary, make_binary_f, 3)
+
+
+struct make_relational_f {
+	binary_op operator()(binary_fn op, operand const& lhs, operand const& rhs, operand const& chained) const {
+		std::cout << "make_binary: " << lhs.which() << ", " << rhs.which() << ", " << print(chained) << "\n";
+		return {op, lhs, rhs};
+	}
+};
+BOOST_PHOENIX_ADAPT_CALLABLE(make_relational, make_relational_f, 4)
+
+
+struct make_array_constr_f {
+	binary_op operator()(binary_fn op, operand const& lhs, operand const& rhs, operand const& chained) const {
+		std::cout << "make_array_constr: " << lhs.which() << ", " << rhs.which() << ", " << print(chained) << "\n";
+		return {op, lhs, rhs};
+	}
+};
+BOOST_PHOENIX_ADAPT_CALLABLE(make_array_constr, make_array_constr_f, 3)
+
+
+// assign expression factory
+struct make_assign_f {
+	assign_op operator()(std::string lhs, operand const& rhs) const {
+		return {lhs, rhs};
+	}
+};
+BOOST_PHOENIX_ADAPT_CALLABLE(make_assign, make_assign_f, 2)
+
+
+inline Array semicol_fn(const Array & UNUSED(a), const Array &b) {
+	return b;
+}
+
+
+
+
+
+
 
 
 } // namespace ast

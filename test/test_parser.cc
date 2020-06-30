@@ -70,6 +70,8 @@ void test_ast_cases() {
 //	// logical
 //	test_ast("1 * 2**1 * 3", "bin(bin(1, bin(2, 1)), 3)");
 
+	test_ast("[1,2,3] + [3,2,1]", "+(,(,(1, 2), 3), ,(,(3, 2), 1))");
+
 	// program and assignment
 	test_ast("a=1;a+4", "<;>(a = 1, <+>(`a`, 4))");
 
@@ -125,8 +127,14 @@ void test_expr(std::string expr) {
 	std::cout << print_vec(vres, 3*vec_size);
 }
 
+
 void test_expression() {
+	/**
+	 * TODO:
+	 * - reference solution computed manualy
+	 */
 	test_expr("1 * v1 + cs1 * v2");
+	test_expr("[1,2,3] * v1 + cs1 * v2");
 }
 
 

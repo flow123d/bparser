@@ -50,6 +50,13 @@ int main() {
 	Array res11 = func<_exp_>(vb);
 	Array res20 = t_const + tc;
 	Array res21 = func<_exp_>(tc);
+
+	Array res31;
+	res31.append(s_const);
+	res31.append(s_const);
+	res31.append(sa);
+	BP_ASSERT(res31.shape() == Shape({3}));
+
 //
 //	// broadcasting, slicing
 //	Array res30 = vb + sa(None());
