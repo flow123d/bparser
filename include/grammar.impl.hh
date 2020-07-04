@@ -53,6 +53,10 @@ ast::binary_fn::function_type append_to() {
 	return static_cast<ast::binary_fn::function_type>(&(Array::append_to));
 }
 
+ast::binary_fn::function_type none_const() {
+	return static_cast<ast::binary_fn::function_type>(&(Array::append_to));
+}
+
 
 struct expectation_handler {
     template <typename>
@@ -82,37 +86,52 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 		program,
 		definition,
 		assignment,
-		logical,
-		equality,
-		relational,
-		additive,
-		multiplicative,
-		factor,
-		signed_opt,
-		signed_unary,
-		array_slice,
-		unary,
-		binary,
-		array_constr,
-		array_constr_list,
+		primary,
 		enclosure,
-		literal,
-		atom
+		expression,
+		conditional_expr,
+		or_test,
+		and_test,
+		not_test,
+		not_test_op,
+		comparison,
+		additive_expr,
+		multiplicative_expr,
+		signed_optional,
+		signed_expr,
+		power,
+        array_constr,
+		array_constr_list,
+		literal_double,
+		literal_int,
+		const_lit,
+		subscriptable,
+		subscription,
+		slicing,
+		slice_item,
+		proper_slice,
+		index_array,
+		index_array_list,
+		call,
+		unary_call,
+		binary_call
     	;
     qi::rule<Iterator, std::string()>
     	identifier;
     qi::symbols<typename std::iterator_traits<Iterator>::value_type, ast::unary_fn>
-        ufunc, unary_op;
+        ufunc, unary_op, not_op;
     qi::symbols<typename std::iterator_traits<Iterator>::value_type, ast::binary_fn>
         bfunc,
 		additive_op,
 		multiplicative_op,
-		logical_op,
+		and_op, or_op,
 		relational_op,
 		equality_op,
-		power,
+		power_op,
 		semicol_op,
 		array_constr_comma_op;
+
+    //ast::unary_op none_const, true_const, false_const;
 
 
     grammar()
@@ -163,13 +182,14 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
         multiplicative_op.add
             BN_FN("*", binary_array<_mul_>())
             BN_FN("/", binary_array<_div_>())
+			BN_FN("//", binary_array<_mod_>())	// floor division
+			BN_FN("@", binary_array<_mod_>())	// python
             BN_FN("%", binary_array<_mod_>())
             ;
 
-        logical_op.add
-            BN_FN("&&", binary_array<_and_>())
-            BN_FN("||", binary_array<_or_>())
-            ;
+        and_op.add BN_FN("and", binary_array<_and_>());
+        or_op.add BN_FN("or", binary_array<_or_>());
+        not_op.add UN_FN("not", unary_array<_neg_>());
 
         ast::binary_fn append_to_fn = {",", append_to()};
         array_constr_comma_op.add(",", append_to_fn);
@@ -186,11 +206,18 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
             BN_FN("!=", binary_array<_ne_>())
             ;
 
-        power.add
+        power_op.add
             BN_FN("**", binary_array<_pow_>())
             ;
 
+
+
         ast::binary_fn semicol_fn = {";", &ast::semicol_fn};
+        ast::ternary_fn if_else_fn = {"ifelse", &Array::if_else};
+        ast::ternary_fn slice_fn = {"slice", &Array::slice};
+        auto none_const = ast::make_const("None", &Array::none_array);
+        auto true_const = ast::make_const("True", &Array::true_array);
+        auto false_const = ast::make_const("False", &Array::false_array);
 
 
 
@@ -199,7 +226,7 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 //			;
 
         /**
-         * Syntax notes:
+         * Spirit:Qi syntax notes:
          * lhs >> rhs : match if rhs follows lhs
          * lhs > rhs  : same, but throw if there is lhs and no rhs
          * -(expr)     : optional rule
@@ -208,6 +235,8 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
          *
          * Every rule have associated type it produce in  AST given as
          * second template parameter to qi::rule.
+         *
+         * !! If the attribute operation in bracket is specified for the part of the rule it must by specified for all its terms.
          *
          * boost::phoenix try to treat given type as the default type
          * of the associated storage (called attribute)
@@ -220,127 +249,90 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
          */
 #define RULE(r_name) r_name.name(#r_name); r_name
 
-//	    RULE(op_rule_t, definition);
-//	    RULE(op_rule_t, assignment);
-//	    RULE(op_rule_t, logical);
-//	    RULE(op_rule_t, equality);
-//	    RULE(op_rule_t, relational);
-//	    RULE(op_rule_t, additive);
-//	    RULE(op_rule_t, multiplicative);
-//	    RULE(op_rule_t, factor);
-//	    RULE(op_rule_t, signed_slice_opt);
-//	    RULE(op_rule_t, signed_slice);
-//	    RULE(op_rule_t, array_slice);
-//	    RULE(op_rule_t, unary);
-//	    RULE(op_rule_t, binary);
-//	    RULE(var_rule_t, variable);
-//	    RULE(op_rule_t, array_constr);
-//	    RULE(op_rule_t, array_constr_list);
-//	    RULE(op_rule_t, primary);
-
-
-        RULE(program) =
-        	(definition >> ';' >> logical)[qi::_val = ast::make_binary(semicol_fn, qi::_1,  qi::_2)]
-			| logical[qi::_val = qi::_1]
-        //program = -(definition > ';')[qi::_val = _1] >> logical[qi::_val = _1]
-			;
-
-
-
-
-        //program = definition.alias();
-        RULE(definition) =
-        		assignment[qi::_val = qi::_1] >> *(';' >> assignment)[qi::_val = ast::make_binary(semicol_fn, qi::_val, qi::_1)]
-				;
-
-        RULE(assignment) =
-        	(identifier >> '=' > logical)[qi::_val = ast::make_assign(qi::_1, qi::_2)]
-			;
-
-        //program = logical.alias();
-
-        RULE(logical) =
-            equality[qi::_val = qi::_1] >> *(logical_op > equality)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)]
-            ;
-
-        RULE(equality) =
-            relational[qi::_val = qi::_1] >> -(equality_op > relational)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)]
-            ;
-
-        RULE(relational) =
-            additive[qi::_val = qi::_1] >> -(relational_op > additive)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)]
-            ;
-
-        RULE(additive) =
-            multiplicative[qi::_val = qi::_1] >> *(additive_op > multiplicative)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)]
-            ;
-
-        RULE(multiplicative) =
-            factor[qi::_val = qi::_1] >> *(multiplicative_op > factor)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)]
-            ;
-
-        RULE(factor) =
-        		signed_opt[qi::_val = qi::_1] >> -(power > factor)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)]
-            ;
-        // '-(...)' optional
-
-        //signed_slice_opt = primary.alias();
-
-        RULE(signed_opt) = signed_unary | atom;
-
-        RULE(signed_unary) =
-        		(unary_op > atom)[qi::_val = ast::make_unary(qi::_1, qi::_2)];
-
-        //RULE(array_slice) = primary.alias();
         /**
-
-        // indexed array
-        array_slice = primary >> '[' >> slice_list >> ']';
-**/
-
-        //------------------
-        RULE(unary) =
-            (qi::no_skip[ufunc > '('] > logical > ')')[qi::_val = ast::make_unary(qi::_1, qi::_2)]
-            ;
-
-        RULE(binary) =
-            (qi::no_skip[bfunc > '('] > logical > ',' > logical > ')')[qi::_val = ast::make_binary(qi::_1, qi::_2, qi::_3)]
-            ;
-
-
-        RULE(array_constr) = '[' >> array_constr_list >> ']';
-
-        RULE(array_constr_list) =
-        		additive[qi::_val = ast::make_binary(append_to_fn, ast::make_none(0), qi::_1)]
-						 >> *(array_constr_comma_op > additive)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)]
-		        ;
-
-
-        RULE(enclosure) = ('(' > logical > ')') | binary | unary | array_constr;
-
-        RULE(identifier) =
-        		qi::raw[qi::lexeme[(qi::alpha | '_') >> *(qi::alnum | '_')]];
-
-        RULE(literal) = qi::double_;
-
-        RULE(atom) =
-        	enclosure
-			| literal
-            | identifier
-			;
-
-
-
-        /*
-         * grammar
-- potrebuji zpetne identifikovat vektorove a maticove promennepotential reconstruction
-- problem odlisit co je konstrukce pole a so jsou indexy
-- array >> multiindex
-- array = (array_var | array_constr)
-
-sin([1,2,3])[0]
-         *
+         * BParser grammar tries to follow Python 3.8 grammar.
+         * In order to perform all array operations statically before compilation
+         * we restrict indexing and slicing to int literals instead of general expressions.
          */
+
+        RULE(program) = (definition >> ';' >> expression)[qi::_val = ast::make_binary(semicol_fn, qi::_1,  qi::_2)]
+						| expression[qi::_val = qi::_1];
+
+        RULE(definition) = assignment[qi::_val = qi::_1] >> *(';' >> assignment)
+        		           [qi::_val = ast::make_binary(semicol_fn, qi::_val, qi::_1)];
+
+        RULE(assignment) = (identifier >> '=' > expression)[qi::_val = ast::make_assign(qi::_1, qi::_2)];
+
+
+
+
+
+
+
+
+        RULE(expression) = conditional_expr.alias();
+        RULE(conditional_expr) = or_test[qi::_val = qi::_1] >>
+        		-(qi::lit("if") > or_test > qi::lit("else") > expression)
+        		[qi::_val = ast::make_ternary(if_else_fn, qi::_val, qi::_1, qi::_2)];
+        // conditional expr can only be used in the 'else' branch !!
+        RULE(or_test)  = and_test[qi::_val = qi::_1] >>
+        				*(or_op > and_test)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)];
+        RULE(and_test) = not_test[qi::_val = qi::_1] >>
+        				*(and_op > not_test)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)];
+		RULE(not_test) = comparison | not_test_op;
+		RULE(not_test_op) = (not_op > not_test)[qi::_val = ast::make_unary(qi::_1, qi::_2)];
+
+        RULE(comparison) = additive_expr[qi::_val = qi::_1] >>
+        		  	    -(relational_op > additive_expr)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)];
+        RULE(additive_expr) = multiplicative_expr[qi::_val = qi::_1] >>
+        				*(additive_op > multiplicative_expr)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)];
+
+        RULE(multiplicative_expr) = signed_optional[qi::_val = qi::_1] >>
+        				*(multiplicative_op > signed_optional)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)];
+
+        RULE(signed_optional) = signed_expr | power;
+        RULE(signed_expr) = (unary_op > signed_optional)[qi::_val = ast::make_unary(qi::_1, qi::_2)];
+        RULE(power) = primary[qi::_val = qi::_1] >>
+        				-(power_op > signed_optional)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)];
+
+
+
+        RULE(primary) = literal_double | subscriptable | const_lit | subscription;
+        RULE(subscriptable) = array_constr | enclosure | call | identifier;
+
+        RULE(call) = binary_call | unary_call;
+        RULE(unary_call) = (qi::no_skip[ufunc > '('] > expression > ')')
+        		           [qi::_val = ast::make_unary(qi::_1, qi::_2)];
+        RULE(binary_call) = (qi::no_skip[bfunc > '('] > expression > ',' > expression > ')')
+        		            [qi::_val = ast::make_binary(qi::_1, qi::_2, qi::_3)];
+
+
+        RULE(subscription) = subscriptable > '[' >> slicing > ']';
+        RULE(slicing) = slice_item >> *(',' > slice_item);
+        RULE(slice_item) = index_array.alias();// | proper_slice;
+
+        RULE(const_lit) =
+        		qi::lit("None")[qi::_val = none_const] |
+				qi::lit("True")[qi::_val = true_const] |
+				qi::lit("False")[qi::_val = false_const];
+
+        RULE(enclosure) = '(' > expression > ')';
+        RULE(array_constr) = '[' > array_constr_list > ']';
+        RULE(array_constr_list) = expression[qi::_val = ast::make_binary(append_to_fn, none_const, qi::_1)]
+						 >> *(array_constr_comma_op > expression)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)];
+
+        RULE(literal_double) = qi::double_; // includes ints
+        RULE(identifier) = qi::raw[qi::lexeme[(qi::alpha | '_') >> *(qi::alnum | '_')]];
+
+
+//        RULE(proper_slice) = (-(literal_int) >> qi::lit(':') >> -(literal_int) >> -( qi::lit(':') >> literal_int))
+//        		[qi::_val = ast::make_ternary(slice_fn, qi::_1, qi::_2, qi::_3)];
+        RULE(index_array) = '[' > index_array_list > ']';
+        RULE(index_array_list) = literal_int[qi::_val = ast::make_binary(append_to_fn, none_const, qi::_1)]
+						 >> *(array_constr_comma_op > literal_int)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)];
+        RULE(literal_int) = qi::int_;
+
+
 
         // TODO:
         // Problem that we allow logical expressions even where
@@ -358,14 +350,26 @@ sin([1,2,3])[0]
             program,
             boost::phoenix::bind(boost::phoenix::ref(err_handler), qi::_3, qi::_2, qi::_4));
 
-//        qi::debug(additive);
-//        qi::debug(variable);
-//        qi::debug(unary);
-//        qi::debug(binary);
-//        qi::debug(logical);
+//        qi::debug(program);
+//        qi::debug(expression);
+//        qi::debug(conditional_expr);
+//        qi::debug(or_test);
+//        qi::debug(and_test);
+//        qi::debug(not_test);
+//        qi::debug(comparison);
+//        qi::debug(signed_optional);
+//        qi::debug(power);
+//
 //        qi::debug(primary);
-//        qi::debug(array_constr);
-//        qi::debug(array_constr_list);
+//        qi::debug(subscription);
+//        qi::debug(call);
+//        qi::debug(unary_call);
+//        qi::debug(binary_call);
+//        qi::debug(enclosure);
+//        qi::debug(primary);
+//        qi::debug(identifier);
+//        qi::debug(literal_double);
+//        qi::debug(const_lit);
 
     }
 };

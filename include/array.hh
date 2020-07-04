@@ -304,6 +304,14 @@ public:
 		return Array();
 	}
 
+	static Array true_array(const Array &UNUSED(a)) {
+		return constant({1});
+	}
+
+	static Array false_array(const Array &UNUSED(a)) {
+		return constant({0});
+	}
+
 	template <class T>
 	static Array unary_op(const Array &a) {
 		Array result(a.shape_);
@@ -337,6 +345,31 @@ public:
 		return result;
 	}
 
+
+	static Array if_else(const Array &a, const Array &b, const Array&c) {
+		Shape res_shape = MultiIdxRange::broadcast_common_shape(a.shape_, b.shape_);
+		res_shape = MultiIdxRange::broadcast_common_shape(res_shape, c.shape_);
+		MultiIdxRange a_range = a.range().broadcast(res_shape);
+		MultiIdxRange b_range = b.range().broadcast(res_shape);
+		MultiIdxRange c_range = c.range().broadcast(res_shape);
+
+		MultiIdx a_idx(a_range);
+		MultiIdx b_idx(b_range);
+		MultiIdx c_idx(c_range);
+		Array result(res_shape);
+		for(;;) {
+			BP_ASSERT(a_idx.linear_subidx() == b_idx.linear_subidx());
+			BP_ASSERT(a_idx.linear_subidx() == c_idx.linear_subidx());
+			result.elements_[a_idx.linear_subidx()] =
+					details::ScalarNode::create_ifelse(
+							a.elements_[a_idx.linear_idx()],
+							b.elements_[b_idx.linear_idx()],
+							c.elements_[c_idx.linear_idx()]);
+			if (!a_idx.inc() || !b_idx.inc() || !c_idx.inc()) break;
+		}
+		return result;
+
+	}
 
 	// Const scalar node.
 	static Array constant(const std::vector<double> &values, Shape shape = {}) {
@@ -486,6 +519,11 @@ public:
 	}
 
 
+
+	static Array slice(const Array &a, const Array &b, const Array&c) {
+		Array res = concatenate({a,b,c});
+		return res;  // TODO: make valid implementation
+	}
 
 	/**
 	 * Constructors.

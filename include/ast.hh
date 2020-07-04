@@ -39,21 +39,28 @@ struct binary_fn {
 	function_type fn;
 };
 
+struct ternary_fn {
+	typedef Array (*function_type)(const Array &, const Array &, const Array &);
+	std::string repr;
+	function_type fn;
+};
 
 
 
-struct nil {};
+//struct nil {};
 struct unary_op;
 struct binary_op;
+struct ternary_op;
 struct assign_op;
 
 // clang-format off
 typedef boost::variant<
-        nil // can't happen!
-        , double
+        //nil, // can't happen!  TODO: remove
+        double
         , std::string
         , boost::recursive_wrapper<unary_op>
         , boost::recursive_wrapper<binary_op>
+		, boost::recursive_wrapper<ternary_op>
 		, boost::recursive_wrapper<assign_op>
         >
 operand;
@@ -62,16 +69,22 @@ operand;
 /// a function: Array -> Array
 struct unary_op {
     unary_fn op;
-    operand rhs;
+    operand first;
 };
 
 /// a function: (Array, Array) -> Array
 struct binary_op {
     binary_fn op;
-    operand lhs;
-    operand rhs;
+    operand first;
+    operand second;
 };
 
+struct ternary_op {
+	ternary_fn op;
+	operand first;
+	operand second;
+	operand third;
+};
 
 struct assign_op {
     std::string lhs;
@@ -98,11 +111,9 @@ struct print_vis : public boost::static_visitor<> {
     : recursive_(recursive)
     {}
 
-
-
-    void operator()(nil UNUSED(x)) const {
-    	ss << "NULL";
-    }
+//    void operator()(nil UNUSED(x)) const {
+//    	ss << "NULL";
+//    }
 
     void operator()(double x) const
     {ss << x; }
@@ -114,15 +125,25 @@ struct print_vis : public boost::static_visitor<> {
 
     void operator()(unary_op const &x) const {
     	ss << x.op.repr <<  "(";
-    	if (recursive_) boost::apply_visitor(*this, x.rhs);
+    	if (recursive_) boost::apply_visitor(*this, x.first);
     	ss << ")";
     }
 
     void operator()(binary_op const &x) const {
     	ss << x.op.repr << "(";
-    	if (recursive_) boost::apply_visitor(*this, x.lhs);
+    	if (recursive_) boost::apply_visitor(*this, x.first);
     	ss << "_";
-    	if (recursive_) boost::apply_visitor(*this, x.rhs);
+    	if (recursive_) boost::apply_visitor(*this, x.second);
+    	ss << ")";
+    }
+
+    void operator()(ternary_op const &x) const {
+    	ss << x.op.repr << "(";
+    	if (recursive_) boost::apply_visitor(*this, x.first);
+    	ss << "_";
+    	if (recursive_) boost::apply_visitor(*this, x.second);
+    	ss << "_";
+    	if (recursive_) boost::apply_visitor(*this, x.third);
     	ss << ")";
     }
 
@@ -182,10 +203,10 @@ struct make_array {
     : symbols(symbols)
     {}
 
-    result_type operator()(nil) const {
-        BOOST_ASSERT(0);
-        return Array();
-    }
+//    result_type operator()(nil) const {
+//        BOOST_ASSERT(0);
+//        return Array();
+//    }
 
     result_type operator()(double x) const
     {
@@ -203,13 +224,20 @@ struct make_array {
     }
 
     result_type operator()(unary_op const &x) const {
-        return x.op.fn(boost::apply_visitor(*this, x.rhs));
+        return x.op.fn(boost::apply_visitor(*this, x.first));
     }
 
     result_type operator()(binary_op const &x) const {
-    	result_type lhs = boost::apply_visitor(*this, x.lhs);
-    	result_type rhs = boost::apply_visitor(*this, x.rhs);
-        return x.op.fn(lhs, rhs);
+    	result_type first = boost::apply_visitor(*this, x.first);
+    	result_type second = boost::apply_visitor(*this, x.second);
+        return x.op.fn(first, second);
+    }
+
+    result_type operator()(ternary_op const &x) const {
+    	result_type first = boost::apply_visitor(*this, x.first);
+    	result_type second = boost::apply_visitor(*this, x.second);
+    	result_type third = boost::apply_visitor(*this, x.third);
+        return x.op.fn(first, second, third);
     }
 
     result_type operator()(assign_op x) const  {
@@ -240,10 +268,10 @@ struct get_variables {
     {}
 
 
-    result_type operator()(nil) const {
-        BOOST_ASSERT(0);
-        return {};
-    }
+//    result_type operator()(nil) const {
+//        BOOST_ASSERT(0);
+//        return {};
+//    }
 
     result_type operator()(double UNUSED(x)) const
     { return {}; }
@@ -258,13 +286,23 @@ struct get_variables {
 
 
     result_type operator()(unary_op const &x) const {
-        return boost::apply_visitor(*this, x.rhs);
+        return boost::apply_visitor(*this, x.first);
     }
 
     result_type operator()(binary_op const &x) const {
-    	result_type lhs = boost::apply_visitor(*this, x.lhs);
-    	result_type rhs = boost::apply_visitor(*this, x.rhs);
-        return merge(lhs, rhs);
+    	result_type first = boost::apply_visitor(*this, x.first);
+    	result_type second = boost::apply_visitor(*this, x.second);
+        return merge(first, second);
+    }
+
+    result_type operator()(ternary_op const &x) const {
+        return merge(
+        		merge(
+        				boost::apply_visitor(*this, x.first),
+						boost::apply_visitor(*this, x.second)
+				),
+				boost::apply_visitor(*this, x.third));
+
     }
 
     result_type operator()(assign_op const &x) const  {
@@ -286,69 +324,71 @@ private:
 /**
  * Remove 'nil' nodes from AST. Should not be necessary.
  */
-struct remove_nil {
-    typedef operand result_type;
-
-
-    explicit remove_nil()
-    {}
-
-
-    result_type operator()(nil) const {
-        return nil();
-    }
-
-    result_type operator()(double x) const
-    { return x; }
-
-    result_type operator()(std::string const &x) const  {
-        return x;
-    }
-
-
-    result_type operator()(unary_op const &x) const {
-    	result_type rhs = boost::apply_visitor(*this, x.rhs);
-    	if (rhs.type() != typeid(nil)) return x;
-    	return rhs;
-    }
-
-    result_type operator()(binary_op const &x) const {
-    	result_type lhs = boost::apply_visitor(*this, x.lhs);
-    	if (lhs.type() != typeid(nil)) return x;
-    	result_type rhs = boost::apply_visitor(*this, x.rhs);
-    	if (rhs.type() != typeid(nil)) return x;
-    	return rhs;
-    }
-
-    result_type operator()(assign_op const &x) const  {
-    	BP_ASSERT(x.lhs.size() > 0);
-    	result_type rhs = boost::apply_visitor(*this, x.rhs);
-    	BP_ASSERT(rhs.type() != typeid(nil));
-        return x;
-    }
-
-
-
-};
+//struct remove_nil {
+//    typedef operand result_type;
+//
+//
+//    explicit remove_nil()
+//    {}
+//
+//
+//    result_type operator()(nil) const {
+//        return nil();
+//    }
+//
+//    result_type operator()(double x) const
+//    { return x; }
+//
+//    result_type operator()(std::string const &x) const  {
+//        return x;
+//    }
+//
+//
+//    result_type operator()(unary_op const &x) const {
+//    	result_type first = boost::apply_visitor(*this, x.first);
+//    	if (first.type() != typeid(nil)) return x;
+//    	return first;
+//    }
+//
+//    result_type operator()(binary_op const &x) const {
+//    	result_type first = boost::apply_visitor(*this, x.first);
+//    	if (first.type() != typeid(nil)) return x;
+//    	result_type second = boost::apply_visitor(*this, x.second);
+//    	if (second.type() != typeid(nil)) return x;
+//    	return second;
+//    }
+//
+//    result_type operator()(assign_op const &x) const  {
+//    	BP_ASSERT(x.lhs.size() > 0);
+//    	result_type rhs = boost::apply_visitor(*this, x.rhs);
+//    	BP_ASSERT(rhs.type() != typeid(nil));
+//        return x;
+//    }
+//
+//
+//
+//};
 
 
 
 // unary expression factory
-struct make_none_f {
-	unary_op operator()(int UNUSED(any)) const {
+struct make_const_f {
+	// In order to minimize number of differrent operations in AST
+	// the nulary 'fn' must in fact accept single double argument.
+	unary_op operator()(std::string repr, ast::unary_fn::function_type fn) const {
 		// std::cout << "make_none " << "\n";
-		ast::unary_fn none_array_fn = {"None", &(Array::none_array)};
-		return {none_array_fn, 0.0};
+		ast::unary_fn nulary_fn = {repr, fn};
+		return {nulary_fn, 0.0}; // unused argument 0.0
 	}
 };
-BOOST_PHOENIX_ADAPT_CALLABLE(make_none, make_none_f, 1)
+BOOST_PHOENIX_ADAPT_CALLABLE(make_const, make_const_f, 2)
 
 
 // unary expression factory
 struct make_unary_f {
-	unary_op operator()(unary_fn op, operand const& lhs) const {
-		// std::cout << "make_unary: " << lhs.which() << "\n";
-		return {op, lhs};
+	unary_op operator()(unary_fn op, operand const& first) const {
+		// std::cout << "make_unary: " << first.which() << "\n";
+		return {op, first};
 	}
 };
 BOOST_PHOENIX_ADAPT_CALLABLE(make_unary, make_unary_f, 2)
@@ -356,27 +396,36 @@ BOOST_PHOENIX_ADAPT_CALLABLE(make_unary, make_unary_f, 2)
 
 // binary expression factory
 struct make_binary_f {
-	binary_op operator()(binary_fn op, operand const& lhs, operand const& rhs) const {
-		// std::cout << "make_binary: " << lhs.which() << ", " << rhs.which() << "\n";
-		return {op, lhs, rhs};
+	binary_op operator()(binary_fn op, operand const& first, operand const& second) const {
+		// std::cout << "make_binary: " << first.which() << ", " << second.which() << "\n";
+		return {op, first, second};
 	}
 };
 BOOST_PHOENIX_ADAPT_CALLABLE(make_binary, make_binary_f, 3)
 
+struct make_ternary_f {
+	ternary_op operator()(ternary_fn op, operand const& first, operand const& second, operand const& third) const {
+		// std::cout << "make_binary: " << first.which() << ", " << second.which() << "\n";
+		return {op, first, second, third};
+	}
+};
+BOOST_PHOENIX_ADAPT_CALLABLE(make_ternary, make_ternary_f, 4)
+
+
 
 struct make_relational_f {
-	binary_op operator()(binary_fn op, operand const& lhs, operand const& rhs, operand const& chained) const {
-		std::cout << "make_binary: " << lhs.which() << ", " << rhs.which() << ", " << print(chained) << "\n";
-		return {op, lhs, rhs};
+	binary_op operator()(binary_fn op, operand const& first, operand const& second, operand const& chained) const {
+		std::cout << "make_binary: " << first.which() << ", " << second.which() << ", " << print(chained) << "\n";
+		return {op, first, second};
 	}
 };
 BOOST_PHOENIX_ADAPT_CALLABLE(make_relational, make_relational_f, 4)
 
 
 struct make_array_constr_f {
-	binary_op operator()(binary_fn op, operand const& lhs, operand const& rhs, operand const& chained) const {
-		std::cout << "make_array_constr: " << lhs.which() << ", " << rhs.which() << ", " << print(chained) << "\n";
-		return {op, lhs, rhs};
+	binary_op operator()(binary_fn op, operand const& first, operand const& second, operand const& chained) const {
+		std::cout << "make_array_constr: " << first.which() << ", " << second.which() << ", " << print(chained) << "\n";
+		return {op, first, second};
 	}
 };
 BOOST_PHOENIX_ADAPT_CALLABLE(make_array_constr, make_array_constr_f, 3)
@@ -389,6 +438,8 @@ struct make_assign_f {
 	}
 };
 BOOST_PHOENIX_ADAPT_CALLABLE(make_assign, make_assign_f, 2)
+
+
 
 
 inline Array semicol_fn(const Array & UNUSED(a), const Array &b) {

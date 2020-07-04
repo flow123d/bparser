@@ -69,8 +69,9 @@ void test_primary() {
 	EXPECT(match("1.23e2", "123"));
 	EXPECT(match("1.23e-2", "0.0123" ));
 	EXPECT(match("-1.23e-2","-(0.0123)" ));
+	EXPECT(match("(-1.23e-2)","-(0.0123)" ));
 
-	EXPECT(match("sin(1)", "sin(1)"));
+	EXPECT(match("sin(1.0)", "sin(1)"));
 	EXPECT(fail("sin (2)", "Expected \"(\" at \" (2)\""));
 	EXPECT(match("atan2(1, 2)", "atan2(1_2)"));
 	EXPECT(match("e", "`e`"));
@@ -94,7 +95,7 @@ void test_operators() {
 	EXPECT(match("2 * -5", "*(2_-(5))")); // should possibly fail
 	//ASSERT(! match("-1.23e-2 * -5.3"));
 	//ASSERT(! match("+ -1.23e-2"));
-	EXPECT(fail("+ + -1.23e-2", "Expected <atom> at \"+ -1.23e-2\""));
+	EXPECT(match("+ + -1.23e-2", "+(+(-(0.0123)))"));
 }
 
 void test_arrays() {
