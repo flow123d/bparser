@@ -76,8 +76,8 @@ void test_primary() {
 	// enclosure
 	EXPECT(match("(-1.23e-2)", "-(0.0123)" ));
 	EXPECT(match("(((-1.23e-2)))", "-(0.0123)" ));
-	EXPECT(match("((1 + (2 + 3)))", "+(1_+(2_3))" ));
-	EXPECT(match("((1 + (2 + 3)))", "+(1_+(2_3))" ));
+	EXPECT(match("((1 + (2 + 3)))", "+(1,+(2,3))" ));
+	EXPECT(match("((1 + (2 + 3)))", "+(1,+(2,3))" ));
 	EXPECT(fail("(1 + 1))", "")); // unbalanced
 	EXPECT(fail("((1 + 1)", "")); // unbalanced
 	EXPECT(fail("(1)(2)", "")); // missing operator
@@ -85,7 +85,7 @@ void test_primary() {
 	// call
 	EXPECT(match("sin(1.0)", "sin(1)"));
 	EXPECT(fail("sin (2)", "Expected \"(\" at \" (2)\""));
-	EXPECT(match("atan2(1, 2)", "atan2(1_2)"));
+	EXPECT(match("atan2(1, 2)", "atan2(1,2)"));
 
 	// identifier
 	EXPECT(match("e", "`e`"));
@@ -105,9 +105,9 @@ void test_primary() {
 
 void test_arrays() {
 	std::cout << "\ntest_arrays" << "\n";
-	EXPECT(match("[1, 2, 3]", ",(,(,(None(0)_1)_2)_3)"));
-	EXPECT(match("[[1+1, 2*1], [3/1, 4%2]]", ",(,(None(0)_,(,(None(0)_+(1_1))_*(2_1)))_,(,(None(0)_/(3_1))_%(4_2)))"));
-	EXPECT(match("[[1+1, 2*1], [3/1]]", ",(,(None(0)_,(,(None(0)_+(1_1))_*(2_1)))_,(None(0)_/(3_1)))")); // should fail later in conversion of AST to Arrays
+	EXPECT(match("[1, 2, 3]", "array(1,2,3)"));
+	EXPECT(match("[[1+1, 2*1], [3/1, 4%2]]", "array(array(+(1,1),*(2,1)),array(/(3,1),%(4,2)))"));
+	EXPECT(match("[[1+1, 2*1], [3/1]]", "array(array(+(1,1),*(2,1)),array(/(3,1)))")); // should fail later in conversion of AST to Arrays
 	//EXPECT(match("[1, 2, 3] + sin([xyz])", ""));
 	EXPECT(fail("[(]]", ""));
 	//EXPECT(fail("(1)[1]", ""));
@@ -122,45 +122,45 @@ void test_arrays() {
 void test_subscription() {
 	std::cout << "\ntest_subscription" << "\n";
 	// simple indices
-	EXPECT(match("a[1]", "[](`a`_,(None(0)_1))"));
+	EXPECT(match("a[1]", "[](`a`,1)"));
 	EXPECT(fail("a[1][2]", "Parsing failed at: [2]"));
-	EXPECT(match("a[1, 2]", "[](`a`_,(,(None(0)_1)_2))"));
-	EXPECT(match("a[1, 2, 3]", "[](`a`_,(,(,(None(0)_1)_2)_3))"));
-	EXPECT(match("a[None]", "[](`a`_,(None(0)_None(0)))"));
-	EXPECT(match("a[None, -1]", "[](`a`_,(None(0)_,(None(0)_-1)))"));
+	EXPECT(match("a[1, 2]", "[](`a`,1,2)"));
+	EXPECT(match("a[1, 2, 3]", "[](`a`,1,2,3)"));
+	EXPECT(match("a[None]", "[](`a`,None(0))"));
+	EXPECT(match("a[None, -1]", "[](`a`,None(0),-1)"));
 
 	// slices
-	EXPECT(match("a[0:1:-1]", "[](`a`_,(None(0)_slice(0_1_-1)))"));
-	EXPECT(match("a[:]", "[](`a`_,(None(0)_slice(None(0)_None(0)_None(0)))))"));
-	EXPECT(match("a[:1]", "[](`a`_,(None(0)_slice(None(0)_1_None(0)))))"));
-	EXPECT(match("a[1:]", "[](`a`_,(None(0)_slice(1_None(0)_None(0)))))"));
-    EXPECT(match("a[:-1:1]", "[](`a`_,(None(0)_slice(None(0)_-1_None(1)))))"));
+	EXPECT(match("a[0:1:-1]", "[](`a`,slice(0,1,-1))"));
+	EXPECT(match("a[:]", "[](`a`,slice(None(0),None(0),None(0)))"));
+	EXPECT(match("a[:1]", "[](`a`,slice(None(0),1,None(0)))"));
+	EXPECT(match("a[1:]", "[](`a`,slice(1,None(0),None(0)))"));
+    EXPECT(match("a[:-1:1]", "[](`a`,slice(None(0),-1,1))"));
 	// EXPECT(match("a[::]", "[](`a`_,(None(0)_slice(None(0)_None(0)_None(0)))))")); // forbidden due to problems with grammar
 	EXPECT(fail("a[::]", "Expected \"]\" at \":]\""));
 
 	EXPECT(fail("a[:::]", "Expected \"]\" at \"::]\""));
 
 	// multiple slices
-	EXPECT(match("a[:, 1]", "[](`a`_,(,(None(0)_slice(None(0)_None(0)_None(0)))_1))"));
-	EXPECT(match("a[:, None]", "[](`a`_,(,(None(0)_slice(None(0)_None(0)_None(0)))_None(0)))"));
+	EXPECT(match("a[:, 1]", "[](`a`,slice(None(0),None(0),None(0)),1)"));
+	EXPECT(match("a[:, None]", "[](`a`,slice(None(0),None(0),None(0)),None(0))"));
 
 
 	//array index
-	EXPECT(match("a[[1,3]]", ""));
+	EXPECT(match("a[[1,3]]", "[](`a`,array(1,3))"));
 }
 
 void test_operators() {
 	std::cout << "\ntest_operators" << "\n";
 	EXPECT(match("-1.23e-2", "-(0.0123)" ));
-	EXPECT(match("2 * 5", "*(2_5)"));
-	EXPECT(match("-2 * 3 / 4", "/(*(-(2)_3)_4)"));
-	EXPECT(match("1 * 5 / 4 + 3 - 4", "-(+(/(*(1_5)_4)_3)_4)"));
-	EXPECT(match("4 + 2 * (3 - 4)", "+(4_*(2_-(3_4)))"));
+	EXPECT(match("2 * 5", "*(2,5)"));
+	EXPECT(match("-2 * 3 / 4", "/(*(-(2),3),4)"));
+	EXPECT(match("1 * 5 / 4 + 3 - 4", "-(+(/(*(1,5),4),3),4)"));
+	EXPECT(match("4 + 2 * (3 - 4)", "+(4,*(2,-(3,4)))"));
 	EXPECT(match("((123))", "123"));
-	EXPECT(match("((123)*1)/4", "/(*(123_1)_4)"));
-	EXPECT(match("(1*2) / (3*4)", "/(*(1_2)_*(3_4))"));
+	EXPECT(match("((123)*1)/4", "/(*(123,1),4)"));
+	EXPECT(match("(1*2) / (3*4)", "/(*(1,2),*(3,4))"));
 
-	EXPECT(match("2 * -5", "*(2_-(5))")); // should possibly fail
+	EXPECT(match("2 * -5", "*(2,-(5))")); // should possibly fail
 	//ASSERT(! match("-1.23e-2 * -5.3"));
 	//ASSERT(! match("+ -1.23e-2"));
 	EXPECT(match("+ + -1.23e-2", "+(+(-(0.0123)))"));

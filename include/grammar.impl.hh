@@ -8,6 +8,7 @@
 #ifndef INCLUDE_GRAMMAR_IMPL_HH_
 #define INCLUDE_GRAMMAR_IMPL_HH_
 
+
 #include <iostream>
 #include <cmath>
 #include <iostream>
@@ -40,22 +41,22 @@ namespace parser {
 
 
 template<class T>
-ast::unary_fn::function_type unary_array() {
-	return static_cast<ast::unary_fn::function_type>(&(Array::unary_op<T>));
+ArrayFn unary_array() {
+	return static_cast<ArrayFnUnary>(&(Array::unary_op<T>));
 }
 
 template<class T>
-ast::binary_fn::function_type binary_array() {
-	return static_cast<ast::binary_fn::function_type>(&(Array::binary_op<T>));
+ArrayFn binary_array() {
+	return static_cast<ArrayFnBinary>(&(Array::binary_op<T>));
 }
 
-ast::binary_fn::function_type append_to() {
-	return static_cast<ast::binary_fn::function_type>(&(Array::append_to));
-}
-
-ast::binary_fn::function_type none_const() {
-	return static_cast<ast::binary_fn::function_type>(&(Array::append_to));
-}
+//ast::binary_fn::function_type append_to() {
+//	return static_cast<ast::binary_fn::function_type>(&(Array::append_to));
+//}
+//
+//ast::binary_fn::function_type none_const() {
+//	return static_cast<ast::binary_fn::function_type>(&(Array::append_to));
+//}
 
 
 struct expectation_handler {
@@ -119,9 +120,9 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
     	;
     qi::rule<Iterator, std::string()>
     	identifier;
-    qi::symbols<typename std::iterator_traits<Iterator>::value_type, ast::unary_fn>
+    qi::symbols<typename std::iterator_traits<Iterator>::value_type, NamedArrayFn>
         ufunc, unary_op, not_op;
-    qi::symbols<typename std::iterator_traits<Iterator>::value_type, ast::binary_fn>
+    qi::symbols<typename std::iterator_traits<Iterator>::value_type, NamedArrayFn>
         bfunc,
 		additive_op,
 		multiplicative_op,
@@ -129,9 +130,7 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 		relational_op,
 		equality_op,
 		power_op,
-		semicol_op,
-		array_constr_comma_op;
-
+		semicol_op;
     //ast::unary_op none_const, true_const, false_const;
 
 
@@ -192,9 +191,8 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
         or_op.add BN_FN("or", binary_array<_or_>());
         not_op.add UN_FN("not", unary_array<_neg_>());
 
-        ast::binary_fn append_to_fn = {",", append_to()};
-        ast::binary_fn subscribe_fn = {"[]", &Array::subscribe};
-        array_constr_comma_op.add(",", append_to_fn);
+
+        NamedArrayFn subscribe_fn = {"[]", &Array::subscribe};
 
 //        array_slice_comma_op.add
 //			BN_FN(",", &append_slice_list);
@@ -213,10 +211,10 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
             ;
 
 
-
-        ast::binary_fn semicol_fn = {";", &ast::semicol_fn};
-        ast::ternary_fn if_else_fn = {"ifelse", &Array::if_else};
-        ast::ternary_fn slice_fn = {"slice", &Array::slice};
+        NamedArrayFn array_fn = {"array", &Array::stack_zero};
+        NamedArrayFn semicol_fn = {";", &ast::semicol_fn};
+        NamedArrayFn if_else_fn = {"ifelse", &Array::if_else};
+        NamedArrayFn slice_fn = {"slice", &Array::slice};
         //auto head_const = ast::make_const("Head", &Array::empty_array);
         auto none_const = ast::make_const("None", &Array::none_array);
         auto true_const = ast::make_const("True", &Array::true_array);
@@ -309,8 +307,8 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 
         RULE(subscription) = subscriptable[qi::_val = qi::_1] >> -('[' >> slicing > ']')
                              [qi::_val = ast::make_binary(subscribe_fn, qi::_val, qi::_1)];
-        RULE(slicing) = slice_item[qi::_val = ast::make_binary(append_to_fn, none_const, qi::_1)]
-					    >> *(array_constr_comma_op > slice_item)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)];;
+        RULE(slicing) = slice_item[qi::_val = ast::make_list(0.0, qi::_1)]
+					    >> *("," > slice_item)[qi::_val = ast::make_list(qi::_val, qi::_1)];;
         RULE(slice_item) =  index_array | proper_slice | const_idx;
 
         RULE(const_lit) =
@@ -319,9 +317,10 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 				qi::lit("False")[qi::_val = false_const];
 
         RULE(enclosure) = '(' > expression > ')';
-        RULE(array_constr) = '[' > array_constr_list > ']';
-        RULE(array_constr_list) = expression[qi::_val = ast::make_binary(append_to_fn, none_const, qi::_1)]
-						 >> *(array_constr_comma_op > expression)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)];
+        RULE(array_constr) = ('[' > array_constr_list > ']')
+        		             [qi::_val = ast::make_unary(array_fn, qi::_1)];
+        RULE(array_constr_list) = expression[qi::_val = ast::make_list(0.0, qi::_1)]
+						 >> *(',' > expression)[qi::_val = ast::make_list(qi::_val, qi::_1)];
 
         RULE(literal_double) = qi::double_; // includes ints
         RULE(identifier) = qi::raw[qi::lexeme[(qi::alpha | '_') >> *(qi::alnum | '_')]];
@@ -334,9 +333,10 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 										ast::treat_optional(qi::_1),
 										ast::treat_optional(qi::_2),
 										ast::treat_optional(qi::_3))];
-        RULE(index_array) = '[' > index_array_list > ']';
-        RULE(index_array_list) = const_idx[qi::_val = ast::make_binary(append_to_fn, none_const, qi::_1)]
-						 >> *(array_constr_comma_op > const_idx)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)];
+        RULE(index_array) = ('[' > index_array_list > ']')		// todo: index_array
+		[qi::_val = ast::make_unary(array_fn, qi::_1)];
+        RULE(index_array_list) = const_idx[qi::_val = ast::make_list(0.0, qi::_1)]
+						 >> *("," > const_idx)[qi::_val = ast::make_list(qi::_val, qi::_1)];
         RULE(const_idx) = literal_int |  const_lit;
         RULE(literal_int) = qi::int_;
 

@@ -35,225 +35,224 @@ inline std::string print_shape(const Shape s) {
 
 
 
-namespace details {
+
+
+/**
+ * Defines extraction from an Array
+ * or broadcasting of smaller Array to the larger shape.
+ *
+ * Consider MultiIdxRange as a mapping from multiindices of an SOURCE array
+ * to the multiindices of the DESTINATION array, i.e.
+ *
+ * 		destination[ MIR[ i, j, k, ...] ] = source[i,j,k]
+ *
+ * MIR mapping is given as tensor product:
+ * MIR[i, j, k, ... ] =  ranges_[0][i], ranges_[1][j], ranges_[2][k], ...
+ *
+ * Shape of destination array is given by  [ranges_[0].size(), ranges_[1].size(), ...]
+ * Shape of the source array is given by full_shape_. The values of the ranges_ must be compatible:
+ *
+ *       ranges_[i][:] < full_shape_[i]
+ */
+struct MultiIdxRange {
 
 	/**
-	 * Defines extraction from an Array
-	 * or broadcasting of smaller Array to the larger shape.
-	 *
-	 * Consider MultiIdxRange as a mapping from multiindices of an SOURCE array
-	 * to the multiindices of the DESTINATION array, i.e.
-	 *
-	 * 		destination[ MIR[ i, j, k, ...] ] = source[i,j,k]
-	 *
-	 * MIR mapping is given as tensor product:
-	 * MIR[i, j, k, ... ] =  ranges_[0][i], ranges_[1][j], ranges_[2][k], ...
-	 *
-	 * Shape of destination array is given by  [ranges_[0].size(), ranges_[1].size(), ...]
-	 * Shape of the source array is given by full_shape_. The values of the ranges_ must be compatible:
-	 *
-	 *       ranges_[i][:] < full_shape_[i]
+	 * Identical MIR mapping fro given shape.
 	 */
-	struct MultiIdxRange {
+	MultiIdxRange(Shape shape)
+	: full_shape_(shape) {
+		// full range
+		for(uint axis=0; axis < full_shape_.size(); ++axis) {
+			std::vector<uint> full(full_shape_[axis]);
+			for(uint i=0; i < full_shape_[axis]; ++i) full[i] = i;
+			ranges_.push_back(full);
+		}
+	}
 
-		/**
-		 * Identical MIR mapping fro given shape.
-		 */
-		MultiIdxRange(Shape shape)
-		: full_shape_(shape) {
-			// full range
-			for(uint axis=0; axis < full_shape_.size(); ++axis) {
-				std::vector<uint> full(full_shape_[axis]);
-				for(uint i=0; i < full_shape_[axis]; ++i) full[i] = i;
-				ranges_.push_back(full);
+//		void subset(const std::vector<IndexSubset> &range_spec) {
+//			ASSERT(range_spec.size() == full_shape_.size());
+//			for(IndexSubset subset : range_spec)
+//				ranges_.push_back(subset.idx_list(full_shape_));
+//		}
+
+
+	/**
+	 * Broadcast the full range to the given shape.
+	 * 1. pad full shape from left by ones
+	 * 2. extend dimensions equal to one to the given shape
+	 * 3. other dimensions must match given shape
+	 * TODO: make all methods either pure or inplace
+	 */
+	MultiIdxRange broadcast(Shape other) const {
+		int n_pad = other.size() - full_shape_.size();
+		if ( n_pad < 0) {
+			Throw() << "Broadcast from longer shape " << full_shape_.size()
+				<< " to shorter shape " << other.size() << ".\n";
+		}
+		Shape res_shape(n_pad, 1);
+		res_shape.insert(res_shape.end(), full_shape_.begin(), full_shape_.end());
+
+		MultiIdxRange result(other);
+		for(uint ax=0; ax < res_shape.size(); ++ax) {
+			if (res_shape[ax] == 1)
+				result.ranges_[ax] = std::vector<uint>(other[ax], 0);
+			else if (res_shape[ax] != other[ax]) {
+				Throw() << "Broadcast from " << res_shape[ax] << " to "
+					<< other[ax] << " in axis " << ax;
+			}
+
+		}
+		return result;
+	}
+
+	/**
+	 * Compute destination shape of symmetric broadcasting of two shapes.
+	 *
+	 * Set new SHAPE:
+	 * - SHAPE length is maximum of shape 'a' and shape 'b' lengths.
+	 * - pad 'a' and 'b' from left by ones up to common size
+	 * - set SHAPE[i] to a[i] if b[i]==1
+	 * - set SHAPE[i] to b[i] if a[i]==1 or a[i] == b[i]
+	 */
+	static Shape broadcast_common_shape(Shape a, Shape b) {
+		uint res_size = std::max(a.size(), b.size());
+		Shape res(res_size);
+		a.insert(a.begin(), res_size - a.size(), 1);
+		b.insert(b.begin(), res_size - b.size(), 1);
+		for(uint i=0; i<res_size; ++i) {
+			if (a[i]==1) a[i] = b[i];
+			if (b[i]==1) b[i] = a[i];
+			if (a[i] == b[i]) {
+				res[i] =  a[i];
+			} else {
+				Throw() << "Common broadcast between " << a[i] << " and "
+				   << b[i] << " in axis " << i;
 			}
 		}
+		return res;
+	}
 
-	//		void subset(const std::vector<IndexSubset> &range_spec) {
-	//			ASSERT(range_spec.size() == full_shape_.size());
-	//			for(IndexSubset subset : range_spec)
-	//				ranges_.push_back(subset.idx_list(full_shape_));
-	//		}
+	/**
+	 * Insert 'axis' with 'dimension' into range
+	 * E.g. for axis=1, dimension=2:
+	 * range [[1,2],[2,5,6]] -> [[1,2],[0,1],[2,5,6]]
+	 *
+	 * TODO: return copy
+	 */
+	void insert_axis(uint axis, uint dimension=1) {
+		full_shape_.insert(full_shape_.begin() + axis, dimension);
+		ranges_.insert(ranges_.begin() + axis, std::vector<uint>());
+		for(uint i=0; i<dimension; ++i)
+			ranges_[axis].push_back(i);
+	}
 
+	/**
+	 * Shift the range in given 'axis' by given 'shift'.
+	 * TODO: return copy
+	 */
+	void shift_axis(uint axis, uint shift) {
+		for(uint &el : ranges_[axis]) el +=shift;
+	}
 
-		/**
-		 * Broadcast the full range to the given shape.
-		 * 1. pad full shape from left by ones
-		 * 2. extend dimensions equal to one to the given shape
-		 * 3. other dimensions must match given shape
-		 * TODO: make all methods either pure or inplace
-		 */
-		MultiIdxRange broadcast(Shape other) const {
-			int n_pad = other.size() - full_shape_.size();
-			if ( n_pad < 0) {
-				Throw() << "Broadcast from longer shape " << full_shape_.size()
-					<< " to shorter shape " << other.size() << ".\n";
-			}
-			Shape res_shape(n_pad, 1);
-			res_shape.insert(res_shape.end(), full_shape_.begin(), full_shape_.end());
-
-			MultiIdxRange result(other);
-			for(uint ax=0; ax < res_shape.size(); ++ax) {
-				if (res_shape[ax] == 1)
-					result.ranges_[ax] = std::vector<uint>(other[ax], 0);
-				else if (res_shape[ax] != other[ax]) {
-					Throw() << "Broadcast from " << res_shape[ax] << " to "
-					    << other[ax] << " in axis " << ax;
-				}
-
-			}
-			return result;
-		}
-
-		/**
-		 * Compute destination shape of symmetric broadcasting of two shapes.
-		 *
-		 * Set new SHAPE:
-		 * - SHAPE length is maximum of shape 'a' and shape 'b' lengths.
-		 * - pad 'a' and 'b' from left by ones up to common size
-		 * - set SHAPE[i] to a[i] if b[i]==1
-		 * - set SHAPE[i] to b[i] if a[i]==1 or a[i] == b[i]
-		 */
-		static Shape broadcast_common_shape(Shape a, Shape b) {
-			uint res_size = std::max(a.size(), b.size());
-			Shape res(res_size);
-			a.insert(a.begin(), res_size - a.size(), 1);
-			b.insert(b.begin(), res_size - b.size(), 1);
-			for(uint i=0; i<res_size; ++i) {
-				if (a[i]==1) a[i] = b[i];
-				if (b[i]==1) b[i] = a[i];
-				if (a[i] == b[i]) {
-					res[i] =  a[i];
-				} else {
-					Throw() << "Common broadcast between " << a[i] << " and "
-					   << b[i] << " in axis " << i;
-				}
-			}
-			return res;
-		}
-
-		/**
-		 * Insert 'axis' with 'dimension' into range
-		 * E.g. for axis=1, dimension=2:
-		 * range [[1,2],[2,5,6]] -> [[1,2],[0,1],[2,5,6]]
-		 *
-		 * TODO: return copy
-		 */
-		void insert_axis(uint axis, uint dimension=1) {
-			full_shape_.insert(full_shape_.begin() + axis, dimension);
-			ranges_.insert(ranges_.begin() + axis, std::vector<uint>());
-			for(uint i=0; i<dimension; ++i)
-				ranges_[axis].push_back(i);
-		}
-
-		/**
-		 * Shift the range in given 'axis' by given 'shift'.
-		 * TODO: return copy
-		 */
-		void shift_axis(uint axis, uint shift) {
-			for(uint &el : ranges_[axis]) el +=shift;
-		}
-
-		/**
-		 * repeat last element in 'axis' range
-		 */
+	/**
+	 * repeat last element in 'axis' range
+	 */
 //		void pad(uint n_items, uint axis) {
 //			ranges_[axis].insert(ranges_[axis].end(), n_items, ranges_[axis].back());
 //		}
 
 
-		/**
-		 * Produce shape of the destination array.
-		 */
-		Shape sub_shape() const {
-			Shape shape(ranges_.size());
-			for(uint axis=0; axis < shape.size(); ++axis)
-				shape[axis] = ranges_[axis].size();
-			return shape;
-		}
+	/**
+	 * Produce shape of the destination array.
+	 */
+	Shape sub_shape() const {
+		Shape shape(ranges_.size());
+		for(uint axis=0; axis < shape.size(); ++axis)
+			shape[axis] = ranges_[axis].size();
+		return shape;
+	}
 
-		/// For every axes, indices extracted from the source Array.
-		std::vector<std::vector<uint>> ranges_;
-		/// Shape of the source Array of the range.
-		Shape full_shape_;
+	/// For every axes, indices extracted from the source Array.
+	std::vector<std::vector<uint>> ranges_;
+	/// Shape of the source Array of the range.
+	Shape full_shape_;
 
-	};
+};
 
+
+/**
+ * Multiindex
+ *
+ * - keeps range
+ * - supports iteration over the destination shape of the range
+ * - provides linear index to the source and destination array
+ */
+struct MultiIdx {
+
+	typedef std::vector<uint> VecUint;
 
 	/**
-	 * Multiindex
-	 *
-	 * - keeps range
-	 * - supports iteration over the destination shape of the range
-	 * - provides linear index to the source and destination array
+	 * Constructor.
+	 * Set range, set multiindex to element zero.
 	 */
-	struct MultiIdx {
+	MultiIdx(MultiIdxRange range)
+	: range_(range), indices_(range.full_shape_.size(), 0)
+	{}
 
-		typedef std::vector<uint> VecUint;
-
-		/**
-		 * Constructor.
-		 * Set range, set multiindex to element zero.
-		 */
-		MultiIdx(MultiIdxRange range)
-		: range_(range), indices_(range.full_shape_.size(), 0)
-		{}
-
-		/**
-		 * Increment the multiindex.
-		 * Last index runs fastest.
-		 */
-		bool inc() {
-			for(uint axis = indices_.size(); axis > 0 ; )
-			{
-				--axis;
-				indices_[axis] += 1;
-				if (indices_[axis] == range_.ranges_[axis].size()) {
-					indices_[axis] = 0;
-					continue;
-				} else {
-					return true;
-				}
+	/**
+	 * Increment the multiindex.
+	 * Last index runs fastest.
+	 */
+	bool inc() {
+		for(uint axis = indices_.size(); axis > 0 ; )
+		{
+			--axis;
+			indices_[axis] += 1;
+			if (indices_[axis] == range_.ranges_[axis].size()) {
+				indices_[axis] = 0;
+				continue;
+			} else {
+				return true;
 			}
-			return false;
 		}
+		return false;
+	}
 
-		/**
-		 * Linear index into source array of the range.
-		 * Last index runs fastest.
-		 */
-		uint linear_idx() {
-			uint lin_idx = 0;
-			for(uint axis = 0; axis < indices_.size(); ++axis) {
-				lin_idx *= range_.full_shape_[axis];
-				lin_idx += range_.ranges_[axis][indices_[axis]];
-			}
-			return lin_idx;
+	/**
+	 * Linear index into source array of the range.
+	 * Last index runs fastest.
+	 */
+	uint linear_idx() {
+		uint lin_idx = 0;
+		for(uint axis = 0; axis < indices_.size(); ++axis) {
+			lin_idx *= range_.full_shape_[axis];
+			lin_idx += range_.ranges_[axis][indices_[axis]];
 		}
+		return lin_idx;
+	}
 
-		/**
-		 * Linear index into destination array of the range.
-		 * Last index runs fastest.
-		 */
-		uint linear_subidx() {
-			uint lin_idx = 0;
-			for(uint axis = 0; axis < indices_.size(); ++axis) {
-				lin_idx *= range_.ranges_[axis].size();
-				lin_idx += indices_[axis];
-			}
-			return lin_idx;
+	/**
+	 * Linear index into destination array of the range.
+	 * Last index runs fastest.
+	 */
+	uint linear_subidx() {
+		uint lin_idx = 0;
+		for(uint axis = 0; axis < indices_.size(); ++axis) {
+			lin_idx *= range_.ranges_[axis].size();
+			lin_idx += indices_[axis];
 		}
+		return lin_idx;
+	}
 
 
 
-		// List of indices for every axis.
-		MultiIdxRange range_;
-		// Indirect multiindex index into range_.
-		// Last index runs fastest.
-		VecUint indices_;
-	};
+	// List of indices for every axis.
+	MultiIdxRange range_;
+	// Indirect multiindex index into range_.
+	// Last index runs fastest.
+	VecUint indices_;
+};
 
-} // namespace details
 
 
 
@@ -274,8 +273,6 @@ struct Array {
 public:
 
 	typedef details::ScalarNode * ScalarNodePtr;
-	typedef details::MultiIdxRange MultiIdxRange;
-	typedef details::MultiIdx MultiIdx;
 
 	inline static constexpr double none_value() {
 		return std::numeric_limits<double>::signaling_NaN();
@@ -422,7 +419,9 @@ public:
 	}
 
 
-
+	static Array stack_zero(const std::vector<Array> &list) {
+		return stack(list);
+	}
 
 	static Array stack(const std::vector<Array> &list, int axis=0) {
 		/**

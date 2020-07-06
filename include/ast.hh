@@ -9,7 +9,7 @@
 #include <boost/spirit/home/qi/domain.hpp>
 
 #include "config.hh"
-#include "array.hh"
+#include "array_ast_interface.hh"
 
 /**
  * TODO:
@@ -37,30 +37,29 @@ namespace ast {
  */
 
 
-struct unary_fn {
-	typedef Array (*function_type)(const Array &);
-	std::string repr;
-	function_type fn;
-};
-
-struct binary_fn {
-	typedef Array (*function_type)(const Array &, const Array &);
-	std::string repr;
-	function_type fn;
-};
-
-struct ternary_fn {
-	typedef Array (*function_type)(const Array &, const Array &, const Array &);
-	std::string repr;
-	function_type fn;
-};
+//struct unary_fn {
+//	typedef Array (*function_type)(const Array &);
+//	std::string repr;
+//	function_type fn;
+//};
+//
+//struct binary_fn {
+//	typedef Array (*function_type)(const Array &, const Array &);
+//	std::string repr;
+//	function_type fn;
+//};
+//
+//struct ternary_fn {
+//	typedef Array (*function_type)(const Array &, const Array &, const Array &);
+//	std::string repr;
+//	function_type fn;
+//};
 
 
 
 //struct nil {};
-struct unary_op;
-struct binary_op;
-struct ternary_op;
+struct list;
+struct call;
 struct assign_op;
 
 // clang-format off
@@ -68,33 +67,34 @@ typedef boost::variant<
         //nil, // can't happen!  TODO: remove
         double
         , std::string
-        , boost::recursive_wrapper<unary_op>
-        , boost::recursive_wrapper<binary_op>
-		, boost::recursive_wrapper<ternary_op>
+        , boost::recursive_wrapper<list>
+        , boost::recursive_wrapper<call>
 		, boost::recursive_wrapper<assign_op>
         >
 operand;
 // clang-format on
 
 /// a function: Array -> Array
-struct unary_op {
-    unary_fn op;
-    operand first;
+struct list {
+    operand head; // list; non-list type marks end of recursion
+    operand item; //
 };
+//list origin_list(operand x) {
+//	return list(x, 0.0);
+//}
 
 /// a function: (Array, Array) -> Array
-struct binary_op {
-    binary_fn op;
-    operand first;
-    operand second;
+struct call {
+    NamedArrayFn op;
+    operand arg_list;
 };
 
-struct ternary_op {
-	ternary_fn op;
-	operand first;
-	operand second;
-	operand third;
-};
+//struct ternary_op {
+//	ternary_fn op;
+//	operand first;
+//	operand second;
+//	operand third;
+//};
 
 struct assign_op {
     std::string lhs;
@@ -133,28 +133,18 @@ struct print_vis : public boost::static_visitor<> {
     }
 
 
-    void operator()(unary_op const &x) const {
+    void operator()(call const &x) const {
     	ss << x.op.repr <<  "(";
-    	if (recursive_) boost::apply_visitor(*this, x.first);
+    	if (recursive_) boost::apply_visitor(*this, x.arg_list);
     	ss << ")";
     }
 
-    void operator()(binary_op const &x) const {
-    	ss << x.op.repr << "(";
-    	if (recursive_) boost::apply_visitor(*this, x.first);
-    	ss << "_";
-    	if (recursive_) boost::apply_visitor(*this, x.second);
-    	ss << ")";
-    }
-
-    void operator()(ternary_op const &x) const {
-    	ss << x.op.repr << "(";
-    	if (recursive_) boost::apply_visitor(*this, x.first);
-    	ss << "_";
-    	if (recursive_) boost::apply_visitor(*this, x.second);
-    	ss << "_";
-    	if (recursive_) boost::apply_visitor(*this, x.third);
-    	ss << ")";
+    void operator()(list x) const {
+    	if (boost::get<list>(&x.head)) {
+    		if (recursive_) boost::apply_visitor(*this, x.head);
+    		ss << ",";
+    	}
+    	if (recursive_) boost::apply_visitor(*this, x.item);
     }
 
     void operator()(assign_op const &x) const  {
@@ -206,7 +196,7 @@ BOOST_PHOENIX_ADAPT_CALLABLE(lazy_print, print_ast_t, 1)
  * into scalar operations.
  */
 struct make_array {
-    typedef Array result_type;
+    typedef ArrayList result_type;
     mutable std::map<std::string, Array> symbols;
 
     explicit make_array(std::map<std::string, Array> const &symbols)
@@ -220,40 +210,41 @@ struct make_array {
 
     result_type operator()(double x) const
     {
-    	return Array::constant({x});
+    	return {Array::constant({x})};
     }
 
     result_type operator()(std::string const &x) const  {
         auto it = symbols.find(x);
         if (it != symbols.end()) {
-        	return it->second;
+        	return {it->second};
         } else {
         	// We do not call visitor for the assign_op's 'lhs' so this must be error.
         	Throw() << "Undefined var: " << x << "\n";
         }
     }
 
-    result_type operator()(unary_op const &x) const {
-        return x.op.fn(boost::apply_visitor(*this, x.first));
+    result_type operator()(call const &x) const {
+    	ArrayList al = boost::apply_visitor(*this, x.arg_list);
+    	Array a = boost::apply_visitor(call_visitor(al), x.op.fn);
+    	return {a};
     }
 
-    result_type operator()(binary_op const &x) const {
-    	result_type first = boost::apply_visitor(*this, x.first);
-    	result_type second = boost::apply_visitor(*this, x.second);
-        return x.op.fn(first, second);
+    result_type operator()(list x) const {
+    	ArrayList alist;
+    	if (boost::get<list>(&x.head)) {
+    		 alist = boost::apply_visitor(*this, x.head);
+    	}
+    	ArrayList aitem = boost::apply_visitor(*this, x.item);
+    	BP_ASSERT(aitem.size() == 1);
+    	alist.push_back(aitem[0]);
+    	return alist;
     }
 
-    result_type operator()(ternary_op const &x) const {
-    	result_type first = boost::apply_visitor(*this, x.first);
-    	result_type second = boost::apply_visitor(*this, x.second);
-    	result_type third = boost::apply_visitor(*this, x.third);
-        return x.op.fn(first, second, third);
-    }
 
     result_type operator()(assign_op x) const  {
     	//std::string& var_name = boos);
     	result_type rhs = boost::apply_visitor(*this, x.rhs);
-    	symbols[x.lhs] = rhs;
+    	symbols[x.lhs] = rhs[0];
         return rhs;
     }
 
@@ -295,24 +286,18 @@ struct get_variables {
     }
 
 
-    result_type operator()(unary_op const &x) const {
-        return boost::apply_visitor(*this, x.first);
+    result_type operator()(call const &x) const {
+    	return boost::apply_visitor(*this, x.arg_list);
     }
 
-    result_type operator()(binary_op const &x) const {
-    	result_type first = boost::apply_visitor(*this, x.first);
-    	result_type second = boost::apply_visitor(*this, x.second);
-        return merge(first, second);
-    }
-
-    result_type operator()(ternary_op const &x) const {
-        return merge(
-        		merge(
-        				boost::apply_visitor(*this, x.first),
-						boost::apply_visitor(*this, x.second)
-				),
-				boost::apply_visitor(*this, x.third));
-
+    result_type operator()(list x) const {
+    	result_type item_vars = boost::apply_visitor(*this, x.item);
+    	if (boost::get<list>(&x.head)) {
+    		result_type head_vars = boost::apply_visitor(*this, x.head);
+    		return merge(head_vars, item_vars);
+    	} else {
+    		return item_vars;
+    	}
     }
 
     result_type operator()(assign_op const &x) const  {
@@ -385,8 +370,8 @@ private:
 struct make_const_f {
 	// In order to minimize number of differrent operations in AST
 	// the nulary 'fn' must in fact accept single double argument.
-	unary_op operator()(std::string repr, ast::unary_fn::function_type fn) const {
-		ast::unary_fn nulary_fn = {repr, fn};
+	call operator()(std::string repr, ArrayFnUnary fn) const {
+		NamedArrayFn nulary_fn = {repr, fn};
 		return {nulary_fn, 0.0}; // unused argument 0.0
 	}
 };
@@ -395,9 +380,10 @@ BOOST_PHOENIX_ADAPT_CALLABLE(make_const, make_const_f, 2)
 
 // unary expression factory
 struct make_unary_f {
-	unary_op operator()(unary_fn op, operand const& first) const {
+	call operator()(NamedArrayFn op, operand const& first) const {
 		// std::cout << "make_unary: " << first.which() << "\n";
-		return {op, first};
+		list l = {0.0, first};
+		return {op, l};
 	}
 };
 BOOST_PHOENIX_ADAPT_CALLABLE(make_unary, make_unary_f, 2)
@@ -405,39 +391,43 @@ BOOST_PHOENIX_ADAPT_CALLABLE(make_unary, make_unary_f, 2)
 
 // binary expression factory
 struct make_binary_f {
-	binary_op operator()(binary_fn op, operand const& first, operand const& second) const {
+	call operator()(NamedArrayFn op, operand const& first, operand const& second) const {
 		// std::cout << "make_binary: " << first.which() << ", " << second.which() << "\n";
-		return {op, first, second};
+		list l1 = {0.0, first};
+		list l2 = {l1, second};
+		return {op, l2};
 	}
 };
 BOOST_PHOENIX_ADAPT_CALLABLE(make_binary, make_binary_f, 3)
 
 struct make_ternary_f {
-	ternary_op operator()(ternary_fn op, operand const& first, operand const& second, operand const& third) const {
+	call operator()(NamedArrayFn op, operand const& first, operand const& second, operand const& third) const {
 		// std::cout << "make_binary: " << first.which() << ", " << second.which() << "\n";
-		return {op, first, second, third};
+		list l1 = {0.0, first};
+		list l2 = {l1, second};
+		list l3 = {l2, third};
+		return {op, l3};
 	}
 };
 BOOST_PHOENIX_ADAPT_CALLABLE(make_ternary, make_ternary_f, 4)
 
 
 
-struct make_relational_f {
-	binary_op operator()(binary_fn op, operand const& first, operand const& second, operand const& chained) const {
-		std::cout << "make_binary: " << first.which() << ", " << second.which() << ", " << print(chained) << "\n";
-		return {op, first, second};
-	}
-};
-BOOST_PHOENIX_ADAPT_CALLABLE(make_relational, make_relational_f, 4)
+//struct make_relational_f {
+//	binary_op operator()(binary_fn op, operand const& first, operand const& second, operand const& chained) const {
+//		std::cout << "make_binary: " << first.which() << ", " << second.which() << ", " << print(chained) << "\n";
+//		return {op, first, second};
+//	}
+//};
+//BOOST_PHOENIX_ADAPT_CALLABLE(make_relational, make_relational_f, 4)
 
 
-struct make_array_constr_f {
-	binary_op operator()(binary_fn op, operand const& first, operand const& second, operand const& chained) const {
-		std::cout << "make_array_constr: " << first.which() << ", " << second.which() << ", " << print(chained) << "\n";
-		return {op, first, second};
+struct make_list_f {
+	list operator()(operand const& head, operand const& item) const {
+		return {head, item};
 	}
 };
-BOOST_PHOENIX_ADAPT_CALLABLE(make_array_constr, make_array_constr_f, 3)
+BOOST_PHOENIX_ADAPT_CALLABLE(make_list, make_list_f, 2)
 
 
 // assign expression factory
