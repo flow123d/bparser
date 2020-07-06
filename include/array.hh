@@ -300,6 +300,10 @@ public:
 		return a;
 	}
 
+	static Array empty_array(const Array &UNUSED(a)) {
+		return Array();
+	}
+
 	static Array none_array(const Array &UNUSED(a)) {
 		return Array();
 	}
@@ -522,6 +526,11 @@ public:
 
 	static Array slice(const Array &a, const Array &b, const Array&c) {
 		Array res = concatenate({a,b,c});
+		return res;  // TODO: make valid implementation
+	}
+
+	static Array subscribe(const Array &a, const Array &slice) {
+		Array res = concatenate({a,slice});
 		return res;  // TODO: make valid implementation
 	}
 

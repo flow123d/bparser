@@ -64,39 +64,44 @@ bool fail(std::string s, std::string ref_msg) {
 
 void test_primary() {
 	std::cout << "\ntest_primary" << "\n";
+	// literal_double
 	EXPECT(match("123", "123"));
 	EXPECT(match("123.0", "123"));
 	EXPECT(match("1.23e2", "123"));
 	EXPECT(match("1.23e-2", "0.0123" ));
-	EXPECT(match("-1.23e-2","-(0.0123)" ));
-	EXPECT(match("(-1.23e-2)","-(0.0123)" ));
 
+	// array constructor
+	// in separate test
+
+	// enclosure
+	EXPECT(match("(-1.23e-2)", "-(0.0123)" ));
+	EXPECT(match("(((-1.23e-2)))", "-(0.0123)" ));
+	EXPECT(match("((1 + (2 + 3)))", "+(1_+(2_3))" ));
+	EXPECT(match("((1 + (2 + 3)))", "+(1_+(2_3))" ));
+	EXPECT(fail("(1 + 1))", "")); // unbalanced
+	EXPECT(fail("((1 + 1)", "")); // unbalanced
+	EXPECT(fail("(1)(2)", "")); // missing operator
+
+	// call
 	EXPECT(match("sin(1.0)", "sin(1)"));
 	EXPECT(fail("sin (2)", "Expected \"(\" at \" (2)\""));
 	EXPECT(match("atan2(1, 2)", "atan2(1_2)"));
-	EXPECT(match("e", "`e`"));
 
-	EXPECT(match("__anything", "`__anything`"));
+	// identifier
+	EXPECT(match("e", "`e`"));
+	EXPECT(match("__anything1_2", "`__anything1_2`"));
 	EXPECT(fail("1anything", "Parsing failed at: anything"));
 	EXPECT(fail("1 1", "Parsing failed at: 1"));
 	EXPECT(fail("a n y", "Parsing failed at: n y"));
+
+	// const_lit
+	EXPECT(match("True", "True(0)"));
+	EXPECT(match("False", "False(0)"));
+	EXPECT(match("None", "None(0)"));
+
+	// subscription in separate test
 }
 
-void test_operators() {
-	std::cout << "\ntest_operators" << "\n";
-	EXPECT(match("2 * 5", "*(2_5)"));
-	EXPECT(match("-2 * 3 / 4", "/(*(-(2)_3)_4)"));
-	EXPECT(match("1 * 5 / 4 + 3 - 4", "-(+(/(*(1_5)_4)_3)_4)"));
-	EXPECT(match("4 + 2 * (3 - 4)", "+(4_*(2_-(3_4)))"));
-	EXPECT(match("((123))", "123"));
-	EXPECT(match("((123)*1)/4", "/(*(123_1)_4)"));
-	EXPECT(match("(1*2) / (3*4)", "/(*(1_2)_*(3_4))"));
-
-	EXPECT(match("2 * -5", "*(2_-(5))")); // should possibly fail
-	//ASSERT(! match("-1.23e-2 * -5.3"));
-	//ASSERT(! match("+ -1.23e-2"));
-	EXPECT(match("+ + -1.23e-2", "+(+(-(0.0123)))"));
-}
 
 void test_arrays() {
 	std::cout << "\ntest_arrays" << "\n";
@@ -114,11 +119,63 @@ void test_arrays() {
 }
 
 
+void test_subscription() {
+	std::cout << "\ntest_subscription" << "\n";
+	// simple indices
+	EXPECT(match("a[1]", "[](`a`_,(None(0)_1))"));
+	EXPECT(fail("a[1][2]", "Parsing failed at: [2]"));
+	EXPECT(match("a[1, 2]", "[](`a`_,(,(None(0)_1)_2))"));
+	EXPECT(match("a[1, 2, 3]", "[](`a`_,(,(,(None(0)_1)_2)_3))"));
+	EXPECT(match("a[None]", "[](`a`_,(None(0)_None(0)))"));
+	EXPECT(match("a[None, -1]", "[](`a`_,(None(0)_,(None(0)_-1)))"));
+
+	// slices
+	EXPECT(match("a[0:1:-1]", "[](`a`_,(None(0)_slice(0_1_-1)))"));
+	EXPECT(match("a[:]", "[](`a`_,(None(0)_slice(None(0)_None(0)_None(0)))))"));
+	EXPECT(match("a[:1]", "[](`a`_,(None(0)_slice(None(0)_1_None(0)))))"));
+	EXPECT(match("a[1:]", "[](`a`_,(None(0)_slice(1_None(0)_None(0)))))"));
+    EXPECT(match("a[:-1:1]", "[](`a`_,(None(0)_slice(None(0)_-1_None(1)))))"));
+	// EXPECT(match("a[::]", "[](`a`_,(None(0)_slice(None(0)_None(0)_None(0)))))")); // forbidden due to problems with grammar
+	EXPECT(fail("a[::]", "Expected \"]\" at \":]\""));
+
+	EXPECT(fail("a[:::]", "Expected \"]\" at \"::]\""));
+
+	// multiple slices
+	EXPECT(match("a[:, 1]", "[](`a`_,(,(None(0)_slice(None(0)_None(0)_None(0)))_1))"));
+	EXPECT(match("a[:, None]", "[](`a`_,(,(None(0)_slice(None(0)_None(0)_None(0)))_None(0)))"));
+
+
+	//array index
+	EXPECT(match("a[[1,3]]", ""));
+}
+
+void test_operators() {
+	std::cout << "\ntest_operators" << "\n";
+	EXPECT(match("-1.23e-2", "-(0.0123)" ));
+	EXPECT(match("2 * 5", "*(2_5)"));
+	EXPECT(match("-2 * 3 / 4", "/(*(-(2)_3)_4)"));
+	EXPECT(match("1 * 5 / 4 + 3 - 4", "-(+(/(*(1_5)_4)_3)_4)"));
+	EXPECT(match("4 + 2 * (3 - 4)", "+(4_*(2_-(3_4)))"));
+	EXPECT(match("((123))", "123"));
+	EXPECT(match("((123)*1)/4", "/(*(123_1)_4)"));
+	EXPECT(match("(1*2) / (3*4)", "/(*(1_2)_*(3_4))"));
+
+	EXPECT(match("2 * -5", "*(2_-(5))")); // should possibly fail
+	//ASSERT(! match("-1.23e-2 * -5.3"));
+	//ASSERT(! match("+ -1.23e-2"));
+	EXPECT(match("+ + -1.23e-2", "+(+(-(0.0123)))"));
+}
+
+
+
 int main()
 {
 	test_primary();
-	test_operators();
 	test_arrays();
+	test_subscription();
+
+	test_operators();
+
 }
 
 

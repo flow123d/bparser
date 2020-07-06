@@ -11,7 +11,19 @@
 #include "config.hh"
 #include "array.hh"
 
-
+/**
+ * TODO:
+ * 1. We can possibly skip the AST step and directly create ScalareNode DAG through the Array interface.
+ *    This needs some modifications:
+ *    a) We have to find a way to have PHOENIX delayed functions replaced by delayed methdos of some object.
+ *       We need one class (PrintBackend) to print AST of the grammar.
+ *       We need another class (EvalBackend) to construct the evaluation DAG through the Arrays.
+ *    b) Delayed construction of ValueNodes from identifiers. The `get_variables` step has to be replaced
+ *       by storing uncomplete ValueNodes as a map in EvalBackend.
+ *
+ *    Advantage: less code, possible small speed gain in parsing phase
+ *    Disadvantage: no mean for AST processing, however AST is a bit arbitrary structure anyway
+ */
 
 namespace bparser {
 
@@ -23,8 +35,6 @@ namespace ast {
  * - Finally the AST is translated into DAG (direct acyclic graph) of ScalarNode operations
  *   grouped into vector structures via. Array classes.
  */
-
-
 
 
 struct unary_fn {
@@ -376,7 +386,6 @@ struct make_const_f {
 	// In order to minimize number of differrent operations in AST
 	// the nulary 'fn' must in fact accept single double argument.
 	unary_op operator()(std::string repr, ast::unary_fn::function_type fn) const {
-		// std::cout << "make_none " << "\n";
 		ast::unary_fn nulary_fn = {repr, fn};
 		return {nulary_fn, 0.0}; // unused argument 0.0
 	}
@@ -439,6 +448,17 @@ struct make_assign_f {
 };
 BOOST_PHOENIX_ADAPT_CALLABLE(make_assign, make_assign_f, 2)
 
+// Convert 'boost::optional' to 'operand'.
+struct treat_optional_f {
+	operand operator()(boost::optional<operand> const& v) const {
+		if (v == boost::none) {
+			return ast::make_const("None", &Array::none_array)();
+		} else {
+			return *v; // extract optional value
+		}
+	}
+};
+BOOST_PHOENIX_ADAPT_CALLABLE(treat_optional, treat_optional_f, 1)
 
 
 

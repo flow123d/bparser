@@ -105,6 +105,7 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 		literal_double,
 		literal_int,
 		const_lit,
+		const_idx,
 		subscriptable,
 		subscription,
 		slicing,
@@ -192,6 +193,7 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
         not_op.add UN_FN("not", unary_array<_neg_>());
 
         ast::binary_fn append_to_fn = {",", append_to()};
+        ast::binary_fn subscribe_fn = {"[]", &Array::subscribe};
         array_constr_comma_op.add(",", append_to_fn);
 
 //        array_slice_comma_op.add
@@ -215,6 +217,7 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
         ast::binary_fn semicol_fn = {";", &ast::semicol_fn};
         ast::ternary_fn if_else_fn = {"ifelse", &Array::if_else};
         ast::ternary_fn slice_fn = {"slice", &Array::slice};
+        //auto head_const = ast::make_const("Head", &Array::empty_array);
         auto none_const = ast::make_const("None", &Array::none_array);
         auto true_const = ast::make_const("True", &Array::true_array);
         auto false_const = ast::make_const("False", &Array::false_array);
@@ -295,9 +298,7 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
         RULE(power) = primary[qi::_val = qi::_1] >>
         				-(power_op > signed_optional)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)];
 
-
-
-        RULE(primary) = literal_double | subscriptable | const_lit | subscription;
+        RULE(primary) = literal_double | const_lit | subscription;
         RULE(subscriptable) = array_constr | enclosure | call | identifier;
 
         RULE(call) = binary_call | unary_call;
@@ -306,10 +307,11 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
         RULE(binary_call) = (qi::no_skip[bfunc > '('] > expression > ',' > expression > ')')
         		            [qi::_val = ast::make_binary(qi::_1, qi::_2, qi::_3)];
 
-
-        RULE(subscription) = subscriptable > '[' >> slicing > ']';
-        RULE(slicing) = slice_item >> *(',' > slice_item);
-        RULE(slice_item) = index_array.alias();// | proper_slice;
+        RULE(subscription) = subscriptable[qi::_val = qi::_1] >> -('[' >> slicing > ']')
+                             [qi::_val = ast::make_binary(subscribe_fn, qi::_val, qi::_1)];
+        RULE(slicing) = slice_item[qi::_val = ast::make_binary(append_to_fn, none_const, qi::_1)]
+					    >> *(array_constr_comma_op > slice_item)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)];;
+        RULE(slice_item) =  index_array | proper_slice | const_idx;
 
         RULE(const_lit) =
         		qi::lit("None")[qi::_val = none_const] |
@@ -325,11 +327,17 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
         RULE(identifier) = qi::raw[qi::lexeme[(qi::alpha | '_') >> *(qi::alnum | '_')]];
 
 
-//        RULE(proper_slice) = (-(literal_int) >> qi::lit(':') >> -(literal_int) >> -( qi::lit(':') >> literal_int))
-//        		[qi::_val = ast::make_ternary(slice_fn, qi::_1, qi::_2, qi::_3)];
+        RULE(proper_slice) = (-(literal_int) >> qi::lit(':')
+        						>> -(literal_int)
+								>> -( qi::lit(':') >> literal_int))
+								[qi::_val = ast::make_ternary(slice_fn,
+										ast::treat_optional(qi::_1),
+										ast::treat_optional(qi::_2),
+										ast::treat_optional(qi::_3))];
         RULE(index_array) = '[' > index_array_list > ']';
-        RULE(index_array_list) = literal_int[qi::_val = ast::make_binary(append_to_fn, none_const, qi::_1)]
-						 >> *(array_constr_comma_op > literal_int)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)];
+        RULE(index_array_list) = const_idx[qi::_val = ast::make_binary(append_to_fn, none_const, qi::_1)]
+						 >> *(array_constr_comma_op > const_idx)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)];
+        RULE(const_idx) = literal_int |  const_lit;
         RULE(literal_int) = qi::int_;
 
 
@@ -370,6 +378,11 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 //        qi::debug(identifier);
 //        qi::debug(literal_double);
 //        qi::debug(const_lit);
+//        qi::debug(slicing);
+//        qi::debug(slice_item);
+//        qi::debug(const_idx);
+
+
 
     }
 };
