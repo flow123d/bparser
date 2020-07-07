@@ -171,7 +171,6 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
         unary_op.add
             UN_FN("+", &unary_plus)
             UN_FN("-", unary_array<_minus_>())
-            UN_FN("!", unary_array<_neg_>())
             ;
 
         additive_op.add
@@ -212,9 +211,10 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 
 
         NamedArrayFn array_fn = {"array", &Array::stack_zero};
+        NamedArrayFn index_array_fn = {"idxarray", &create_index_array};
         NamedArrayFn semicol_fn = {";", &ast::semicol_fn};
         NamedArrayFn if_else_fn = {"ifelse", &Array::if_else};
-        NamedArrayFn slice_fn = {"slice", &Array::slice};
+        NamedArrayFn slice_fn = {"slice", &create_slice};
         //auto head_const = ast::make_const("Head", &Array::empty_array);
         auto none_const = ast::make_const("None", &Array::none_array);
         auto true_const = ast::make_const("True", &Array::true_array);
@@ -280,14 +280,14 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
         				*(or_op > and_test)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)];
         RULE(and_test) = not_test[qi::_val = qi::_1] >>
         				*(and_op > not_test)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)];
-		RULE(not_test) = comparison | not_test_op;
+		RULE(not_test) = not_test_op | comparison;
 		RULE(not_test_op) = (not_op > not_test)[qi::_val = ast::make_unary(qi::_1, qi::_2)];
+
 
         RULE(comparison) = additive_expr[qi::_val = qi::_1] >>
         		  	    -(relational_op > additive_expr)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)];
         RULE(additive_expr) = multiplicative_expr[qi::_val = qi::_1] >>
         				*(additive_op > multiplicative_expr)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)];
-
         RULE(multiplicative_expr) = signed_optional[qi::_val = qi::_1] >>
         				*(multiplicative_op > signed_optional)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)];
 
@@ -334,7 +334,7 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 										ast::treat_optional(qi::_2),
 										ast::treat_optional(qi::_3))];
         RULE(index_array) = ('[' > index_array_list > ']')		// todo: index_array
-		[qi::_val = ast::make_unary(array_fn, qi::_1)];
+		[qi::_val = ast::make_unary(index_array_fn, qi::_1)];
         RULE(index_array_list) = const_idx[qi::_val = ast::make_list(0.0, qi::_1)]
 						 >> *("," > const_idx)[qi::_val = ast::make_list(qi::_val, qi::_1)];
         RULE(const_idx) = literal_int |  const_lit;

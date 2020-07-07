@@ -137,21 +137,23 @@ void test_subscription() {
     EXPECT(match("a[:-1:1]", "[](`a`,slice(None(0),-1,1))"));
 	// EXPECT(match("a[::]", "[](`a`_,(None(0)_slice(None(0)_None(0)_None(0)))))")); // forbidden due to problems with grammar
 	EXPECT(fail("a[::]", "Expected \"]\" at \":]\""));
-
 	EXPECT(fail("a[:::]", "Expected \"]\" at \"::]\""));
 
 	// multiple slices
 	EXPECT(match("a[:, 1]", "[](`a`,slice(None(0),None(0),None(0)),1)"));
 	EXPECT(match("a[:, None]", "[](`a`,slice(None(0),None(0),None(0)),None(0))"));
 
-
 	//array index
-	EXPECT(match("a[[1,3]]", "[](`a`,array(1,3))"));
+	EXPECT(match("a[[1,3]]", "[](`a`,idxarray(1,3))"));
+	EXPECT(match("a[[1,3], :3:-1]", "[](`a`,idxarray(1,3),slice(None(0),3,-1))"));
 }
+
 
 void test_operators() {
 	std::cout << "\ntest_operators" << "\n";
 	EXPECT(match("-1.23e-2", "-(0.0123)" ));
+	EXPECT(match("2 ** 5", "**(2,5)"));
+	EXPECT(match("2 ** 3 ** 4", "**(2,**(3,4))"));
 	EXPECT(match("2 * 5", "*(2,5)"));
 	EXPECT(match("-2 * 3 / 4", "/(*(-(2),3),4)"));
 	EXPECT(match("1 * 5 / 4 + 3 - 4", "-(+(/(*(1,5),4),3),4)"));
@@ -164,6 +166,17 @@ void test_operators() {
 	//ASSERT(! match("-1.23e-2 * -5.3"));
 	//ASSERT(! match("+ -1.23e-2"));
 	EXPECT(match("+ + -1.23e-2", "+(+(-(0.0123)))"));
+
+	// relational operators
+	EXPECT(match("2 > 1", ">(2,1)"));
+	EXPECT(match("2 == 1", "==(2,1)"));
+	EXPECT(match("2 <= 1", "<=(2,1)"));
+
+	// boolean
+	EXPECT(match("not 2 <= 1", "not(<=(2,1))"));
+	EXPECT(match("not 2 <= 1 or False", "or(not(<=(2,1)),False(0))"));
+	EXPECT(match("not 2 <= 1 or False and 1", "or(not(<=(2,1)),and(False(0),1))"));
+	EXPECT(match("10 if True else 20", "ifelse(10,True(0),20)"));
 }
 
 
@@ -173,7 +186,6 @@ int main()
 	test_primary();
 	test_arrays();
 	test_subscription();
-
 	test_operators();
 
 }

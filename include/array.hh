@@ -33,7 +33,17 @@ inline std::string print_shape(const Shape s) {
 }
 
 
-
+/**
+ * Check that 'i' is correct index to an axis of 'size'.
+ * Negative 'i' is supported, converted to the positive index.
+ * Return correct positive index less then 'size'.
+ */
+inline uint absolute_idx(int i, int size) {
+	int i_out=i;
+	if (i < 0) i_out = size - i;
+	if (i_out < 0 || i_out >= size) Throw() << "Index " << i << " out of range (" << size << ").\n";
+	return i_out;
+}
 
 
 
@@ -55,6 +65,25 @@ inline std::string print_shape(const Shape s) {
  *       ranges_[i][:] < full_shape_[i]
  */
 struct MultiIdxRange {
+	//typedef std::vector<std::vector<int>> GeneralRanges;
+	/**
+	 * AST interface ============================================
+	 */
+//	MultiIdxRange(Shape full_shape, GeneralRanges ranges)
+//	: full_shape_(full_shape) {
+//
+//		for(uint axis=0; axis < full_shape_.size(); ++axis) {
+//			if (axis < ranges.size()) {
+//
+//			} else {
+//				std::vector<uint> full(full_shape_[axis]);
+//				for(uint i=0; i < full_shape_[axis]; ++i) full[i] = i;
+//			ranges_.push_back(full);
+//		}
+//	}
+//
+
+	// ===================================================
 
 	/**
 	 * Identical MIR mapping fro given shape.
@@ -609,7 +638,7 @@ public:
 	Array promote_in_axis(int axis = 0) const {
 		uint u_axis;
 		try {
-			u_axis = abs_idx(axis, shape_.size() + 1);
+			u_axis = absolute_idx(axis, shape_.size() + 1);
 		} catch (Exception &e) {
 			e << "Can not promote axis: " << axis << "\n";
 			throw e;
@@ -737,17 +766,7 @@ public:
 
 private:
 
-	/**
-	 * Check that 'i' is correct index to an axis of 'size'.
-	 * Negative 'i' is supported, converted to the positive index.
-	 * Return correct positive index less then 'size'.
-	 */
-	static uint abs_idx(int i, int size) {
-		int i_out=i;
-		if (i < 0) i_out = size - i;
-		if (i_out < 0 || i_out >= size) Throw() << "Index " << i << " out of range (" << size << ").\n";
-		return i_out;
-	}
+
 
 	/**
 	 * Assign the 'other' array to the subset of *this given by the multiindex mapping 'range'.

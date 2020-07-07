@@ -196,7 +196,7 @@ BOOST_PHOENIX_ADAPT_CALLABLE(lazy_print, print_ast_t, 1)
  * into scalar operations.
  */
 struct make_array {
-    typedef ArrayList result_type;
+    typedef ResultList result_type;
     mutable std::map<std::string, Array> symbols;
 
     explicit make_array(std::map<std::string, Array> const &symbols)
@@ -210,13 +210,13 @@ struct make_array {
 
     result_type operator()(double x) const
     {
-    	return {Array::constant({x})};
+    	return ArrayList({Array::constant({x})});
     }
 
     result_type operator()(std::string const &x) const  {
         auto it = symbols.find(x);
         if (it != symbols.end()) {
-        	return {it->second};
+        	return ArrayList({it->second});
         } else {
         	// We do not call visitor for the assign_op's 'lhs' so this must be error.
         	Throw() << "Undefined var: " << x << "\n";
@@ -224,19 +224,18 @@ struct make_array {
     }
 
     result_type operator()(call const &x) const {
-    	ArrayList al = boost::apply_visitor(*this, x.arg_list);
-    	Array a = boost::apply_visitor(call_visitor(al), x.op.fn);
-    	return {a};
+    	result_type al = boost::apply_visitor(*this, x.arg_list);
+    	result_type res = boost::apply_visitor(call_visitor(al), x.op.fn);
+    	return res;
     }
 
     result_type operator()(list x) const {
-    	ArrayList alist;
+    	result_type alist;
     	if (boost::get<list>(&x.head)) {
     		 alist = boost::apply_visitor(*this, x.head);
     	}
-    	ArrayList aitem = boost::apply_visitor(*this, x.item);
-    	BP_ASSERT(aitem.size() == 1);
-    	alist.push_back(aitem[0]);
+    	result_type aitem = boost::apply_visitor(*this, x.item);
+    	boost::apply_visitor(append_visitor(aitem), alist);
     	return alist;
     }
 
@@ -244,8 +243,15 @@ struct make_array {
     result_type operator()(assign_op x) const  {
     	//std::string& var_name = boos);
     	result_type rhs = boost::apply_visitor(*this, x.rhs);
-    	symbols[x.lhs] = rhs[0];
-        return rhs;
+    	// extract single
+    	BP_ASSERT(result_size(rhs) == 1);
+    	if (ArrayList * alist = boost::get<ArrayList>(&rhs)) {
+    		Array rhs_val = (*alist)[0];
+    		symbols[x.lhs] = rhs_val;
+    		return rhs;
+    	} else {
+    		BP_ASSERT(false);
+    	}
     }
 
 };
