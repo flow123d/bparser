@@ -648,8 +648,6 @@ public:
 		return Array(*this, promote_range);
 	}
 
-
-
 	/// Create a result array from *this using storage of 'variable'.
 	Array make_result(const Array &variable) {
 		Array res(shape_);
