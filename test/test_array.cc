@@ -52,9 +52,9 @@ int main() {
 	Array res21 = func<_exp_>(tc);
 
 	Array res31;
-	res31.append(s_const);
-	res31.append(s_const);
-	res31.append(sa);
+	res31 = res31.append(s_const);
+	res31 = res31.append(s_const);
+	res31 = res31.append(sa);
 	BP_ASSERT(res31.shape() == Shape({3}));
 
 //
