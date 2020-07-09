@@ -485,6 +485,9 @@ jobs:
       - name: Build dir
         run: mkdir build  
 
+      - name: make test_grammar
+        run: make test_grammar
+
       - name: make test_array
         run: make test_array
       

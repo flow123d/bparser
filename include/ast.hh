@@ -235,7 +235,7 @@ struct make_array {
     		 alist = boost::apply_visitor(*this, x.head);
     	}
     	result_type aitem = boost::apply_visitor(*this, x.item);
-    	boost::apply_visitor(append_visitor(aitem), alist);
+    	alist = boost::apply_visitor(append_visitor(alist), aitem);
     	return alist;
     }
 
@@ -297,13 +297,12 @@ struct get_variables {
     }
 
     result_type operator()(list x) const {
-    	result_type item_vars = boost::apply_visitor(*this, x.item);
+    	result_type head_vars;
     	if (boost::get<list>(&x.head)) {
-    		result_type head_vars = boost::apply_visitor(*this, x.head);
-    		return merge(head_vars, item_vars);
-    	} else {
-    		return item_vars;
+    		head_vars = boost::apply_visitor(*this, x.head);
     	}
+    	result_type item_vars = boost::apply_visitor(*this, x.item);
+    	return merge(head_vars, item_vars);
     }
 
     result_type operator()(assign_op const &x) const  {
@@ -382,6 +381,14 @@ struct make_const_f {
 	}
 };
 BOOST_PHOENIX_ADAPT_CALLABLE(make_const, make_const_f, 2)
+
+// unary expression factory
+struct make_call_f {
+	call operator()(NamedArrayFn op, operand const& first) const {
+		return {op, first};
+	}
+};
+BOOST_PHOENIX_ADAPT_CALLABLE(make_call, make_call_f, 2)
 
 
 // unary expression factory

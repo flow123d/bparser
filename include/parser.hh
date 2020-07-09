@@ -65,8 +65,9 @@ public:
     /// @param[in] expr The expression given as a std::string
     void parse(std::string const &expr) {
     	parse_expr(expr, ast);
+
         //std::cout << "Parsing OK. : " << "\n";
-        //print(ast_);
+        //std::cout << ast::print(ast) << "\n";
 
         //ASSERT(ast.type() != typeid(ast::nil));
         free_variables  = boost::apply_visitor(ast::get_variables(), ast);
@@ -111,6 +112,8 @@ public:
     /**
      * Set given name to be a variable of given shape with values at
      * given address 'variable_space'.
+     *
+     * Unused variables and constants are ignored.
      *
      */
     void set_variable(std::string name, std::vector<uint> shape, double *variable_space) {

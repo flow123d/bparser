@@ -318,7 +318,7 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 
         RULE(enclosure) = '(' > expression > ')';
         RULE(array_constr) = ('[' > array_constr_list > ']')
-        		             [qi::_val = ast::make_unary(array_fn, qi::_1)];
+        		             [qi::_val = ast::make_call(array_fn, qi::_1)];
         RULE(array_constr_list) = expression[qi::_val = ast::make_list(0.0, qi::_1)]
 						 >> *(',' > expression)[qi::_val = ast::make_list(qi::_val, qi::_1)];
 
