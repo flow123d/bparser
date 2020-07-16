@@ -97,7 +97,7 @@ void test_primary() {
 	// const_lit
 	EXPECT(match("True", "True(0)"));
 	EXPECT(match("False", "False(0)"));
-	EXPECT(match("None", "None(0)"));
+	EXPECT(fail("None", ""));
 
 	// subscription in separate test
 }
@@ -122,30 +122,30 @@ void test_arrays() {
 void test_subscription() {
 	std::cout << "\ntest_subscription" << "\n";
 	// simple indices
-	EXPECT(match("a[1]", "[](`a`,1)"));
+	EXPECT(match("a[1]", "[](`a`,(1))"));
 	EXPECT(fail("a[1][2]", "Parsing failed at: [2]"));
-	EXPECT(match("a[1, 2]", "[](`a`,1,2)"));
-	EXPECT(match("a[1, 2, 3]", "[](`a`,1,2,3)"));
-	EXPECT(match("a[None]", "[](`a`,None(0))"));
-	EXPECT(match("a[None, -1]", "[](`a`,None(0),-1)"));
+	EXPECT(match("a[1, 2]", "[](`a`,(1,2))"));
+	EXPECT(match("a[1, 2, 3]", "[](`a`,(1,2,3))"));
+	EXPECT(match("a[None]", "[](`a`,(none_idx))"));
+	EXPECT(match("a[None, -1]", "[](`a`,(none_idx,-1))"));
 
 	// slices
-	EXPECT(match("a[0:1:-1]", "[](`a`,slice(0,1,-1))"));
-	EXPECT(match("a[:]", "[](`a`,slice(None(0),None(0),None(0)))"));
-	EXPECT(match("a[:1]", "[](`a`,slice(None(0),1,None(0)))"));
-	EXPECT(match("a[1:]", "[](`a`,slice(1,None(0),None(0)))"));
-    EXPECT(match("a[:-1:1]", "[](`a`,slice(None(0),-1,1))"));
+	EXPECT(match("a[0:1:-1]", "[](`a`,(slice(0,1,-1)))"));
+	EXPECT(match("a[:]", "[](`a`,(slice(none_idx,none_idx,none_idx)))"));
+	EXPECT(match("a[:1]", "[](`a`,(slice(none_idx,1,none_idx)))"));
+	EXPECT(match("a[1:]", "[](`a`,(slice(1,none_idx,none_idx)))"));
+    EXPECT(match("a[:-1:1]", "[](`a`,(slice(none_idx,-1,1)))"));
 	// EXPECT(match("a[::]", "[](`a`_,(None(0)_slice(None(0)_None(0)_None(0)))))")); // forbidden due to problems with grammar
 	EXPECT(fail("a[::]", "Expected \"]\" at \":]\""));
 	EXPECT(fail("a[:::]", "Expected \"]\" at \"::]\""));
 
 	// multiple slices
-	EXPECT(match("a[:, 1]", "[](`a`,slice(None(0),None(0),None(0)),1)"));
-	EXPECT(match("a[:, None]", "[](`a`,slice(None(0),None(0),None(0)),None(0))"));
+	EXPECT(match("a[:, 1]", "[](`a`,(slice(none_idx,none_idx,none_idx),1))"));
+	EXPECT(match("a[:, None]", "[](`a`,(slice(none_idx,none_idx,none_idx),none_idx))"));
 
 	//array index
-	EXPECT(match("a[[1,3]]", "[](`a`,idxarray(1,3))"));
-	EXPECT(match("a[[1,3], :3:-1]", "[](`a`,idxarray(1,3),slice(None(0),3,-1))"));
+	EXPECT(match("a[[1,3]]", "[](`a`,(idxarray((1,3))))"));
+	EXPECT(match("a[[1,3], :3:-1]", "[](`a`,(idxarray((1,3)),slice(none_idx,3,-1)))"));
 }
 
 

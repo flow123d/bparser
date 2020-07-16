@@ -55,7 +55,7 @@ namespace ast {
 //	function_type fn;
 //};
 
-
+const int none_int = std::numeric_limits<int>::max();
 
 //struct nil {};
 struct list;
@@ -66,6 +66,7 @@ struct assign_op;
 typedef boost::variant<
         //nil, // can't happen!  TODO: remove
         double
+		, int
         , std::string
         , boost::recursive_wrapper<list>
         , boost::recursive_wrapper<call>
@@ -115,41 +116,54 @@ struct print_vis : public boost::static_visitor<> {
 	 * Print AST.
 	 */
 	mutable std::stringstream ss;
-	bool recursive_;
 
-    explicit print_vis(bool recursive = true)
-    : recursive_(recursive)
+    explicit print_vis()
     {}
 
-//    void operator()(nil UNUSED(x)) const {
-//    	ss << "NULL";
-//    }
+    void print_list(operand x) const {
+    	if (list *l = boost::get<list>(&x)) {
+			ResultList alist;
+			if (boost::get<list>(&(l->head))) {
+				print_list(l->head);
+				ss << ",";
+			}
+			boost::apply_visitor(*this, l->item);
+    	} else {
+    		BP_ASSERT(false);
+    	}
+    }
 
     void operator()(double x) const
     {ss << x; }
+
+    void operator()(int x) const
+    {
+    	if (x == none_int) {
+    		ss << "none_idx";
+    	} else {
+    		ss << x;
+    	}
+    }
 
     void operator()(std::string const &x) const  {
     	ss << "`" << x << "`";
     }
 
-
     void operator()(call const &x) const {
-    	ss << x.op.repr <<  "(";
-    	if (recursive_) boost::apply_visitor(*this, x.arg_list);
-    	ss << ")";
+    	ss << x.op.repr;
+    	//BP_ASSERT(boost::get<list>(&x.arg_list));
+    	boost::apply_visitor(*this, x.arg_list);
     }
 
     void operator()(list x) const {
-    	if (boost::get<list>(&x.head)) {
-    		if (recursive_) boost::apply_visitor(*this, x.head);
-    		ss << ",";
-    	}
-    	if (recursive_) boost::apply_visitor(*this, x.item);
+    	ss << '(';
+    	print_list(x);
+    	ss << ')';
     }
 
     void operator()(assign_op const &x) const  {
     	ss << x.lhs << " = ";
-    	if (recursive_) boost::apply_visitor(*this, x.rhs);
+    	boost::apply_visitor(*this, x.rhs);
     }
 
 
@@ -165,7 +179,7 @@ inline std::string print(operand const& ast_root) {
 }
 
 inline std::ostream &operator<<(std::ostream &os, const operand& a) {
-	print_vis pv(true);
+	print_vis pv;
 	boost::apply_visitor(pv, a);
     os << pv.ss.str();
     return os;
@@ -196,12 +210,31 @@ BOOST_PHOENIX_ADAPT_CALLABLE(lazy_print, print_ast_t, 1)
  * into scalar operations.
  */
 struct make_array {
-    typedef ResultList result_type;
+    typedef ParserResult result_type;
+
     mutable std::map<std::string, Array> symbols;
 
     explicit make_array(std::map<std::string, Array> const &symbols)
     : symbols(symbols)
     {}
+
+
+    ResultList make_list(operand x) const {
+    	if (list *l = boost::get<list>(&x)) {
+			ResultList alist;
+			if (boost::get<list>(&(l->head))) {
+				 alist = make_list(l->head);
+			}
+			ParserResult aitem = boost::apply_visitor(*this, l->item);
+			alist.push_back(aitem);
+			return alist;
+    	} else {
+    		BP_ASSERT(false);
+    	}
+    }
+
+
+
 
 //    result_type operator()(nil) const {
 //        BOOST_ASSERT(0);
@@ -210,13 +243,17 @@ struct make_array {
 
     result_type operator()(double x) const
     {
-    	return ArrayList({Array::constant({x})});
+    	return Array::constant({x});
     }
+
+    result_type operator()(int x) const
+    {return x;}
+
 
     result_type operator()(std::string const &x) const  {
         auto it = symbols.find(x);
         if (it != symbols.end()) {
-        	return ArrayList({it->second});
+        	return it->second;
         } else {
         	// We do not call visitor for the assign_op's 'lhs' so this must be error.
         	Throw() << "Undefined var: " << x << "\n";
@@ -224,19 +261,23 @@ struct make_array {
     }
 
     result_type operator()(call const &x) const {
-    	result_type al = boost::apply_visitor(*this, x.arg_list);
+    	ResultList al = make_list(x.arg_list);
     	result_type res = boost::apply_visitor(call_visitor(al), x.op.fn);
     	return res;
     }
 
     result_type operator()(list x) const {
-    	result_type alist;
-    	if (boost::get<list>(&x.head)) {
-    		 alist = boost::apply_visitor(*this, x.head);
-    	}
-    	result_type aitem = boost::apply_visitor(*this, x.item);
-    	alist = boost::apply_visitor(append_visitor(alist), aitem);
-    	return alist;
+    	std::cout << "List in wrong place: \n";
+    	std::cout << print(x) << "\n";
+    	BP_ASSERT(false);
+
+//    	result_type alist;
+//    	if (boost::get<list>(&x.head)) {
+//    		 alist = boost::apply_visitor(*this, x.head);
+//    	}
+//    	result_type aitem = boost::apply_visitor(*this, x.item);
+//    	alist = boost::apply_visitor(append_visitor(alist), aitem);
+//    	return alist;
     }
 
 
@@ -244,10 +285,9 @@ struct make_array {
     	//std::string& var_name = boos);
     	result_type rhs = boost::apply_visitor(*this, x.rhs);
     	// extract single
-    	BP_ASSERT(result_size(rhs) == 1);
-    	if (ArrayList * alist = boost::get<ArrayList>(&rhs)) {
-    		Array rhs_val = (*alist)[0];
-    		symbols[x.lhs] = rhs_val;
+
+    	if (Array * rhs_array = boost::get<Array>(&rhs)) {
+    		symbols[x.lhs] = *rhs_array;
     		return rhs;
     	} else {
     		BP_ASSERT(false);
@@ -371,16 +411,9 @@ private:
 
 
 
-// unary expression factory
-struct make_const_f {
-	// In order to minimize number of differrent operations in AST
-	// the nulary 'fn' must in fact accept single double argument.
-	call operator()(std::string repr, ArrayFnUnary fn) const {
-		NamedArrayFn nulary_fn = {repr, fn};
-		return {nulary_fn, 0.0}; // unused argument 0.0
-	}
-};
-BOOST_PHOENIX_ADAPT_CALLABLE(make_const, make_const_f, 2)
+// Grammar PHOENIX lazy functions
+// using BOOST_PHOENIX_ADAPT_CALLABLE (instead of ..._ADAPT_FUNCTION)
+// in order to avoid specification of the return type.
 
 // unary expression factory
 struct make_call_f {
@@ -400,6 +433,18 @@ struct make_unary_f {
 	}
 };
 BOOST_PHOENIX_ADAPT_CALLABLE(make_unary, make_unary_f, 2)
+
+// nulary expression factory
+struct make_const_f {
+	// In order to minimize number of differrent operations in AST
+	// the nulary 'fn' must in fact accept single double argument.
+	call operator()(std::string repr, ArrayFnUnary fn) const {
+		NamedArrayFn nulary_fn = {repr, fn};
+		call c = make_unary(nulary_fn, 0.0)(); // unused argument 0.0
+		return c;
+	}
+};
+BOOST_PHOENIX_ADAPT_CALLABLE(make_const, make_const_f, 2)
 
 
 // binary expression factory
@@ -452,16 +497,16 @@ struct make_assign_f {
 BOOST_PHOENIX_ADAPT_CALLABLE(make_assign, make_assign_f, 2)
 
 // Convert 'boost::optional' to 'operand'.
-struct treat_optional_f {
+struct treat_optional_int_f {
 	operand operator()(boost::optional<operand> const& v) const {
 		if (v == boost::none) {
-			return ast::make_const("None", &Array::none_array)();
+			return ast::none_int;
 		} else {
 			return *v; // extract optional value
 		}
 	}
 };
-BOOST_PHOENIX_ADAPT_CALLABLE(treat_optional, treat_optional_f, 1)
+BOOST_PHOENIX_ADAPT_CALLABLE(treat_optional_int, treat_optional_int_f, 1)
 
 
 

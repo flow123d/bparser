@@ -50,6 +50,10 @@ ArrayFn binary_array() {
 	return static_cast<ArrayFnBinary>(&(Array::binary_op<T>));
 }
 
+Array error_reserved(const Array & UNUSED(x)) {
+	// TODO report
+	Throw() << "Reserved identifier.";
+}
 //ast::binary_fn::function_type append_to() {
 //	return static_cast<ast::binary_fn::function_type>(&(Array::append_to));
 //}
@@ -116,12 +120,14 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 		index_array_list,
 		call,
 		unary_call,
-		binary_call
+		binary_call,
+		none_lit
     	;
     qi::rule<Iterator, std::string()>
     	identifier;
+
     qi::symbols<typename std::iterator_traits<Iterator>::value_type, NamedArrayFn>
-        ufunc, unary_op, not_op;
+    	reserved, ufunc, unary_op, not_op;
     qi::symbols<typename std::iterator_traits<Iterator>::value_type, NamedArrayFn>
         bfunc,
 		additive_op,
@@ -137,7 +143,9 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
     grammar()
     : grammar::base_type(program, "bparser_program")
     {
-
+    	reserved.add
+    			UN_FN("None", &error_reserved)
+    			;
 
         ufunc.add
             UN_FN("abs"  , unary_array<_abs_>())
@@ -182,7 +190,7 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
             BN_FN("*", binary_array<_mul_>())
             BN_FN("/", binary_array<_div_>())
 			BN_FN("//", binary_array<_mod_>())	// floor division
-			BN_FN("@", binary_array<_mod_>())	// python
+			BN_FN("@", binary_array<_mod_>())	// numpy matrix multiplication
             BN_FN("%", binary_array<_mod_>())
             ;
 
@@ -216,11 +224,9 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
         NamedArrayFn if_else_fn = {"ifelse", &Array::if_else};
         NamedArrayFn slice_fn = {"slice", &create_slice};
         //auto head_const = ast::make_const("Head", &Array::empty_array);
-        auto none_const = ast::make_const("None", &Array::none_array);
+
         auto true_const = ast::make_const("True", &Array::true_array);
         auto false_const = ast::make_const("False", &Array::false_array);
-
-
 
 //        semicol_op.add
 //            (";", &ast::semicol_fn)  // TODO: possibly some special function
@@ -312,7 +318,6 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
         RULE(slice_item) =  index_array | proper_slice | const_idx;
 
         RULE(const_lit) =
-        		qi::lit("None")[qi::_val = none_const] |
 				qi::lit("True")[qi::_val = true_const] |
 				qi::lit("False")[qi::_val = false_const];
 
@@ -323,21 +328,29 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 						 >> *(',' > expression)[qi::_val = ast::make_list(qi::_val, qi::_1)];
 
         RULE(literal_double) = qi::double_; // includes ints
-        RULE(identifier) = qi::raw[qi::lexeme[(qi::alpha | '_') >> *(qi::alnum | '_')]];
+        RULE(identifier) =
+        		&(! reserved) >>
+        		qi::raw[qi::lexeme[(qi::alpha | '_') >> *(qi::alnum | '_')]];
 
 
         RULE(proper_slice) = (-(literal_int) >> qi::lit(':')
         						>> -(literal_int)
 								>> -( qi::lit(':') >> literal_int))
 								[qi::_val = ast::make_ternary(slice_fn,
-										ast::treat_optional(qi::_1),
-										ast::treat_optional(qi::_2),
-										ast::treat_optional(qi::_3))];
+										ast::treat_optional_int(qi::_1),
+										ast::treat_optional_int(qi::_2),
+										ast::treat_optional_int(qi::_3))];
         RULE(index_array) = ('[' > index_array_list > ']')		// todo: index_array
 		[qi::_val = ast::make_unary(index_array_fn, qi::_1)];
         RULE(index_array_list) = const_idx[qi::_val = ast::make_list(0.0, qi::_1)]
 						 >> *("," > const_idx)[qi::_val = ast::make_list(qi::_val, qi::_1)];
-        RULE(const_idx) = literal_int |  const_lit;
+        RULE(const_idx) = literal_int |  none_lit;
+        RULE(none_lit) = qi::lit("None")[qi::_val = ast::none_int];
+        //RULE(const_idx) = (literal_int |  const_lit)[qi::_val = ast::make_call(index_array_fn, qi::_1)];
+
+        // TODO: test that we can return an index array with single index
+        // TODO: single index array works, but we need distinction between a[1] and a[[1]].
+        // Former case reduce the shape, while the later does not.
         RULE(literal_int) = qi::int_;
 
 
@@ -367,6 +380,11 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 //        qi::debug(comparison);
 //        qi::debug(signed_optional);
 //        qi::debug(power);
+//        qi::debug(array_constr);
+//        qi::debug(array_constr_list);
+//        qi::debug(index_array);
+//        qi::debug(index_array_list);
+//
 //
 //        qi::debug(primary);
 //        qi::debug(subscription);
@@ -381,7 +399,7 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 //        qi::debug(slicing);
 //        qi::debug(slice_item);
 //        qi::debug(const_idx);
-
+//        none_lit
 
 
     }

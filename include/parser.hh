@@ -138,11 +138,9 @@ public:
     	if (res_it == symbols_.end())
     		Throw() << "Missing '_result_' definition.";
 
-        ResultList res_array = boost::apply_visitor(ast::make_array(symbols_), ast);
-        BP_ASSERT(result_size(res_array) == 1);
-        if (ArrayList * alist = boost::get<ArrayList>(&res_array)) {
-        	Array a = (*alist)[0];
-        	result_array = a.make_result(res_it->second);
+        ParserResult res_array = boost::apply_visitor(ast::make_array(symbols_), ast);
+        if (Array *a_ptr = boost::get<Array>(&res_array)) {
+        	result_array = a_ptr->make_result(res_it->second);
         } else {
         	BP_ASSERT(false);
         }

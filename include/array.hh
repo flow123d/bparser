@@ -20,6 +20,7 @@
 namespace bparser {
 
 typedef std::vector<uint> Shape;
+typedef std::array<int, 3> Slice;
 
 inline std::string print_shape(const Shape s) {
 	std::ostringstream ss;
@@ -83,20 +84,30 @@ struct MultiIdxRange {
 //	}
 //
 
+
 	// ===================================================
 
 	/**
-	 * Identical MIR mapping fro given shape.
+	 * Identical MIR mapping for given shape.
 	 */
 	MultiIdxRange(Shape shape)
-	: full_shape_(shape) {
-		// full range
+	: full_shape_(shape)
+	{}
+
+	MultiIdxRange full() const {
+		MultiIdxRange res(full_shape_);
 		for(uint axis=0; axis < full_shape_.size(); ++axis) {
 			std::vector<uint> full(full_shape_[axis]);
 			for(uint i=0; i < full_shape_[axis]; ++i) full[i] = i;
-			ranges_.push_back(full);
+			res.ranges_.push_back(full);
 		}
+		return res;
 	}
+
+
+
+//	MultiIdxRange(Shape shape)
+//	: full_shape_(shape) {
 
 //		void subset(const std::vector<IndexSubset> &range_spec) {
 //			ASSERT(range_spec.size() == full_shape_.size());
@@ -121,7 +132,7 @@ struct MultiIdxRange {
 		Shape res_shape(n_pad, 1);
 		res_shape.insert(res_shape.end(), full_shape_.begin(), full_shape_.end());
 
-		MultiIdxRange result(other);
+		auto result = MultiIdxRange(other).full();
 		for(uint ax=0; ax < res_shape.size(); ++ax) {
 			if (res_shape[ax] == 1)
 				result.ranges_[ax] = std::vector<uint>(other[ax], 0);
@@ -162,7 +173,7 @@ struct MultiIdxRange {
 	}
 
 	/**
-	 * Insert 'axis' with 'dimension' into range
+	 * Insert 'axis' with continuous sequence from 0 till 'dimension' into the range (*this).
 	 * E.g. for axis=1, dimension=2:
 	 * range [[1,2],[2,5,6]] -> [[1,2],[0,1],[2,5,6]]
 	 *
@@ -173,6 +184,58 @@ struct MultiIdxRange {
 		ranges_.insert(ranges_.begin() + axis, std::vector<uint>());
 		for(uint i=0; i<dimension; ++i)
 			ranges_[axis].push_back(i);
+	}
+
+	/**
+	 * Insert normalized range. All indices positive and smaller then full_shape[axis].
+	 */
+	void insert_range_(uint axis, std::vector<uint> index_list) {
+		ranges_.insert(ranges_.begin() + axis, index_list);
+	}
+
+	/**
+	 * AST subscription interface.
+	 * Insert range given by the list of generalized indices.
+	 */
+	void insert_idx(uint axis, int idx) {
+		uint range_size = full_shape_[axis];
+		uint absidx = absolute_idx(idx, range_size);
+
+		// TODO: Fix this! The MultiIdxRange can not express constant index subscription
+		std::vector<uint> range = {absidx};
+		insert_range_(axis, range);
+	}
+
+	/**
+	 * AST subscription interface.
+	 * Insert range given by the list of generalized indices.
+	 */
+	void insert_range(uint axis, std::vector<int> index_list) {
+		BP_ASSERT(axis < full_shape_.size());
+		uint range_size = full_shape_[axis];
+		std::vector<uint> range;
+		for(int idx : index_list) {
+			range.push_back(absolute_idx(idx, range_size));
+		}
+		insert_range_(axis, range);
+	}
+
+	/**
+	 * AST subscription interface.
+	 * Insert range given by a slice.
+	 */
+	void insert_slice(uint axis, Slice s) {
+
+		uint range_size = full_shape_[axis];
+		std::vector<uint> range;
+
+		uint i_start = absolute_idx(s[0], range_size);
+		uint i_end   = absolute_idx(s[1], range_size);
+		int step     = s[2];
+		for(uint idx = i_start; (i_end - idx) * step > 0; idx += step) {
+			range.push_back(idx);
+		}
+		insert_range_(axis, range);
 	}
 
 	/**
@@ -552,10 +615,10 @@ public:
 
 
 
-	static Array slice(const Array &a, const Array &b, const Array&c) {
-		Array res = concatenate({a,b,c});
-		return res;  // TODO: make valid implementation
-	}
+//	static Array slice(const Array &a, const Array &b, const Array&c) {
+//		Array res = concatenate({a,b,c});
+//		return res;  // TODO: make valid implementation
+//	}
 
 	static Array subscribe(const Array &a, const Array &slice) {
 		Array res = concatenate({a,slice});
@@ -604,7 +667,7 @@ public:
 
 
 	MultiIdxRange range() const {
-		return MultiIdxRange(shape_);
+		return MultiIdxRange(shape_).full();
 	}
 
 	ScalarNodePtr &operator[](MultiIdx idx) {
@@ -643,7 +706,7 @@ public:
 			e << "Can not promote axis: " << axis << "\n";
 			throw e;
 		}
-		MultiIdxRange promote_range(shape_);
+		auto promote_range = MultiIdxRange(shape_).full();
 		promote_range.insert_axis(u_axis, 1);
 		return Array(*this, promote_range);
 	}

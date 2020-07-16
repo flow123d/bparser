@@ -55,6 +55,7 @@ bool test_expr(std::string expr, std::vector<double> ref_result) {
 
 	Parser p(vec_size);
 	p.parse(expr);
+	//std::cout << p.print_ast() << "\n";
 	p.set_variable("as1", {}, as1);
 	p.set_variable("av2", {3}, av2);
 	p.set_constant("cs3", {}, 	{3});
@@ -95,6 +96,12 @@ void test_expression() {
 	std::cout << "\n" << "** test expression" << "\n";
 	BP_ASSERT(test_expr("cs3 * av2", {6,6,6}));
 	BP_ASSERT(test_expr("cv4 * av2", {8,10,12}));
+	BP_ASSERT(test_expr("as1 - cv4", {-3,-4,-5}));
+	BP_ASSERT(test_expr("[2,3,4] / av2", {1,1.5,2}));
+
+
+	//BP_ASSERT(test_expr("cv4[2] ** av2", {25, 25, 25}));
+	//BP_ASSERT(test_expr("cv4[2] ** av2", {25, 25, 25}));
 }
 
 
