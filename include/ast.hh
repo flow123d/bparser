@@ -55,7 +55,7 @@ namespace ast {
 //	function_type fn;
 //};
 
-const int none_int = std::numeric_limits<int>::max();
+
 
 //struct nil {};
 struct list;

@@ -19,8 +19,17 @@
 
 namespace bparser {
 
+/**
+ * Shape of an array.
+ */
 typedef std::vector<uint> Shape;
-typedef std::array<int, 3> Slice;
+
+uint shape_size(Shape s) {
+	if (s.size() == 0) return 1;
+	uint shape_prod = 1;
+	for(uint dim : s) shape_prod *= dim;
+	return shape_prod;
+}
 
 inline std::string print_shape(const Shape s) {
 	std::ostringstream ss;
@@ -34,6 +43,12 @@ inline std::string print_shape(const Shape s) {
 }
 
 
+
+const int none_int = std::numeric_limits<int>::max();
+typedef std::array<int, 3> Slice;
+
+
+
 /**
  * Check that 'i' is correct index to an axis of 'size'.
  * Negative 'i' is supported, converted to the positive index.
@@ -41,7 +56,7 @@ inline std::string print_shape(const Shape s) {
  */
 inline uint absolute_idx(int i, int size) {
 	int i_out=i;
-	if (i < 0) i_out = size - i;
+	if (i < 0) i_out = size + i;
 	if (i_out < 0 || i_out >= size) Throw() << "Index " << i << " out of range (" << size << ").\n";
 	return i_out;
 }
@@ -49,16 +64,16 @@ inline uint absolute_idx(int i, int size) {
 
 
 /**
- * Defines extraction from an Array
- * or broadcasting of smaller Array to the larger shape.
+ * Defines extraction from an Array or broadcasting of smaller Array to the larger shape.
+ * The source shape size must be smaller or equal to the shape of the destination.
  *
  * Consider MultiIdxRange as a mapping from multiindices of an SOURCE array
  * to the multiindices of the DESTINATION array, i.e.
  *
- * 		destination[ MIR[ i, j, k, ...] ] = source[i,j,k]
+ * 		destination[i, j, k, ... ] = source[MIR[ i, j, k, ...]]
  *
- * MIR mapping is given as tensor product:
- * MIR[i, j, k, ... ] =  ranges_[0][i], ranges_[1][j], ranges_[2][k], ...
+ * MIR mapping is given as a tensor product of single axis mappings:
+ * MIR[i, j, k, ... ] =  (ranges_[0][i], ranges_[1][j]  ranges_[2][k], ...)
  *
  * Shape of destination array is given by  [ranges_[0].size(), ranges_[1].size(), ...]
  * Shape of the source array is given by full_shape_. The values of the ranges_ must be compatible:
@@ -91,7 +106,8 @@ struct MultiIdxRange {
 	 * Identical MIR mapping for given shape.
 	 */
 	MultiIdxRange(Shape shape)
-	: full_shape_(shape)
+	: full_shape_(shape),
+	  remove_axis_(shape.size(), false)
 	{}
 
 	MultiIdxRange full() const {
@@ -182,60 +198,70 @@ struct MultiIdxRange {
 	void insert_axis(uint axis, uint dimension=1) {
 		full_shape_.insert(full_shape_.begin() + axis, dimension);
 		ranges_.insert(ranges_.begin() + axis, std::vector<uint>());
+		remove_axis_.insert(remove_axis_.begin() + axis, false);
 		for(uint i=0; i<dimension; ++i)
 			ranges_[axis].push_back(i);
 	}
 
-	/**
-	 * Insert normalized range. All indices positive and smaller then full_shape[axis].
-	 */
-	void insert_range_(uint axis, std::vector<uint> index_list) {
-		ranges_.insert(ranges_.begin() + axis, index_list);
-	}
 
 	/**
 	 * AST subscription interface.
-	 * Insert range given by the list of generalized indices.
+	 * Subscribe given axis by the index. Reduce the axis.
 	 */
-	void insert_idx(uint axis, int idx) {
+	void sub_index(uint axis, int index) {
+		BP_ASSERT(axis < full_shape_.size());
 		uint range_size = full_shape_[axis];
-		uint absidx = absolute_idx(idx, range_size);
-
-		// TODO: Fix this! The MultiIdxRange can not express constant index subscription
-		std::vector<uint> range = {absidx};
-		insert_range_(axis, range);
+		uint i_index = absolute_idx(index, range_size);
+		ranges_[axis] = std::vector<uint>({i_index});
+		remove_axis_[axis] = true;
 	}
+
 
 	/**
 	 * AST subscription interface.
-	 * Insert range given by the list of generalized indices.
+	 * Subscribe given axis by the range given by the list of generalized indices.
 	 */
-	void insert_range(uint axis, std::vector<int> index_list) {
+	void sub_range(uint axis, std::vector<int> index_list) {
 		BP_ASSERT(axis < full_shape_.size());
 		uint range_size = full_shape_[axis];
 		std::vector<uint> range;
 		for(int idx : index_list) {
 			range.push_back(absolute_idx(idx, range_size));
 		}
-		insert_range_(axis, range);
+		ranges_[axis] = range;
+		remove_axis_[axis] = false;
 	}
 
 	/**
 	 * AST subscription interface.
-	 * Insert range given by a slice.
+	 * Subscribe given axis by the range given by a slice.
 	 */
-	void insert_slice(uint axis, Slice s) {
+	void sub_slice(uint axis, Slice s) {
 
 		uint range_size = full_shape_[axis];
 		std::vector<uint> range;
+		int start=s[0], end=s[1], step=s[2];
+		if (step == 0) {
+			Throw() << "Slice step cannot be zero.";
+		}
 
-		uint i_start = absolute_idx(s[0], range_size);
-		uint i_end   = absolute_idx(s[1], range_size);
-		int step     = s[2];
-		for(uint idx = i_start; (i_end - idx) * step > 0; idx += step) {
+		int i_start, i_end;
+		if (start == none_int) {
+			i_start = step > 0 ? 0 : range_size - 1;
+		} else {
+			i_start = absolute_idx(start, range_size);
+		}
+		if (end == none_int) {
+			i_end = step > 0 ? range_size : -1;
+		} else {
+			i_end   = absolute_idx(end, range_size);
+		}
+
+		for(int idx = i_start; (i_end - idx) * step > 0; idx += step) {
 			range.push_back(idx);
 		}
-		insert_range_(axis, range);
+		ranges_[axis] = range;
+		remove_axis_[axis] = false;
 	}
 
 	/**
@@ -258,9 +284,12 @@ struct MultiIdxRange {
 	 * Produce shape of the destination array.
 	 */
 	Shape sub_shape() const {
-		Shape shape(ranges_.size());
-		for(uint axis=0; axis < shape.size(); ++axis)
-			shape[axis] = ranges_[axis].size();
+		Shape shape;
+		for(uint axis=0; axis < ranges_.size(); ++axis) {
+			uint size = ranges_[axis].size();
+			if (size == 1 && remove_axis_[axis]) continue;
+			shape.push_back(size);
+		}
 		return shape;
 	}
 
@@ -268,6 +297,9 @@ struct MultiIdxRange {
 	std::vector<std::vector<uint>> ranges_;
 	/// Shape of the source Array of the range.
 	Shape full_shape_;
+	/// True for axis that is not part of the resulting subshape.
+	/// Can be true only for ranges of size 1.
+	std::vector<bool> remove_axis_;
 
 };
 
@@ -289,11 +321,13 @@ struct MultiIdx {
 	 */
 	MultiIdx(MultiIdxRange range)
 	: range_(range), indices_(range.full_shape_.size(), 0)
-	{}
+	{
+	}
 
 	/**
-	 * Increment the multiindex.
-	 * Last index runs fastest.
+	 * Increment the multiindex. Last index runs fastest.
+	 * Returns true if the increment was sucessfull, return false for the end of the range.
+	 * this->indices_ are set to zeros after the end of the iteration range.
 	 */
 	bool inc() {
 		for(uint axis = indices_.size(); axis > 0 ; )
@@ -473,7 +507,7 @@ public:
 		for(uint i_el=0; i_el < res.elements_.size(); ++i_el) {
 			res.elements_[i_el] = details::ScalarNode::create_const(values[i_el]);
 		}
-		BP_ASSERT(values.size() == res.shape_size());
+		BP_ASSERT(values.size() == shape_size(res.shape()));
 		return res;
 	}
 
@@ -684,12 +718,6 @@ public:
 
 	const Shape &shape() const {
 		return shape_;
-	}
-
-	uint shape_size() const {
-		uint shape_prod = 1;
-		for(uint dim : shape_) shape_prod *= dim;
-		return shape_prod;
 	}
 
 

@@ -187,19 +187,20 @@ struct subscribe_visitor {
 
 	result_type operator()(int idx) const {
 		MultiIdxRange res(range_);
-		res.insert_idx(axis_, idx);
+		res.sub_index(axis_, idx);
+		// TODO: use insert_range + reduction of dimension
 		return res;
 	}
 
 	result_type operator()(Slice slice_range) const {
 		MultiIdxRange res(range_);
-		res.insert_slice(axis_,slice_range);
+		res.sub_slice(axis_,slice_range);
 		return res;
 	}
 
 	result_type operator()(IndexList index_range) const {
 		MultiIdxRange res(range_);
-		res.insert_range(axis_, index_range);
+		res.sub_range(axis_, index_range);
 		return res;
 	}
 
@@ -221,7 +222,7 @@ inline Range create_slice(const IndexList& l) {
 }
 
 inline Array subscribe(const Array &a, const RangeList &slice_list) {
-	MultiIdxRange mir(a.shape());
+	auto mir = MultiIdxRange(a.shape()).full();
 	for(uint i=0; i<slice_list.size(); i++) {
 		Range axis_range = slice_list[i];
 		mir = boost::apply_visitor(subscribe_visitor(mir, i), axis_range);
