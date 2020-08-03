@@ -48,15 +48,15 @@ bool __test_eq(A a, B b, const char * _a, const char * _b, const char * f, int l
 
 #define TEST_EQ(A, B) __test_eq((A), (B), #A, #B, __FILE__, __LINE__)
 
-void fill_const(double *ptr, uint n, double v) {
+inline void fill_const(double *ptr, uint n, double v) {
 	for(uint i=0; i< n; ++i) ptr[i] = v;
 }
 
-void fill_seq(double *ptr, double a, double b, double st = 1) {
+inline void fill_seq(double *ptr, double a, double b, double st = 1) {
 	for(uint i=0; a<b; a+=st, ++i) ptr[i] = a;
 }
 
-std::string print_vec(double *ptr, uint size) {
+inline std::string print_vec(double *ptr, uint size) {
 	std::stringstream s;
 	s << "[";
 	for(uint i=0; i<size; ++i)

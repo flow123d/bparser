@@ -12,7 +12,9 @@
 #define INCLUDE_ARRAY_AST_INTERFACE_HH_
 
 #include <vector>
+#include <typeinfo>
 #include "array.hh"
+
 
 namespace bparser {
 
@@ -107,6 +109,8 @@ typedef Array (*ArrayFnTernary)(const Array &, const Array &, const Array &);
 typedef Array (*ArrayFnVariadic)(const ArrayList &);
 typedef Range (*IntListFn)(const IndexList &);
 typedef Array (*SubscribeFn)(const Array &, const RangeList &);
+typedef RangeList (*RangeListFn)(const RangeList &);
+typedef Range (*IndexFn)(int);
 
 
 typedef boost::variant <
@@ -115,7 +119,9 @@ typedef boost::variant <
 	ArrayFnTernary,
 	ArrayFnVariadic,
 	IntListFn,  //IndexArray and Slice
-	SubscribeFn  // slicing
+	SubscribeFn,  // slicing
+	RangeListFn,
+	IndexFn
 	> ArrayFn;
 
 struct call_visitor {
@@ -125,22 +131,26 @@ struct call_visitor {
 	: alist_(alist)
 	{}
 
-    template <class List>
-    static List get_type(ParserResult r_list) {
-    	if (List* l = boost::get<List>(&r_list)) {
+    template <class T>
+    static T get_type(ParserResult result) {
+    	if (T* l = boost::get<T>(&result)) {
     		return *l;
     	} else {
+    		std::cerr << "Wrong type: " << "ParserResult:" << result.which() << "\n"
+    				  << "Expected: " << typeid(T).name() << "\n";
     		BP_ASSERT(false);
     	}
     }
 
     result_type operator()(ArrayFnUnary fn) const {
     	BP_ASSERT(alist_.size() == 1);
+    	//std::cout << "unary fn" << "\n";
     	return fn(get_type<Array>(alist_[0]));
     }
 
     result_type operator()(ArrayFnBinary fn) const {
     	BP_ASSERT(alist_.size() == 2);
+    	//std::cout << "binary fn" << "\n";
     	return fn(
     			get_type<Array>(alist_[0]),
 				get_type<Array>(alist_[1]));
@@ -155,6 +165,7 @@ struct call_visitor {
     }
 
     result_type operator()(ArrayFnVariadic fn) const {
+    	//std::cout << "array variadic fn" << "\n";
     	std::vector<Array> alist;
     	for(ParserResult item : alist_)
     		alist.push_back(get_type<Array>(item));
@@ -163,6 +174,7 @@ struct call_visitor {
 
     result_type operator()(IntListFn fn) const {
     	std::vector<int> alist;
+    	//std::cout << "int list fn" << "\n";
     	for(ParserResult item : alist_)
     		alist.push_back(get_type<int>(item));
     	return fn(alist);
@@ -170,10 +182,28 @@ struct call_visitor {
 
     result_type operator()(SubscribeFn fn) const {
     	BP_ASSERT(alist_.size() == 2);
+    	//std::cout << "subscribe fn" << "\n";
     	return fn(
     			get_type<Array>(alist_[0]),
 				get_type<RangeList>(alist_[1]));
     }
+
+    result_type operator()(RangeListFn fn) const {
+    	// convert ResultList to RangeList
+    	RangeList r_list;
+    	//std::cout << "range list fn" << "\n";
+    	for(auto item : alist_) {
+    		r_list.push_back(get_type<Range>(item));
+    	}
+
+    	return fn(r_list);
+    }
+
+    result_type operator()(IndexFn fn) const {
+    	//std::cout << "index fn" << "\n";
+    	return fn(get_type<int>(alist_[0]));
+    }
+
 };
 
 
@@ -221,16 +251,27 @@ inline Range create_slice(const IndexList& l) {
 	return s;
 }
 
+inline Range create_index(int idx) {
+	return idx;
+}
+
 inline Array subscribe(const Array &a, const RangeList &slice_list) {
+	//std::cout << "subscribe start" << slice_list.size() << "\n";
 	auto mir = MultiIdxRange(a.shape()).full();
 	for(uint i=0; i<slice_list.size(); i++) {
 		Range axis_range = slice_list[i];
 		mir = boost::apply_visitor(subscribe_visitor(mir, i), axis_range);
 	}
+	//std::cout << "sub shape:  " << print_vector(mir.sub_shape()) << "\n";
+	//std::cout << "full shape: " << print_vector(mir.full_shape_) << "\n";
+	//std::cout << "ranges: " << print_vector(mir.ranges_[0]) << "\n";
+
 	return Array(a, mir);  // TODO: make valid implementation
 }
 
-
+inline RangeList range_list(const RangeList &slice_list) {
+	return slice_list;
+}
 
 }
 

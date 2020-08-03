@@ -24,7 +24,7 @@ namespace bparser {
  */
 typedef std::vector<uint> Shape;
 
-uint shape_size(Shape s) {
+inline uint shape_size(Shape s) {
 	if (s.size() == 0) return 1;
 	uint shape_prod = 1;
 	for(uint dim : s) shape_prod *= dim;
@@ -209,6 +209,7 @@ struct MultiIdxRange {
 	 * Subscribe given axis by the index. Reduce the axis.
 	 */
 	void sub_index(uint axis, int index) {
+		//std::cout << "sub_index: " << axis << index << "\n";
 		BP_ASSERT(axis < full_shape_.size());
 		uint range_size = full_shape_[axis];
 		uint i_index = absolute_idx(index, range_size);
@@ -222,6 +223,7 @@ struct MultiIdxRange {
 	 * Subscribe given axis by the range given by the list of generalized indices.
 	 */
 	void sub_range(uint axis, std::vector<int> index_list) {
+		//std::cout << "sub_range: " << axis << index_list[0] << "\n";
 		BP_ASSERT(axis < full_shape_.size());
 		uint range_size = full_shape_[axis];
 		std::vector<uint> range;
@@ -237,7 +239,7 @@ struct MultiIdxRange {
 	 * Subscribe given axis by the range given by a slice.
 	 */
 	void sub_slice(uint axis, Slice s) {
-
+		//std::cout << "sub_slice: " << axis << s[0] << s[1] << s[2] << "\n";
 		uint range_size = full_shape_[axis];
 		std::vector<uint> range;
 		int start=s[0], end=s[1], step=s[2];
@@ -255,6 +257,9 @@ struct MultiIdxRange {
 			i_end = step > 0 ? range_size : -1;
 		} else {
 			i_end   = absolute_idx(end, range_size);
+		}
+		if (step == none_int) {
+			step = 1;
 		}
 
 		for(int idx = i_start; (i_end - idx) * step > 0; idx += step) {
@@ -654,10 +659,10 @@ public:
 //		return res;  // TODO: make valid implementation
 //	}
 
-	static Array subscribe(const Array &a, const Array &slice) {
-		Array res = concatenate({a,slice});
-		return res;  // TODO: make valid implementation
-	}
+//	static Array subscribe(const Array &a, const Array &slice) {
+//		Array res = concatenate({a,slice});
+//		return res;  // TODO: make valid implementation
+//	}
 
 	/**
 	 * Constructors.

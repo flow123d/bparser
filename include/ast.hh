@@ -80,9 +80,7 @@ struct list {
     operand head; // list; non-list type marks end of recursion
     operand item; //
 };
-//list origin_list(operand x) {
-//	return list(x, 0.0);
-//}
+
 
 /// a function: (Array, Array) -> Array
 struct call {
@@ -90,20 +88,19 @@ struct call {
     operand arg_list;
 };
 
-//struct ternary_op {
-//	ternary_fn op;
-//	operand first;
-//	operand second;
-//	operand third;
-//};
 
 struct assign_op {
     std::string lhs;
     operand rhs;
 };
 
+/// TODO: eliminate call type, by allowing item to be a function
+/// This way we can further simplify visitors.
 
-
+inline void assert_list(operand x) {
+	//std::cout << x.which() << "\n";
+	BP_ASSERT(boost::get<list>(&x) != nullptr);
+}
 
 
 /**
@@ -120,17 +117,14 @@ struct print_vis : public boost::static_visitor<> {
     explicit print_vis()
     {}
 
-    void print_list(operand x) const {
+    bool print_list(operand x) const {
     	if (list *l = boost::get<list>(&x)) {
-			ResultList alist;
-			if (boost::get<list>(&(l->head))) {
-				print_list(l->head);
+			if (print_list(l->head))
 				ss << ",";
-			}
 			boost::apply_visitor(*this, l->item);
-    	} else {
-    		BP_ASSERT(false);
+			return true;
     	}
+    	return false;
     }
 
     void operator()(double x) const
@@ -151,14 +145,20 @@ struct print_vis : public boost::static_visitor<> {
 
     void operator()(call const &x) const {
     	ss << x.op.repr;
-    	//BP_ASSERT(boost::get<list>(&x.arg_list));
-    	boost::apply_visitor(*this, x.arg_list);
+    	ss << '(';
+    	//std::cout << x.op.repr << "\n";
+    	assert_list(x.arg_list);
+    	print_list(x.arg_list);
+    	ss << ')';
+
     }
 
     void operator()(list x) const {
+    	std::cout << "List without call. \n";
     	ss << '(';
     	print_list(x);
     	ss << ')';
+    	//BP_ASSERT(false);
     }
 
     void operator()(assign_op const &x) const  {
@@ -220,20 +220,14 @@ struct make_array {
 
 
     ResultList make_list(operand x) const {
+    	ResultList alist;
     	if (list *l = boost::get<list>(&x)) {
-			ResultList alist;
-			if (boost::get<list>(&(l->head))) {
-				 alist = make_list(l->head);
-			}
+    		alist = make_list(l->head);
 			ParserResult aitem = boost::apply_visitor(*this, l->item);
 			alist.push_back(aitem);
-			return alist;
-    	} else {
-    		BP_ASSERT(false);
     	}
+    	return alist;
     }
-
-
 
 
 //    result_type operator()(nil) const {
@@ -261,13 +255,15 @@ struct make_array {
     }
 
     result_type operator()(call const &x) const {
+    	assert_list(x.arg_list);
     	ResultList al = make_list(x.arg_list);
+    	//std::cout << "apply fn:" << x.op.repr << "\n";
     	result_type res = boost::apply_visitor(call_visitor(al), x.op.fn);
     	return res;
     }
 
     result_type operator()(list x) const {
-    	std::cout << "List in wrong place: \n";
+    	std::cout << "List without call: \n";
     	std::cout << print(x) << "\n";
     	BP_ASSERT(false);
 
@@ -314,6 +310,16 @@ struct get_variables {
     explicit get_variables()
     {}
 
+    result_type merge_list(operand x) const {
+    	if (list *l = boost::get<list>(&x)) {
+        	result_type head_vars = merge_list(l->head);
+        	result_type item_vars = boost::apply_visitor(*this, l->item);
+        	return merge(head_vars, item_vars);
+    	} else {
+    		return result_type();
+    	}
+    }
+
 
 //    result_type operator()(nil) const {
 //        BOOST_ASSERT(0);
@@ -333,16 +339,16 @@ struct get_variables {
 
 
     result_type operator()(call const &x) const {
-    	return boost::apply_visitor(*this, x.arg_list);
+    	assert_list(x.arg_list);
+    	return merge_list(x.arg_list);
     }
 
     result_type operator()(list x) const {
-    	result_type head_vars;
-    	if (boost::get<list>(&x.head)) {
-    		head_vars = boost::apply_visitor(*this, x.head);
-    	}
-    	result_type item_vars = boost::apply_visitor(*this, x.item);
-    	return merge(head_vars, item_vars);
+
+    	std::cout << "List at wrong place: \n";
+    	std::cout << print(x) << "\n";
+    	BP_ASSERT(false);
+
     }
 
     result_type operator()(assign_op const &x) const  {
@@ -440,8 +446,8 @@ struct make_const_f {
 	// the nulary 'fn' must in fact accept single double argument.
 	call operator()(std::string repr, ArrayFnUnary fn) const {
 		NamedArrayFn nulary_fn = {repr, fn};
-		call c = make_unary(nulary_fn, 0.0)(); // unused argument 0.0
-		return c;
+		list l = {0.0, 0.0};
+		return {nulary_fn, l};
 	}
 };
 BOOST_PHOENIX_ADAPT_CALLABLE(make_const, make_const_f, 2)
@@ -500,7 +506,7 @@ BOOST_PHOENIX_ADAPT_CALLABLE(make_assign, make_assign_f, 2)
 struct treat_optional_int_f {
 	operand operator()(boost::optional<operand> const& v) const {
 		if (v == boost::none) {
-			return ast::none_int;
+			return none_int;
 		} else {
 			return *v; // extract optional value
 		}

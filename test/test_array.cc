@@ -103,6 +103,8 @@ void test_MultiIdxRange() {
 		ASSERT_THROW(r.sub_range(1, {3}),
 				"out of range");
 
+		r.sub_slice(1, {none_int, 2, none_int});
+		EXPECT(match_linear(r, {6,7,8,9, 0,1,2,3}));
 		r.sub_slice(1, {2, none_int,-2});
 		EXPECT(match_linear(r, {10,11,6,7, 4,5,0,1}));
 		ASSERT_THROW(r.sub_slice(1, {none_int, none_int, 0}),

@@ -111,6 +111,7 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 		literal_int,
 		const_lit,
 		const_idx,
+		const_index,
 		subscriptable,
 		subscription,
 		slicing,
@@ -199,7 +200,7 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
         not_op.add UN_FN("not", unary_array<_neg_>());
 
 
-        NamedArrayFn subscribe_fn = {"[]", &Array::subscribe};
+        NamedArrayFn subscribe_fn = {"[]", &subscribe};
 
 //        array_slice_comma_op.add
 //			BN_FN(",", &append_slice_list);
@@ -223,6 +224,9 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
         NamedArrayFn semicol_fn = {";", &ast::semicol_fn};
         NamedArrayFn if_else_fn = {"ifelse", &Array::if_else};
         NamedArrayFn slice_fn = {"slice", &create_slice};
+        NamedArrayFn index_fn = {"index", &create_index};
+        NamedArrayFn range_list_fn = {"list", &range_list};
+
         //auto head_const = ast::make_const("Head", &Array::empty_array);
 
         auto true_const = ast::make_const("True", &Array::true_array);
@@ -312,10 +316,11 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
         		            [qi::_val = ast::make_binary(qi::_1, qi::_2, qi::_3)];
 
         RULE(subscription) = subscriptable[qi::_val = qi::_1] >> -('[' >> slicing > ']')
-                             [qi::_val = ast::make_binary(subscribe_fn, qi::_val, qi::_1)];
+                             [qi::_val = ast::make_binary(subscribe_fn, qi::_val,
+                            		 ast::make_call(range_list_fn, qi::_1))];
         RULE(slicing) = slice_item[qi::_val = ast::make_list(0.0, qi::_1)]
 					    >> *("," > slice_item)[qi::_val = ast::make_list(qi::_val, qi::_1)];;
-        RULE(slice_item) =  index_array | proper_slice | const_idx;
+        RULE(slice_item) =  index_array | proper_slice | const_index;
 
         RULE(const_lit) =
 				qi::lit("True")[qi::_val = true_const] |
@@ -341,17 +346,20 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 										ast::treat_optional_int(qi::_2),
 										ast::treat_optional_int(qi::_3))];
         RULE(index_array) = ('[' > index_array_list > ']')		// todo: index_array
-		[qi::_val = ast::make_unary(index_array_fn, qi::_1)];
+						[qi::_val = ast::make_call(index_array_fn, qi::_1)];
         RULE(index_array_list) = const_idx[qi::_val = ast::make_list(0.0, qi::_1)]
 						 >> *("," > const_idx)[qi::_val = ast::make_list(qi::_val, qi::_1)];
-        RULE(const_idx) = literal_int |  none_lit;
-        RULE(none_lit) = qi::lit("None")[qi::_val = ast::none_int];
+        RULE(const_index) = (const_idx)[qi::_val = ast::make_unary(
+        		index_fn, qi::_1)];
+        RULE(const_idx) = (literal_int |  none_lit);
+        RULE(none_lit) = qi::lit("None")[qi::_val = none_int];
         //RULE(const_idx) = (literal_int |  const_lit)[qi::_val = ast::make_call(index_array_fn, qi::_1)];
 
         // TODO: test that we can return an index array with single index
         // TODO: single index array works, but we need distinction between a[1] and a[[1]].
         // Former case reduce the shape, while the later does not.
         RULE(literal_int) = qi::int_;
+
 
 
 
