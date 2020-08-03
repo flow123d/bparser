@@ -148,11 +148,11 @@ union DoubleMask {
 	int64_t	mask;
 	double  value;
 };
-inline double mask_to_double(int64_t x) {
+inline constexpr double mask_to_double(int64_t x) {
 	return reinterpret_cast<double &>(x);
 }
 
-inline int64_t double_to_mask(double x) {
+inline constexpr int64_t double_to_mask(double x) {
 	return reinterpret_cast<int64_t &>(x);
 }
 
@@ -393,7 +393,7 @@ struct _ifelse_ : public ScalarNode {
 	static const char n_eval_args = 4;
 	inline static void eval(double &res, double a, double b, double c) {
 		// TODO: vectorize
-		res = mask_to_double( double_to_mask(b) ? double_to_mask(a) : double_to_mask(c));	// we use bit masks for bool values
+		res = double_to_mask(b) ? a : c;	// we use bit masks for bool values
 	}
 };
 
@@ -473,12 +473,8 @@ inline ScalarNode * ScalarNode::create_ifelse(ScalarNode *a, ScalarNode *b, Scal
 	node_ptr->add_input(a);
 	node_ptr->add_input(b);
 	node_ptr->add_input(c);
-	if (_ifelse_::n_eval_args == 3) {
-		node_ptr->result_storage = none;
-	} else {
-		BP_ASSERT(_ifelse_::n_eval_args == 4);
-		node_ptr->result_storage = temporary;
-	}
+	BP_ASSERT(_ifelse_::n_eval_args == 4);
+	node_ptr->result_storage = temporary;
 
 //		nodes.push_back(node_ptr);
 	return node_ptr;
