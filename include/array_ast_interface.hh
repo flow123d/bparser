@@ -218,13 +218,12 @@ struct subscribe_visitor {
 	result_type operator()(int idx) const {
 		MultiIdxRange res(range_);
 		res.sub_index(axis_, idx);
-		// TODO: use insert_range + reduction of dimension
 		return res;
 	}
 
 	result_type operator()(Slice slice_range) const {
 		MultiIdxRange res(range_);
-		res.sub_slice(axis_,slice_range);
+		res.sub_slice(axis_, slice_range);
 		return res;
 	}
 

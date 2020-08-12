@@ -5,11 +5,12 @@
  *      Author: jb
  */
 
-#ifndef TEST_TEST_TOOLS_HH_
-#define TEST_TEST_TOOLS_HH_
+#ifndef INCLUDE_TEST_TOOLS_HH_
+#define INCLUDE_TEST_TOOLS_HH_
 
 
 #include "assert.hh"
+#include <vector>
 
 
 
@@ -31,9 +32,16 @@
 }
 
 
+inline bool failed_expect(bool failed) {
+	static bool any_failed = false;
+	any_failed = any_failed || failed;
+	return any_failed;
+}
+
 #define EXPECT(EXPRESSION) \
 	if ( !(EXPRESSION) ) {\
 		std::cout << "Failed EXPECT, " <<  __FILE__ << ":" << __LINE__ << "\n\n"; \
+		failed_expect(true); \
 	}
 
 template  <class A, class B>
@@ -75,4 +83,4 @@ std::string print_vector(std::vector<T> x) {
 	return s.str();
 }
 
-#endif /* TEST_TEST_TOOLS_HH_ */
+#endif /* INCLUDE_TEST_TOOLS_HH_ */

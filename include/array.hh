@@ -15,7 +15,7 @@
 #include <boost/math/constants/constants.hpp>
 #include "config.hh"
 #include "scalar_node.hh"
-
+#include "test_tools.hh"
 
 namespace bparser {
 
@@ -31,6 +31,7 @@ inline uint shape_size(Shape s) {
 	return shape_prod;
 }
 
+
 inline std::string print_shape(const Shape s) {
 	std::ostringstream ss;
 	ss << '(';
@@ -42,6 +43,13 @@ inline std::string print_shape(const Shape s) {
 	return ss.str();
 }
 
+
+inline bool same_shape(Shape a, Shape b) {
+	if (a.size() != b.size()) return false;
+	for(uint i=0; i < a.size(); i++ )
+		if (a[i] != b[i]) return false;
+	return true;
+}
 
 
 const int none_int = std::numeric_limits<int>::max();
@@ -73,9 +81,11 @@ inline uint absolute_idx(int i, int size) {
  * 		destination[i, j, k, ... ] = source[MIR[ i, j, k, ...]]
  *
  * MIR mapping is given as a tensor product of single axis mappings:
- * MIR[i, j, k, ... ] =  (ranges_[0][i], ranges_[1][j]  ranges_[2][k], ...)
+ * MIR[i, j, k, ... ] =  (ranges_[T[0], i], ranges_[T[1], j], ranges_[T[2], k], ...)
  *
- * Shape of destination array is given by  [ranges_[0].size(), ranges_[1].size(), ...]
+ * T[:] - transpose mapping, can have values 'none_int'
+ * range_[m] where m is not in T[:] must have size 1 with fixed index to the source array
+ * Shape of destination array is given by  [ranges_[T[0]].size(), ranges_[T[1]].size(), ...]
  * Shape of the source array is given by full_shape_. The values of the ranges_ must be compatible:
  *
  *       ranges_[i][:] < full_shape_[i]
@@ -107,8 +117,11 @@ struct MultiIdxRange {
 	 */
 	MultiIdxRange(Shape shape)
 	: full_shape_(shape),
-	  remove_axis_(shape.size(), false)
-	{}
+	  sub_transpose_(shape.size())
+	{
+		for(uint axis=0; axis<full_shape_.size();axis++)
+			sub_transpose_[axis] = axis;
+	}
 
 	MultiIdxRange full() const {
 		MultiIdxRange res(full_shape_);
@@ -189,18 +202,25 @@ struct MultiIdxRange {
 	}
 
 	/**
-	 * Insert 'axis' with continuous sequence from 0 till 'dimension' into the range (*this).
+	 * Insert 'axis' with continuous sequence from 0 till 'dimension' into the source.
+	 * Set
 	 * E.g. for axis=1, dimension=2:
 	 * range [[1,2],[2,5,6]] -> [[1,2],[0,1],[2,5,6]]
 	 *
 	 * TODO: return copy
 	 */
-	void insert_axis(uint axis, uint dimension=1) {
-		full_shape_.insert(full_shape_.begin() + axis, dimension);
-		ranges_.insert(ranges_.begin() + axis, std::vector<uint>());
-		remove_axis_.insert(remove_axis_.begin() + axis, false);
+	void insert_axis(uint dest_axis, uint src_axis, uint dimension=1) {
+		BP_ASSERT(src_axis <= full_shape_.size());
+		BP_ASSERT(dest_axis <= sub_transpose_.size()); // TODO: check size of sub_transpose_
+		full_shape_.insert(full_shape_.begin() + src_axis, dimension);
+		ranges_.insert(ranges_.begin() + src_axis, std::vector<uint>());
 		for(uint i=0; i<dimension; ++i)
-			ranges_[axis].push_back(i);
+			ranges_[src_axis].push_back(i);
+		for(uint axis=0; axis<sub_transpose_.size();axis++)
+			if (sub_transpose_[axis] >= src_axis)
+				sub_transpose_[axis]++;
+
+		sub_transpose_.insert(sub_transpose_.begin() + dest_axis, src_axis);
 	}
 
 
@@ -208,13 +228,22 @@ struct MultiIdxRange {
 	 * AST subscription interface.
 	 * Subscribe given axis by the index. Reduce the axis.
 	 */
-	void sub_index(uint axis, int index) {
+	void sub_index(uint dest_axis, int index) {
 		//std::cout << "sub_index: " << axis << index << "\n";
-		BP_ASSERT(axis < full_shape_.size());
-		uint range_size = full_shape_[axis];
-		uint i_index = absolute_idx(index, range_size);
-		ranges_[axis] = std::vector<uint>({i_index});
-		remove_axis_[axis] = true;
+		if (index == none_int) {
+			BP_ASSERT(dest_axis <= sub_transpose_.size());
+			sub_transpose_.insert(sub_transpose_.begin() + dest_axis, none_int);
+		} else {
+			if (dest_axis >= sub_transpose_.size()) {
+				Throw() << "Too many indices (" << dest_axis << ") of array.";
+			}
+			uint src_axis = sub_transpose_[dest_axis];
+			BP_ASSERT(src_axis < full_shape_.size());
+			uint range_size = full_shape_[src_axis];
+			uint i_index = absolute_idx(index, range_size);
+			ranges_[src_axis] = std::vector<uint>({i_index});
+			sub_transpose_[dest_axis] = src_axis;
+		}
 	}
 
 
@@ -222,25 +251,34 @@ struct MultiIdxRange {
 	 * AST subscription interface.
 	 * Subscribe given axis by the range given by the list of generalized indices.
 	 */
-	void sub_range(uint axis, std::vector<int> index_list) {
+	void sub_range(uint dest_axis, std::vector<int> index_list) {
 		//std::cout << "sub_range: " << axis << index_list[0] << "\n";
-		BP_ASSERT(axis < full_shape_.size());
-		uint range_size = full_shape_[axis];
+		if (dest_axis >= sub_transpose_.size()) {
+			Throw() << "Too many indices (" << dest_axis << ") of array.";
+		}
+		uint src_axis = sub_transpose_[dest_axis];
+		BP_ASSERT(src_axis < full_shape_.size());
+		uint range_size = full_shape_[src_axis];
 		std::vector<uint> range;
 		for(int idx : index_list) {
 			range.push_back(absolute_idx(idx, range_size));
 		}
-		ranges_[axis] = range;
-		remove_axis_[axis] = false;
+		ranges_[src_axis] = range;
+		sub_transpose_[dest_axis] = src_axis;
 	}
 
 	/**
 	 * AST subscription interface.
 	 * Subscribe given axis by the range given by a slice.
 	 */
-	void sub_slice(uint axis, Slice s) {
+	void sub_slice(uint dest_axis, Slice s) {
 		//std::cout << "sub_slice: " << axis << s[0] << s[1] << s[2] << "\n";
-		uint range_size = full_shape_[axis];
+		if (dest_axis >= sub_transpose_.size()) {
+			Throw() << "Too many indices (" << dest_axis << ") of array.";
+		}
+		uint src_axis = sub_transpose_[dest_axis];
+		BP_ASSERT(src_axis < full_shape_.size());
+		uint range_size = full_shape_[src_axis];
 		std::vector<uint> range;
 		int start=s[0], end=s[1], step=s[2];
 		if (step == 0) {
@@ -265,8 +303,8 @@ struct MultiIdxRange {
 		for(int idx = i_start; (i_end - idx) * step > 0; idx += step) {
 			range.push_back(idx);
 		}
-		ranges_[axis] = range;
-		remove_axis_[axis] = false;
+		ranges_[src_axis] = range;
+		sub_transpose_[dest_axis] = src_axis;
 	}
 
 	/**
@@ -290,21 +328,26 @@ struct MultiIdxRange {
 	 */
 	Shape sub_shape() const {
 		Shape shape;
-		for(uint axis=0; axis < ranges_.size(); ++axis) {
-			uint size = ranges_[axis].size();
-			if (size == 1 && remove_axis_[axis]) continue;
+		uint size;
+		for(auto t : sub_transpose_) {
+			if (t == none_int) {
+				size = 1;
+			} else {
+				size = ranges_[t].size();
+			}
 			shape.push_back(size);
 		}
 		return shape;
 	}
 
-	/// For every axes, indices extracted from the source Array.
+	/// For every source axes, indices extracted from the source Array.
 	std::vector<std::vector<uint>> ranges_;
 	/// Shape of the source Array of the range.
 	Shape full_shape_;
-	/// True for axis that is not part of the resulting subshape.
-	/// Can be true only for ranges of size 1.
-	std::vector<bool> remove_axis_;
+	/// Transpose maps destination axis to the source axis.
+	/// none_int values are allowed indicating lifting e.g. from a vector to 1xN matrix.
+	/// Size is equal to the number of destination axes.
+	std::vector<uint> sub_transpose_;
 
 };
 
@@ -325,7 +368,7 @@ struct MultiIdx {
 	 * Set range, set multiindex to element zero.
 	 */
 	MultiIdx(MultiIdxRange range)
-	: range_(range), indices_(range.full_shape_.size(), 0)
+	: range_(range), indices_(range.ranges_.size(), 0)
 	{
 	}
 
@@ -335,12 +378,14 @@ struct MultiIdx {
 	 * this->indices_ are set to zeros after the end of the iteration range.
 	 */
 	bool inc() {
-		for(uint axis = indices_.size(); axis > 0 ; )
+		for(uint dest_axis = range_.sub_transpose_.size(); dest_axis > 0 ; )
 		{
-			--axis;
-			indices_[axis] += 1;
-			if (indices_[axis] == range_.ranges_[axis].size()) {
-				indices_[axis] = 0;
+			--dest_axis;
+			if (range_.sub_transpose_[dest_axis] == none_int) continue;
+			uint src_axis = range_.sub_transpose_[dest_axis];
+			indices_[src_axis] += 1;
+			if (indices_[src_axis] == range_.ranges_[src_axis].size()) {
+				indices_[src_axis] = 0;
 				continue;
 			} else {
 				return true;
@@ -353,7 +398,7 @@ struct MultiIdx {
 	 * Linear index into source array of the range.
 	 * Last index runs fastest.
 	 */
-	uint linear_idx() {
+	uint src_idx() {
 		uint lin_idx = 0;
 		for(uint axis = 0; axis < indices_.size(); ++axis) {
 			lin_idx *= range_.full_shape_[axis];
@@ -366,11 +411,13 @@ struct MultiIdx {
 	 * Linear index into destination array of the range.
 	 * Last index runs fastest.
 	 */
-	uint linear_subidx() {
+	uint dest_idx() {
 		uint lin_idx = 0;
-		for(uint axis = 0; axis < indices_.size(); ++axis) {
-			lin_idx *= range_.ranges_[axis].size();
-			lin_idx += indices_[axis];
+		for(uint dest_axis = 0; dest_axis < range_.sub_transpose_.size(); ++dest_axis) {
+			uint src_axis = range_.sub_transpose_[dest_axis];
+			if (src_axis == none_int) continue;
+			lin_idx *= range_.ranges_[src_axis].size();
+			lin_idx += indices_[src_axis];
 		}
 		return lin_idx;
 	}
@@ -467,11 +514,11 @@ public:
 		MultiIdx b_idx(b_range);
 		Array result(res_shape);
 		for(;;) {
-			BP_ASSERT(a_idx.linear_subidx() == b_idx.linear_subidx());
-			result.elements_[a_idx.linear_subidx()] =
+			BP_ASSERT(a_idx.dest_idx() == b_idx.dest_idx());
+			result.elements_[a_idx.dest_idx()] =
 					details::ScalarNode::create<T>(
-							a.elements_[a_idx.linear_idx()],
-							b.elements_[b_idx.linear_idx()]);
+							a.elements_[a_idx.src_idx()],
+							b.elements_[b_idx.src_idx()]);
 			if (!a_idx.inc() || !b_idx.inc()) break;
 		}
 		return result;
@@ -490,13 +537,13 @@ public:
 		MultiIdx c_idx(c_range);
 		Array result(res_shape);
 		for(;;) {
-			BP_ASSERT(a_idx.linear_subidx() == b_idx.linear_subidx());
-			BP_ASSERT(a_idx.linear_subidx() == c_idx.linear_subidx());
-			result.elements_[a_idx.linear_subidx()] =
+			BP_ASSERT(a_idx.dest_idx() == b_idx.dest_idx());
+			BP_ASSERT(a_idx.dest_idx() == c_idx.dest_idx());
+			result.elements_[a_idx.dest_idx()] =
 					details::ScalarNode::create_ifelse(
-							a.elements_[a_idx.linear_idx()],
-							b.elements_[b_idx.linear_idx()],
-							c.elements_[c_idx.linear_idx()]);
+							a.elements_[a_idx.src_idx()],
+							b.elements_[b_idx.src_idx()],
+							c.elements_[c_idx.src_idx()]);
 			if (!a_idx.inc() || !b_idx.inc() || !c_idx.inc()) break;
 		}
 		return result;
@@ -564,10 +611,15 @@ public:
 		 *
 		 * List must have at least 1 item.
 		 */
-		if (list.size() == 0) throw;
+		if (list.size() == 0)
+			Throw() << "stack: need at least one array";
 		if (list.size() == 1) return list[0];
-		// same shape
-		for(auto ar : list) ar.shape_ == list[0].shape_;
+		// check for same shape
+		for(auto ar : list)
+			if (ar.shape() != list[0].shape()) {
+				//std::cout << "a: " << print_vector(ar.shape()) << "b: " << print_vector(list[0].shape()) << "\n";
+				Throw() << "stack: all input arrays must have the same shape";
+			}
 
 		// new shape
 		Shape res_shape = list[0].shape_;
@@ -580,12 +632,11 @@ public:
 
 		for(uint ia=0; ia < list.size(); ++ia) {
 			MultiIdxRange bcast_range = list[0].range();
-			bcast_range.insert_axis(axis);
+			bcast_range.insert_axis(axis, axis);
 			bcast_range.shift_axis(axis, ia);
 			result.set_subset(bcast_range, list[ia]);
 		}
 		return result;
-
 	}
 
 
@@ -629,7 +680,7 @@ public:
 		    	Throw(ss.str());
 		    }
 		    if ( sub_size < max_len) {
-		    	r.insert_axis(axis);
+		    	r.insert_axis(axis, axis);
 		    }
 			for(uint ax=0; ax < res_shape.size(); ++ax)
 				res_shape[ax] = std::max(res_shape[ax], (uint)(r.ranges_[ax].size()));
@@ -652,6 +703,86 @@ public:
 		return result;
 	}
 
+
+	/**
+	 * Numpy.matmul:
+	 *
+	 * a 		has shape (..., i,j, k,l)
+	 * b 		has shape (..., i,j, l,m)
+	 * result 	has shape (..., i,j, k,m)
+	 */
+	static Array mat_mult(const Array &a,  const Array &b) {
+		if (a.shape().size() == 0)
+			Throw() << "Matmult can not multiply by scalar a." << "\n";
+		if (b.shape().size() == 0)
+			Throw() << "Matmult can not multiply by scalar b." << "\n";
+
+		auto a_broadcast = MultiIdxRange(a.shape()).full();
+		if (a.shape().size() == 1) {
+			a_broadcast.insert_axis(0, 1);
+		}
+		auto b_broadcast = MultiIdxRange(b.shape()).full();
+		if (b.shape().size() == 1) {
+			b_broadcast.insert_axis(1, 1);
+		}
+		Shape a_reduced = a_broadcast.full_shape_;
+		uint a_only_dim = *(a_reduced.end() - 2);
+		uint ab_common_dim = *(a_reduced.end() - 1);
+		a_reduced.erase(a_reduced.end() - 2);
+
+		Shape b_reduced = b_broadcast.full_shape_;
+		uint b_only_dim = *(b_reduced.end() - 1);
+		uint ba_common_dim = *(b_reduced.end() - 2);
+		if (ab_common_dim != ba_common_dim)
+			Throw() << "Matmult summing dimension mismatch: " << ab_common_dim << " != " << ba_common_dim << "\n";
+		b_reduced.erase(b_reduced.end() - 1);
+
+		auto common_shape = MultiIdxRange::broadcast_common_shape(a_reduced, b_reduced);
+		common_shape.insert(common_shape.end() - 1, a_only_dim);
+		common_shape.insert(common_shape.end() - 1, b_only_dim);
+		// common_shape : (...,i,j,k,m,l)
+//
+//		// TODO: can not use MutliIndexRange for transposition.
+//		a_broadcast.insert_const_axis()
+//
+//
+//		Shape bs_broadcast = b.shape();
+//		if (bs_broadcast.size() == 0)
+//			Throw() << "Matmult can not multiply by scalar b." << "\n";
+//
+//		if (as_broadcast.size() == 0)
+//			Throw() << ""
+
+//		...
+//		Shape result_shape = MultiIdxRange::broadcast_common_shape(as_broadcast, bs_broadcast);
+//		Shape common_shape; /// (..., i,j,k,m,l)
+//		MultiIdxRange a_range = a.range().broadcast(common_shape);
+//		MultiIdxRange b_range = b.range().broadcast(common_shape);
+//
+//		MultiIdx a_idx(a_range);
+//		MultiIdx b_idx(b_range);
+//		MultiIdx result_idx(result_range);
+//		ScalarNodePtr sum = nullptr;
+		Array result(common_shape);
+//		for(;;) {
+//
+//			ScalarNodePtr mult = details::ScalarNode::create<_mul_>(
+//					a.elements_[a_idx.linear_idx()],
+//					b.elements_[b_idx.linear_idx()]);
+//			if (result_idx.indices_.back() == 0) {
+//
+//				if (sum  != nullptr)
+//					result.elements_[result_idx.linear_idx()] = sum;
+//				ScalarNodePtr sum = mult;
+//			} else {
+//				// TODO: how to use inplace operations correctly ??
+//				ScalarNodePtr sum = details::ScalarNode::create<_add_>(sum, mult);
+//			}
+//			BP_ASSERT(a_idx.linear_subidx() == b_idx.linear_subidx());
+//			if (!a_idx.inc() || !b_idx.inc()) break;
+//		}
+		return result;
+	}
 
 
 //	static Array slice(const Array &a, const Array &b, const Array&c) {
@@ -710,11 +841,11 @@ public:
 	}
 
 	ScalarNodePtr &operator[](MultiIdx idx) {
-		return elements_[idx.linear_idx()];
+		return elements_[idx.src_idx()];
 	}
 
 	ScalarNodePtr operator[](MultiIdx idx) const {
-		return elements_[idx.linear_idx()];
+		return elements_[idx.src_idx()];
 	}
 
 	const std::vector<ScalarNodePtr> &elements() const {
@@ -740,7 +871,7 @@ public:
 			throw e;
 		}
 		auto promote_range = MultiIdxRange(shape_).full();
-		promote_range.insert_axis(u_axis, 1);
+		promote_range.insert_axis(u_axis, u_axis, 1);
 		return Array(*this, promote_range);
 	}
 
@@ -802,8 +933,8 @@ public:
 	}
 
 	/**
-	 * Append 'slice' to 'axis' of 'this' Array.
-	 * 'slice' must have compatible shape, matching shape in all other sxes of 'this'.
+	 * Append 'slice' array to 'axis' of 'this' Array.
+	 * 'slice' must have compatible shape, matching shape in all other axes of 'this'.
 	 */
 	Array append(const Array &slice, int axis = 0) const
 	{
@@ -873,10 +1004,11 @@ private:
 		Shape sub_shp = range.sub_shape();
 		Shape min_shape_a = minimal_shape(sub_shp);
 		Shape min_shape_b = minimal_shape(other.shape_);
+		//std::cout << "a: " << print_vector(min_shape_a) << "b: " << print_vector(min_shape_b) << "\n";
 		BP_ASSERT(min_shape_a == min_shape_b);
 		MultiIdx idx(range);
 		for(;;) {
-			elements_[idx.linear_idx()] = other.elements_[idx.linear_subidx()];
+			elements_[idx.src_idx()] = other.elements_[idx.dest_idx()];
 			if (! idx.inc()) break;
 		}
 	}
@@ -887,7 +1019,7 @@ private:
 	void from_subset(const Array &other, const MultiIdxRange &range) {
 		MultiIdx idx(range);
 		for(;;) {
-			elements_[idx.linear_subidx()] = other.elements_[idx.linear_idx()];
+			elements_[idx.dest_idx()] = other.elements_[idx.src_idx()];
 			if (! idx.inc()) break;
 		}
 	}
@@ -928,6 +1060,10 @@ inline Array unary_plus(const Array & a) {
 	return a;
 }
 
+inline Array floor_div(const Array & a, const Array & b) {
+	Array r1 = Array::binary_op<details::_div_>(a, b);
+	return Array::unary_op<details::_floor_>(r1);
+}
 
 inline Array operator+(const Array &a,  const Array &b) {
 	return Array::binary_op<details::_add_>(a, b);

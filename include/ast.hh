@@ -147,7 +147,7 @@ struct print_vis : public boost::static_visitor<> {
     	ss << x.op.repr;
     	ss << '(';
     	//std::cout << x.op.repr << "\n";
-    	assert_list(x.arg_list);
+    	//assert_list(x.arg_list);
     	print_list(x.arg_list);
     	ss << ')';
 
@@ -255,7 +255,7 @@ struct make_array {
     }
 
     result_type operator()(call const &x) const {
-    	assert_list(x.arg_list);
+    	//assert_list(x.arg_list);
     	ResultList al = make_list(x.arg_list);
     	//std::cout << "apply fn:" << x.op.repr << "\n";
     	result_type res = boost::apply_visitor(call_visitor(al), x.op.fn);
@@ -339,7 +339,7 @@ struct get_variables {
 
 
     result_type operator()(call const &x) const {
-    	assert_list(x.arg_list);
+    	//assert_list(x.arg_list);
     	return merge_list(x.arg_list);
     }
 
@@ -487,8 +487,8 @@ BOOST_PHOENIX_ADAPT_CALLABLE(make_ternary, make_ternary_f, 4)
 
 
 struct make_list_f {
-	list operator()(operand const& head, operand const& item) const {
-		return {head, item};
+	operand operator()(operand const& head, operand const& item) const {
+		return list({head, item});
 	}
 };
 BOOST_PHOENIX_ADAPT_CALLABLE(make_list, make_list_f, 2)
@@ -503,16 +503,16 @@ struct make_assign_f {
 BOOST_PHOENIX_ADAPT_CALLABLE(make_assign, make_assign_f, 2)
 
 // Convert 'boost::optional' to 'operand'.
-struct treat_optional_int_f {
-	operand operator()(boost::optional<operand> const& v) const {
+struct treat_optional_f {
+	operand operator()(boost::optional<operand> const& v, operand const& default_) const {
 		if (v == boost::none) {
-			return none_int;
+			return default_;
 		} else {
 			return *v; // extract optional value
 		}
 	}
 };
-BOOST_PHOENIX_ADAPT_CALLABLE(treat_optional_int, treat_optional_int_f, 1)
+BOOST_PHOENIX_ADAPT_CALLABLE(treat_optional, treat_optional_f, 2)
 
 
 

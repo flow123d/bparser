@@ -438,6 +438,7 @@ ScalarNode * ScalarNode::create(ScalarNode *a) {
 	node_ptr->set_name(typeid(T).name());
 	node_ptr->add_input(a);
 	if (T::n_eval_args == 1) {
+		// Note: in place operations are not supported
 		node_ptr->result_storage = none;
 	} else {
 		BP_ASSERT(T::n_eval_args == 2);
@@ -456,6 +457,7 @@ ScalarNode * ScalarNode::create(ScalarNode *a, ScalarNode *b) {
 	node_ptr->add_input(a);
 	node_ptr->add_input(b);
 	if (T::n_eval_args == 2) {
+		// Note: in place operations are not supported
 		node_ptr->result_storage = none;
 	} else {
 		BP_ASSERT(T::n_eval_args == 3);

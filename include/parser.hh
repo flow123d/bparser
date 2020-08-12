@@ -45,19 +45,23 @@ class Parser {
 	uint max_vec_size;
 	std::map<std::string, Array> symbols_;
 	std::vector<std::string> free_variables;
-	Array result_array;
+	Array result_array_;
 	Processor * processor;
+	double * tmp_result;
 
 public:
     /// @brief Constructor
     Parser(uint max_vec_size)
-	: max_vec_size(max_vec_size), processor(nullptr)
+	: max_vec_size(max_vec_size), processor(nullptr), tmp_result(nullptr)
 	{}
 
     /// @brief Destructor
-    ~Parser() {}
+    ~Parser() {
+    	destroy_processor();
+    }
 
     void destroy_processor() {
+    	if (tmp_result) delete [] tmp_result;
     	if (processor != nullptr) processor->~Processor();
     }
     /// @brief Parse the mathematical expression into an abstract syntax tree
@@ -134,27 +138,38 @@ public:
     /// All variable names have to be set before this call.
     /// TODO: set result variable
     void compile() {
-    	auto res_it = symbols_.find("_result_");
-    	if (res_it == symbols_.end())
-    		Throw() << "Missing '_result_' definition.";
+    	destroy_processor();
 
         ParserResult res_array = boost::apply_visitor(ast::make_array(symbols_), ast);
+
         if (Array *a_ptr = boost::get<Array>(&res_array)) {
-        	result_array = a_ptr->make_result(res_it->second);
+        	Shape result_shape = a_ptr->shape();
+        	auto res_it = symbols_.find("_result_");
+        	if (res_it == symbols_.end()) {
+        		// TODO: replace be storing result in the temporary variable of the processor
+        		tmp_result = new double[shape_size(result_shape) * max_vec_size];
+        		result_array_ = Array::value(tmp_result, max_vec_size, result_shape);
+        		result_array_ = a_ptr->make_result(result_array_);
+        	} else {
+        		result_array_ = a_ptr->make_result(res_it->second);
+        	}
         } else {
         	BP_ASSERT(false);
         }
 
-
-
-
-        destroy_processor();
-		ExpressionDAG se(result_array.elements());
+		ExpressionDAG se(result_array_.elements());
 
 		//se.print_in_dot();
 		processor = Processor::create_processor_(se, max_vec_size);
     }
 
+    Array result_array() {
+    	return result_array_;
+    }
+
+    double * tmp_result_ptr() {
+    	return tmp_result;
+    }
 
     /// @brief Set new subset of the 'max_vec_size' vectors.
     /// Only this subset is evuluated by the processor.

@@ -175,7 +175,7 @@ void test_operators() {
 	EXPECT(match("2 <= 1", "<=(2,1)"));
 
 	// boolean
-	EXPECT(match("not 2 <= 1", "not(<=(2,1))"));
+	EXPECT(match("not 2 <= 1", "not(<=(2,1)) "));
 	EXPECT(match("not 2 <= 1 or False", "or(not(<=(2,1)),False(0))"));
 	EXPECT(match("not 2 <= 1 or False and 1", "or(not(<=(2,1)),and(False(0),1))"));
 	EXPECT(match("10 if True else 20", "ifelse(10,True(0),20)"));
@@ -189,7 +189,7 @@ int main()
 	test_arrays();
 	test_subscription();
 	test_operators();
-
+	BP_ASSERT( !failed_expect(false) );
 }
 
 

@@ -106,6 +106,7 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 		signed_expr,
 		power,
         array_constr,
+		array_constr_list_opt,
 		array_constr_list,
 		literal_double,
 		literal_int,
@@ -190,15 +191,14 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
         multiplicative_op.add
             BN_FN("*", binary_array<_mul_>())
             BN_FN("/", binary_array<_div_>())
-			BN_FN("//", binary_array<_mod_>())	// floor division
-			BN_FN("@", binary_array<_mod_>())	// numpy matrix multiplication
+			BN_FN("//", &floor_div)	// floor division
+			BN_FN("@", &Array::mat_mult)	// numpy matrix multiplication
             BN_FN("%", binary_array<_mod_>())
             ;
 
         and_op.add BN_FN("and", binary_array<_and_>());
         or_op.add BN_FN("or", binary_array<_or_>());
         not_op.add UN_FN("not", unary_array<_neg_>());
-
 
         NamedArrayFn subscribe_fn = {"[]", &subscribe};
 
@@ -327,11 +327,12 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 				qi::lit("False")[qi::_val = false_const];
 
         RULE(enclosure) = '(' > expression > ')';
-        RULE(array_constr) = ('[' > array_constr_list > ']')
-        		             [qi::_val = ast::make_call(array_fn, qi::_1)];
+        RULE(array_constr) = ('[' > array_constr_list_opt  > ']')
+        		             [qi::_val = ast::make_call(array_fn,qi::_1)];
+        RULE(array_constr_list_opt) = (-(array_constr_list))
+        		[qi::_val = ast::treat_optional(qi::_1, none_int)];
         RULE(array_constr_list) = expression[qi::_val = ast::make_list(0.0, qi::_1)]
 						 >> *(',' > expression)[qi::_val = ast::make_list(qi::_val, qi::_1)];
-
         RULE(literal_double) = qi::double_; // includes ints
         RULE(identifier) =
         		&(! reserved) >>
@@ -342,9 +343,9 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
         						>> -(literal_int)
 								>> -( qi::lit(':') >> literal_int))
 								[qi::_val = ast::make_ternary(slice_fn,
-										ast::treat_optional_int(qi::_1),
-										ast::treat_optional_int(qi::_2),
-										ast::treat_optional_int(qi::_3))];
+										ast::treat_optional(qi::_1, none_int),
+										ast::treat_optional(qi::_2, none_int),
+										ast::treat_optional(qi::_3, none_int))];
         RULE(index_array) = ('[' > index_array_list > ']')		// todo: index_array
 						[qi::_val = ast::make_call(index_array_fn, qi::_1)];
         RULE(index_array_list) = const_idx[qi::_val = ast::make_list(0.0, qi::_1)]

@@ -30,11 +30,11 @@ bool match_linear(MultiIdxRange r, std::vector<uint> sub_linear) {
 	for(uint n=0;n < sub_linear.size();n++) {
 		//std::cout << print_vector(idx.indices_) << "\n";
 		//std::cout << n << ", " << idx.linear_subidx() << ", " << sub_linear[n] <<  ", " << idx.linear_idx() << "\n";
-		EXPECT_CONTINUE(TEST_EQ(n, idx.linear_subidx()));
-		EXPECT_CONTINUE(TEST_EQ(sub_linear[n], idx.linear_idx()));
+		EXPECT_CONTINUE(TEST_EQ(n, idx.dest_idx()));
+		EXPECT_CONTINUE(TEST_EQ(sub_linear[n], idx.src_idx()));
 		if (! idx.inc()) break;
 	}
-	EXPECT_CONTINUE(TEST_EQ(idx.linear_subidx(), uint(0))); // all values compared
+	EXPECT_CONTINUE(TEST_EQ(idx.dest_idx(), uint(0))); // all values compared
 	return true;
 }
 
@@ -88,7 +88,7 @@ void test_MultiIdxRange() {
 	{
 		auto r = MultiIdxRange(Shape({2,1})).full();
 		//insert_axis
-		r.insert_axis(0, 3);
+		r.insert_axis(0, 0, 3);
 		EXPECT(shape_eq(r.sub_shape(), {3, 2, 1}));
 		EXPECT(shape_eq(r.full_shape_, {3, 2, 1}));
 	}
@@ -96,21 +96,21 @@ void test_MultiIdxRange() {
 		auto r = MultiIdxRange(Shape({2,3,2})).full();
 		//insert_range
 
-		r.sub_range(0, {1,0});
+		r.sub_range(0, 0, {1,0});
 		EXPECT(match_linear(r, {6,7,8,9,10,11, 0,1,2,3,4,5}));
-		r.sub_range(1, {-2, -1});
+		r.sub_range(1, 1, {-2, -1});
 		EXPECT(match_linear(r, {8,9,10,11, 2,3,4,5}));
-		ASSERT_THROW(r.sub_range(1, {3}),
+		ASSERT_THROW(r.sub_range(1, 1, {3}),
 				"out of range");
 
-		r.sub_slice(1, {none_int, 2, none_int});
+		r.sub_slice(1, 1, {none_int, 2, none_int});
 		EXPECT(match_linear(r, {6,7,8,9, 0,1,2,3}));
-		r.sub_slice(1, {2, none_int,-2});
+		r.sub_slice(1, 1, {2, none_int,-2});
 		EXPECT(match_linear(r, {10,11,6,7, 4,5,0,1}));
-		ASSERT_THROW(r.sub_slice(1, {none_int, none_int, 0}),
+		ASSERT_THROW(r.sub_slice(1, 1, {none_int, none_int, 0}),
 				"Slice step cannot be zero.");
 
-		r.sub_index(2, 1);
+		r.sub_index(2, 2, 1);
 		EXPECT(match_linear(r, {11,7, 5,1}));
 	}
 

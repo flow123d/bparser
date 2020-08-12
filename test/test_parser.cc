@@ -6,9 +6,10 @@
  */
 
 #include <string>
+
+#include "test_tools.hh"
 #include "assert.hh"
 #include "parser.hh"
-#include "test_tools.hh"
 
 
 
@@ -38,50 +39,77 @@ void test_free_variables() {
 	EXPECT(test_fv("a=1;a+b", {"b"}));
 }
 
+constexpr uint vec_size = 8;
 
-bool test_expr(std::string expr, std::vector<double> ref_result) {
+std::vector<double> eval_expr_(std::string expr) {
 	std::cout << "parser test : " << expr << "\n";
 	using namespace bparser;
-	uint vec_size = 8;
+
 	//auto m1 = new double[vec_size * 6];
 	auto as1 = new double[vec_size];
 	fill_const(as1, vec_size, 1);
 	auto av2 = new double[vec_size * 3];
 	fill_const(av2, 3 * vec_size, 2);
 
-	uint result_size = ref_result.size();
-	auto vres = new double[vec_size * result_size];
-	fill_const(vres, vec_size * result_size, -1e100); // undefined value
+
+
+
 
 	Parser p(vec_size);
 	p.parse(expr);
-	std::cout << "AST: " << p.print_ast() << "\n";
+	std::cout << "  AST: " << p.print_ast() << "\n";
 	p.set_variable("as1", {}, as1);
 	p.set_variable("av2", {3}, av2);
 	p.set_constant("cs3", {}, 	{3});
 	p.set_constant("cv4", {3}, 	{4, 5, 6});
-	p.set_variable("_result_", {result_size}, vres);
+	//p.set_variable("_result_", {result_size}, vres);
 //	std::cout << "vres: " << vres << ", " << vres + vec_size << ", " << vres + 2*vec_size << "\n";
 //	std::cout << "Symbols: " << print_vector(p.symbols()) << "\n";
 //	std::cout.flush();
 	p.compile();
+	double * vres = p.tmp_result_ptr();
+	uint result_size = shape_size(p.result_array().shape());
+	fill_const(vres, vec_size * result_size, -1e100); // undefined value
 	p.set_subset({0, 1});
 	p.run();
+
+	std::vector<double> res(result_size * vec_size);
+	for(uint i=0; i < res.size(); i++) res[i] = vres[i];
+	return res;
+}
+
+bool test_expr(std::string expr, std::vector<double> ref_result) {
+	auto res = eval_expr_(expr);
 
 	// check
 	bool success = true;
 	for(uint i=0; i < vec_size; i++) {
-		for(uint j=0; j<result_size; j++) {
-			if (fabs(vres[j*vec_size + i] - ref_result[j]) > 1e-3 * fabs(ref_result[j]) ) {
+		for(uint j=0; j < ref_result.size(); j++) {
+			if (fabs(res[j * vec_size + i] - ref_result[j]) > 1e-3 * fabs(ref_result[j]) ) {
 				success = false;
 				std::cout << "  " << i << "," << j <<
 				" ref: " << ref_result[j] <<
-				" res: " << vres[i*result_size + j] << "\n";
+				" res: " << res[i * ref_result.size() + j] << "\n";
 			}
 		}
 	}
 	std::cout.flush();
 	return success;
+}
+
+bool fail_expr(std::string expr, std::string ref_msg) {
+	try {
+		eval_expr_(expr);
+	} catch (bparser::Exception &e) {
+		size_t pos = std::string(e.what()).find(ref_msg);
+		if (pos == std::string::npos) {
+			std::cout << "\nBP exception msg: " << e.what() << "\n";
+			std::cout << "Expected msg: " << ref_msg << "\n";
+			return false;
+		}
+		return true;
+	}
+	return false;
 }
 
 
@@ -103,6 +131,12 @@ void test_expression() {
 	BP_ASSERT(test_expr("cv4[1] ** av2", {25, 25, 25}));
 	BP_ASSERT(test_expr("cv4[:2] ** 2", {16, 25}));
 	BP_ASSERT(test_expr("cv4[[0,1]] ** 2", {16, 25}));
+	BP_ASSERT(fail_expr("cs3[0]", "Too many indices")); // ?fail
+	BP_ASSERT(test_expr("cv4[0, None] * cv4[None, 1]", {})); // ?? matrix
+	BP_ASSERT(fail_expr("[]", "stack: need at least one array"));
+	BP_ASSERT(fail_expr("[1,cv4,av2]", "stack: all input arrays must have the same shape"));
+	BP_ASSERT(test_expr("[1,1]", {1, 1}));
+	BP_ASSERT(test_expr("a=[[1,1,1], cv4, av2]; a[:, 0]", {1, 4, 2}));
 	//BP_ASSERT(test_expr("cv4[2] ** av2", {25, 25, 25}));
 	//BP_ASSERT(test_expr("cv4[2] ** av2", {25, 25, 25}));
 
