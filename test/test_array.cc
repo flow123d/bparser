@@ -96,21 +96,21 @@ void test_MultiIdxRange() {
 		auto r = MultiIdxRange(Shape({2,3,2})).full();
 		//insert_range
 
-		r.sub_range(0, 0, {1,0});
+		r.sub_range(0, {1,0});
 		EXPECT(match_linear(r, {6,7,8,9,10,11, 0,1,2,3,4,5}));
-		r.sub_range(1, 1, {-2, -1});
+		r.sub_range(1, {-2, -1});
 		EXPECT(match_linear(r, {8,9,10,11, 2,3,4,5}));
-		ASSERT_THROW(r.sub_range(1, 1, {3}),
+		ASSERT_THROW(r.sub_range(1, {3}),
 				"out of range");
 
-		r.sub_slice(1, 1, {none_int, 2, none_int});
+		r.sub_slice(1, {none_int, 2, none_int});
 		EXPECT(match_linear(r, {6,7,8,9, 0,1,2,3}));
-		r.sub_slice(1, 1, {2, none_int,-2});
+		r.sub_slice(1, {2, none_int,-2});
 		EXPECT(match_linear(r, {10,11,6,7, 4,5,0,1}));
-		ASSERT_THROW(r.sub_slice(1, 1, {none_int, none_int, 0}),
+		ASSERT_THROW(r.sub_slice(1, {none_int, none_int, 0}),
 				"Slice step cannot be zero.");
 
-		r.sub_index(2, 2, 1);
+		r.sub_index(2,  1);
 		EXPECT(match_linear(r, {11,7, 5,1}));
 	}
 
