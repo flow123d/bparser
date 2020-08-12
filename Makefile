@@ -10,7 +10,7 @@ COMPILER         := -g++
 OPTIMIZATION_OPT :=  -O3 -mavx2
 #BASE_OPTIONS     := -fmax-errors=5 #-pedantic-errors -Wall -Wextra -Werror -Wno-long-long
 INCLUDES		 := -I include
-BASE_OPTIONS     := $(INCLUDES) -std=c++11 -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing
+BASE_OPTIONS     := $(INCLUDES) -std=c++11 -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION
 DBG_OPT			 := -g -DDEBUG #-fsanitize=address -static-libasan  -fno-omit-frame-pointer
 #OPTIONS          := $(BASE_OPTIONS) $(OPTIMIZATION_OPT)
 OPTIONS          := $(BASE_OPTIONS) $(DBG_OPT)
