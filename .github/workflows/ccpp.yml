@@ -485,18 +485,41 @@ jobs:
       - name: Build dir
         run: mkdir build  
 
-      - name: make test_grammar
+      - name: make cmake_dbg
+        run: make cmake_dbg
+        
+      - name: make test_grammar_dbg
         run: make test_grammar
 
-      - name: make test_array
+      - name: make test_array_dbg
         run: make test_array
       
-      - name: make test_processor
+      - name: make test_processor_dbg
         run: make test_processor
       
-      - name: make test_parser
+      - name: make test_parser_dbg
         run: make test_parser
       
-      - name: make test_speed
+      - name: make test_speed_dbg
         run: make test_speed
           
+      - name: make clean
+        run: make clean
+        
+      - name: make cmake_rel
+        run: make cmake_rel
+        
+      - name: make test_grammar_rel
+        run: make test_grammar
+
+      - name: make test_array_rel
+        run: make test_array
+      
+      - name: make test_processor_rel
+        run: make test_processor
+      
+      - name: make test_parser_rel
+        run: make test_parser
+      
+      - name: make test_speed_rel
+        run: make test_speed

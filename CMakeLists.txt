@@ -1,38 +1,215 @@
-# 
-# Copyright (C) 2020 Technical University of Liberec.  All rights reserved.
-#
-# Please make a following refer to Flow123d on your project site if you use the program for any purpose,
-# especially for academic research:
-# Flow123d, Research Centre: Advanced Remedial Technologies, Technical University of Liberec, Czech Republic
-#
-# This program is free software; you can redistribute it and/or modify it under the terms
-# of the GNU General Public License version 3 as published by the Free Software Foundation.
-# 
-# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
-# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-# See the GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along with this program; if not,
-# write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 021110-1307, USA.
-#
-# $Id$
-# $Revision$
-# $LastChangedBy$
-# $LastChangedDate$
-#
+cmake_minimum_required(VERSION 3.10)
 
 message(STATUS "CMakeLists.txt - BParser")
 
-if ("${Boost_FOUND}")
-  message(STATUS "Used Boost version: ${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}.${Boost_SUBMINOR_VERSION}" )
-else ()
-  message(FATAL_ERROR "Boost library doesn't exist.")
+set(CMAKE_CXX_FLAGS     "-std=c++11 -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -mavx2")
+set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG")  #-fsanitize=address -static-libasan  -fno-omit-frame-pointer
+
+#ASAN_OPT         := -g -fsanitize=address -static-libasan -fno-omit-frame-pointer
+#MSAN_OPT         := -g -fsanitize=memory    -fno-omit-frame-pointer
+#LSAN_OPT         := -g -fsanitize=leak      -fno-omit-frame-pointer
+#USAN_OPT         := -g -fsanitize=undefined -fno-omit-frame-pointer
+
+
+# Set a default build type if none was specified
+set(default_build_type "Release")
+if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
+  set(default_build_type "Debug")
+endif()
+ 
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  message(STATUS "Setting build type to '${default_build_type}' as none was specified.")
+  set(CMAKE_BUILD_TYPE "${default_build_type}" CACHE
+      STRING "Choose the type of build." FORCE)
+  # Set the possible values of build type for cmake-gui
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
+    "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
-# add tager for libbparser
-add_library(bparser 
-  include/grammar.cc
+# TODO: modify makefile to call cmake
+# - cmake_debug
+# - cmake_release
+# - all
+# - clean
+
+######################################################################### find libraries
+#
+# find boost or use our own
+#
+# - Try to find Boost include dirs and libraries
+#
+# NOTE: Take note of the Boost_ADDITIONAL_VERSIONS variable below.
+# Due to Boost naming conventions and limitations in CMake this find
+# module is NOT future safe with respect to Boost version numbers,
+# and may break.
+#
+# Input variables:
+#
+#   Boost_USE_MULTITHREADED      Can be set to OFF to use the non-multithreaded
+#   Boost_USE_STATIC_LIBS        Can be set to ON to force the use of the static
+#   Boost_NO_SYSTEM_PATHS        Set to TRUE to suppress searching in system (or other locations outside of BOOST_ROOT or BOOST_INCLUDEDIR).
+#   Boost_USE_STATIC_RUNTIME     If enabled, searches for boost libraries linked against a static C++ standard library
+#   Boost_USE_DEBUG_PYTHON       
+#   Boost_USE_STLPORT            If enabled, searches for boost libraries compiled against the STLPort standard
+#   Boost_USE_STLPORT_DEPRECATED_NATIVE_IOSTREAMS    If enabled, searches for boost libraries compiled against the deprecated STLPort "native iostreams" feature ('n' ABI tag).
+#   Boost_ADDITIONAL_VERSIONS    A list of version numbers to use for searching
+#   Boost_DEBUG                  Set this to TRUE to enable debugging output
+#   Boost_DETAILED_FAILURE_MSG   FindBoost doesn't output detailed information
+#   Boost_COMPILER               Set this to the compiler suffix used by Boost
+#   Boost_THREADAPI                When building boost.thread, sometimes the name of the library contains an additional "pthread" or "win32"
+#   Boost_REALPATH               Resolves symbolic links for discovered boost libraries
+#
+#
+#   BOOST_ROOT or BOOSTROOT      The preferred installation prefix for searching for
+#                                back on the system paths, set Boost_NO_SYSTEM_PATHS
+#   BOOST_INCLUDEDIR             Set this to the include directory of Boost, if the
+#   BOOST_LIBRARYDIR             Set this to the lib directory of Boost, if the
+#
+# Variables defined by this module:
+#
+#   Boost_FOUND                         System has Boost, this means the include dir was
+#   Boost_INCLUDE_DIRS                  Boost include directories: not cached
+#   Boost_INCLUDE_DIR                   This is almost the same as above, but this one is cached and may be modified by advanced users
+#   Boost_LIBRARIES                     Link to these to use the Boost libraries that you
+#   Boost_LIBRARY_DIRS                  The path to where the Boost library files are.
+#   Boost_VERSION                       The version number of the boost libraries that
+#   Boost_LIB_VERSION                   The version number in filename form as
+#   Boost_MAJOR_VERSION                 major version number of boost
+#   Boost_MINOR_VERSION                 minor version number of boost
+#   Boost_SUBMINOR_VERSION              subminor version number of boost
+#   Boost_LIB_DIAGNOSTIC_DEFINITIONS    [WIN32 Only] You can call
+#   Boost_${COMPONENT}_FOUND            True IF the Boost library "component" was found.
+#   Boost_${COMPONENT}_LIBRARY          Contains the libraries for the specified Boost
+
+message(STATUS "=======================================================")
+message(STATUS "====== BOOST ==========================================")
+message(STATUS "=======================================================")
+set(Boost_USE_STATIC_LIBS       ON)
+set(Boost_USE_MULTITHREADED     OFF)
+set(Boost_USE_STATIC_RUNTIME    OFF)
+set(EXTERNAL_BOOST_DIR  "${EXTERNAL_PROJECT_DIR}/boost_build")  
+ 
+# set(Boost_DEBUG TRUE)
+# For some mysterious reason, the second find_package fails to find
+# components of boost in our own build, if we hint BOOST_ROOT of our build to the
+# first find_package.
+#
+# The root of the error is in FindBoost, when it calls find_library for individual components.
+# Success scenario:
+# 1) First find_package didn't found Boost (in system direcotries)
+# 2) we install our Boost
+# 3) the second find_package calls find_library to find boost components and succed
+#
+# Fail scenario:
+# 1) First find_package didn't found Boost (we set BOOST_ROOT to the empty target directory of the external project)
+# 2) we install our Boost
+# 3) the second find_package calls find_library to find boost components and fail
+#    the parameters of the find_library are exactly same as in the previous case.
+#
+
+# If no explicit setting from config.cmake ....
+if (NOT BOOST_ROOT)
+    set(BOOST_ROOT $ENV{BOOST_ROOT})
+endif()    
+
+# If no system setting ...
+if (NOT BOOST_ROOT)
+    set(BOOST_ROOT ${EXTERNAL_BOOST_DIR})
+endif()
+
+if (NOT Boost_FOUND) 
+  # we try to erease from the cache everything that can cause failure of the second find_package
+  # however just unsetting Boost_INCLUDE_DIR should be enough
+ 
+  unset(Boost_FOUND CACHE) 
+  unset(Boost_INCLUDE_DIR CACHE)        # overwrite cache    
+  unset(Boost_LIBRARY_DIRS CACHE)
+  unset(Boost_LIB_VERSION CACHE)
+  unset(Boost_VERSION CACHE)
+  
+  set(BOOST_ROOT ${EXTERNAL_BOOST_DIR})    
+  find_package( Boost 1.62.0 REQUIRED)
+endif()
+
+message(STATUS "-------------------------------------------------------")
+message(STATUS "Boost_FOUND = ${Boost_FOUND}")
+message(STATUS "BOOST_ROOT = ${BOOST_ROOT}")
+message(STATUS "Boost_LIBRARIES = ${Boost_LIBRARIES}")
+message(STATUS "Boost_LIBRARY_DIRS = ${Boost_LIBRARY_DIRS}")
+message(STATUS "Boost_INCLUDE_DIR = ${Boost_INCLUDE_DIR}")
+message(STATUS "=======================================================\n\n")
+
+
+include_directories(
+    ${CMAKE_SOURCE_DIR}/include
+    ${Boost_INCLUDE_DIR}
 )
 
-target_link_libraries(bparser
-  ${Boost_LIBRARIES} )
+# add tager for libbparser
+
+add_library(bparser 
+    ${CMAKE_SOURCE_DIR}/include/grammar.cc
+)
+
+
+
+
+
+
+
+######################################
+# Test targets
+
+
+#################################
+# MACRO define_test
+#
+# Creates build targets for particular source file containing one test.
+#
+# For given parameter 'class_name', it assumes class_name_test.cpp source
+# and creates:
+# target 'class_name_test' which builds corresponding binary and run the test
+# target 'class_name_valgrind' which builds the binary and runs it under valgrind
+# use libraries in ${super_test_libs}
+#
+# We want to run tests from source dir, but since there is no portable way
+# how to make link from source dir to Makefile generated in build dir
+# I let main makefile to make such links.
+macro(define_test src_name)
+  
+  set(test_source "${CMAKE_SOURCE_DIR}/test/${src_name}.cc")
+  set(test_binary "${src_name}_bin")
+  set(test_name "${src_name}")
+  set(test_valgrind "v${src_name}")
+  #message(STATUS "adding test: ${test_binary} cxx flags: ${CMAKE_CXX_FLAGS}")
+
+  # executable rule
+  add_executable(${test_binary} EXCLUDE_FROM_ALL  ${test_source} )
+  set_target_properties(${test_binary} PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error")
+  set(test_dependencies ${ARGN})
+  if (test_dependencies) 
+        add_dependencies(${test_binary} ${test_dependencies}) # all additional macro arguments are the test dependencies
+        target_link_libraries(${test_binary} ${test_dependencies})
+  endif()      
+  
+  # rule to run the test
+  add_custom_target(${test_name}
+      COMMAND "${CMAKE_CURRENT_BINARY_DIR}/${test_binary}"
+      DEPENDS ${test_binary}
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+
+  # rule to run the test under valgrind
+  add_custom_target(${test_valgrind}
+      COMMAND "valgrind --num-callers=50 ${CMAKE_CURRENT_BINARY_DIR}/${test_binary}"
+      DEPENDS ${test_binary}
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+endmacro()
+
+
+define_test(test_parser bparser)
+define_test(test_array)
+define_test(test_grammar bparser)
+define_test(test_processor)
+define_test(test_speed bparser)  
+
