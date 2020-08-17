@@ -489,6 +489,7 @@ jobs:
         run: make cmake_dbg
 
       - uses: actions/upload-artifact@v2
+        if: failure()
         with:
           name: CMakeOutput_dbg.log
           path: build/CMakeFiles/CMakeOutput.log
@@ -515,6 +516,7 @@ jobs:
         run: make cmake_rel
 
       - uses: actions/upload-artifact@v2
+        if: failure()
         with:
           name: CMakeOutput_rel.log
           path: build/CMakeFiles/CMakeOutput.log

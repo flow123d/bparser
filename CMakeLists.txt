@@ -1,3 +1,4 @@
+project(BParser)
 cmake_minimum_required(VERSION 3.10)
 
 message(STATUS "CMakeLists.txt - BParser")
@@ -201,7 +202,7 @@ macro(define_test src_name)
 
   # rule to run the test under valgrind
   add_custom_target(${test_valgrind}
-      COMMAND "valgrind --num-callers=50 ${CMAKE_CURRENT_BINARY_DIR}/${test_binary}"
+      COMMAND valgrind --num-callers=50 "${CMAKE_CURRENT_BINARY_DIR}/${test_binary}"
       DEPENDS ${test_binary}
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 endmacro()
