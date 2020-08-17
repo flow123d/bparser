@@ -133,13 +133,11 @@ struct call_visitor {
 
     template <class T>
     static T get_type(ParserResult result) {
-    	if (T* l = boost::get<T>(&result)) {
-    		return *l;
-    	} else {
-    		std::cerr << "Wrong type: " << "ParserResult:" << result.which() << "\n"
-    				  << "Expected: " << typeid(T).name() << "\n";
-    		BP_ASSERT(false);
-    	}
+    	if (T* l = boost::get<T>(&result)) return *l;
+
+    	Throw() << "Internal error.\n"
+    		<< "Wrong type: " << "ParserResult:" << result.which() << "\n"
+			<< "Expected: " << typeid(T).name() << "\n";
     }
 
     result_type operator()(ArrayFnUnary fn) const {
