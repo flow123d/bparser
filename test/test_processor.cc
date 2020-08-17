@@ -173,20 +173,20 @@ std::vector<double> v4_4() {
 std::vector<double> v5_4() {
 	const uint vec_size = 4;
 	std::vector<double> res(vec_size);
-	res[0] = double_true;
-	res[1] = double_true;
-	res[2] = double_false;
-	res[3] = double_false;
+	res[0] = double_true();
+	res[1] = double_true();
+	res[2] = double_false();
+	res[3] = double_false();
 	return res;
 }
 
 std::vector<double> v6_4() {
 	const uint vec_size = 4;
 	std::vector<double> res(vec_size);
-	res[0] = double_true;
-	res[1] = double_false;
-	res[2] = double_true;
-	res[3] = double_false;
+	res[0] = double_true();
+	res[1] = double_false();
+	res[2] = double_true();
+	res[3] = double_false();
 	return res;
 }
 
@@ -262,14 +262,14 @@ int main()
 	test_bin_op<_div_>({-2.0 / 5, -1.0 / 6, 0, 1.0 / 8});
 
 	test_bin_op<_mod_>({fmod(-2.0, 5), -1.0, 0, 1.0});
-	test_bin_op<_eq_>({double_false, double_false, double_true, double_true}, v1_4(), v3_4());
-	test_bin_op<_ne_>({double_true, double_true, double_false, double_false}, v1_4(), v3_4());
-	test_bin_op<_lt_>({double_false, double_false, double_true, double_false}, v1_4(), v4_4());
-	test_bin_op<_le_>({double_false, double_false, double_true, double_true}, v1_4(), v4_4());
+	test_bin_op<_eq_>({double_false(), double_false(), double_true(), double_true()}, v1_4(), v3_4());
+	test_bin_op<_ne_>({double_true(), double_true(), double_false(), double_false()}, v1_4(), v3_4());
+	test_bin_op<_lt_>({double_false(), double_false(), double_true(), double_false()}, v1_4(), v4_4());
+	test_bin_op<_le_>({double_false(), double_false(), double_true(), double_true()}, v1_4(), v4_4());
 
-	test_un_op<_neg_>({double_false, double_false, double_true, double_true}, v5_4());
-	test_bin_op<_or_>({double_true, double_true, double_true, double_false}, v5_4(), v6_4());
-	test_bin_op<_and_>({double_true, double_false, double_false, double_false}, v5_4(), v6_4());
+	test_un_op<_neg_>({double_false(), double_false(), double_true(), double_true()}, v5_4());
+	test_bin_op<_or_>({double_true(), double_true(), double_true(), double_false()}, v5_4(), v6_4());
+	test_bin_op<_and_>({double_true(), double_false(), double_false(), double_false()}, v5_4(), v6_4());
 	test_un_op<_abs_>({2, 1, 0, 1});
 	test_un_op<_sqrt_>({sqrt(-2), sqrt(-1), sqrt(0), sqrt(1)});
 	test_un_op<_exp_>({exp(-2), exp(-1), exp(0), exp(1)});
