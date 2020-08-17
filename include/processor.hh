@@ -136,13 +136,13 @@ struct Vec {
 		subset = s;
 	}
 
-	inline double4 & value(uint i) {
+	inline double4 * value(uint i) {
 //		std::cout << "self: " << this << std::endl;
 //		std::cout << "v: " << values << "s: " << subset << std::endl;
 //		std::cout << "i: " << i << "j: " << j << std::endl;
 //		std::cout << " si: " << subset[i] << std::endl;
 //		std::cout << " v: " << values[subset[i]][j] << "\n";
-		return values[subset[i]];
+		return &(values[subset[i]]);
 	}
 };
 
@@ -185,9 +185,9 @@ struct EvalImpl<1, T> {
 	inline static void eval(Operation op,  Workspace &w) {
 		Vec v0 = w.vector[op.arg[0]];
 		for(uint i=0; i<w.subset_size; ++i) {
-			double4 & v0i = v0.value(i);
+			double4 * v0i = v0.value(i);
 			for(uint j=0; j<simd_size; ++j) {
-				T::eval(v0i[j]);
+				T::eval((*v0i)[j]);
 			}
 		}
 	}
@@ -200,10 +200,10 @@ struct EvalImpl<2, T> {
 		Vec v0 = w.vector[op.arg[0]];
 		Vec v1 = w.vector[op.arg[1]];
 		for(uint i=0; i<w.subset_size; ++i) {
-			double4 & v0i = v0.value(i);
-			double4 & v1i = v1.value(i);
+			double4 * v0i = v0.value(i);
+			double4 * v1i = v1.value(i);
 			for(uint j=0; j<simd_size; ++j) {
-				T::eval(v0i[j], v1i[j]);
+				T::eval((*v0i)[j], (*v1i)[j]);
 			}
 		}
 	}
@@ -220,11 +220,11 @@ struct EvalImpl<3, T> {
 //				<< "iv1:" << uint(op.arg[1])
 //				<< "iv2:" << uint(op.arg[2]) << std::endl;
 		for(uint i=0; i<w.subset_size; ++i) {
-			double4 &v0i = v0.value(i);
-			double4 &v1i = v1.value(i);
-			double4 &v2i = v2.value(i);
+			double4 *v0i = v0.value(i);
+			double4 *v1i = v1.value(i);
+			double4 *v2i = v2.value(i);
 			for(uint j=0; j<simd_size; ++j)
-				T::eval(v0i[j], v1i[j], v2i[j]);
+				T::eval((*v0i)[j], (*v1i)[j], (*v2i)[j]);
 		}
 	}
 };
@@ -240,12 +240,12 @@ struct EvalImpl<4, T> {
 //				<< "iv1:" << uint(op.arg[1])
 //				<< "iv2:" << uint(op.arg[2]) << std::endl;
 		for(uint i=0; i<w.subset_size; ++i) {
-			double4 &v0i = v0.value(i);
-			double4 &v1i = v1.value(i);
-			double4 &v2i = v2.value(i);
-			double4 &v3i = v3.value(i);
+			double4 *v0i = v0.value(i);
+			double4 *v1i = v1.value(i);
+			double4 *v2i = v2.value(i);
+			double4 *v3i = v3.value(i);
 			for(uint j=0; j<simd_size; ++j)
-				T::eval(v0i[j], v1i[j], v2i[j], v3i[j]);
+				T::eval((*v0i)[j], (*v1i)[j], (*v2i)[j], (*v3i)[j]);
 		}
 	}
 };
