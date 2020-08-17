@@ -145,26 +145,53 @@ struct ResultNode : public ScalarNode {
  * Operation Nodes.
  */
 
-union DoubleMask {
+union MaskDouble {
 	int64_t	mask;
 	double  value;
 };
-inline constexpr double mask_to_double(int64_t x) {
+
+union DoubleMask {
+	double  value;
+	int64_t	mask;
+};
+
+inline double mask_to_double(int64_t x) {
 	return reinterpret_cast<double &>(x);
 }
 
-inline constexpr int64_t double_to_mask(double x) {
+inline int64_t double_to_mask(double x) {
 	return reinterpret_cast<int64_t &>(x);
 }
 
-static const int64_t bitmask_false = 0x0000000000000000L;
-static const int64_t bitmask_true = 0x1111111111111111L;
-static const double double_false = mask_to_double(bitmask_false);
-static const double double_true = mask_to_double(bitmask_true);
+//inline constexpr double mask_to_double(int64_t x) {
+//	MaskDouble m = {x};
+//	return m.value;
+//}
+//
+//inline constexpr int64_t double_to_mask(double x) {
+//	DoubleMask m = {x};
+//	return m.mask;
+//}
+
+inline int64_t bitmask_false() {
+	return 0x0000000000000000L;
+}
+
+inline int64_t bitmask_true() {
+	return 0x1111111111111111L;
+}
+
+inline double double_false() {
+	return mask_to_double(bitmask_false());
+}
+
+inline double double_true() {
+	return mask_to_double(bitmask_true());
+}
 
 
 inline double double_bool(bool x) {
-	return x ? double_true : double_false;
+	return x ? double_true() : double_false();
 }
 
 #define UNARY_FN(NAME, OP_CODE, FN) 									\
@@ -272,7 +299,7 @@ struct _neg_ : public ScalarNode {
 	static const char n_eval_args = 2;
 	inline static void eval(double &res, double a) {
 		// TODO: vectorize
-		res =  a == double_true ? double_false : double_true;		// we use bit masks for bool values
+		res =  (a == double_true()) ? double_false() : double_true();		// we use bit masks for bool values
 	}
 };
 

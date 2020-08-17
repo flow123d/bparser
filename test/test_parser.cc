@@ -140,8 +140,8 @@ void test_expression() {
 	//BP_ASSERT(test_expr("cv4[2] ** av2", {25, 25, 25}));
 	//BP_ASSERT(test_expr("cv4[2] ** av2", {25, 25, 25}));
 
-	auto vec_false = std::vector<double>(1, bparser::details::double_false);
-	auto vec_true = std::vector<double>(1, bparser::details::double_true);
+	auto vec_false = std::vector<double>(1, bparser::details::double_false());
+	auto vec_true = std::vector<double>(1, bparser::details::double_true());
 	BP_ASSERT(test_expr("cs3 > 4.5", vec_false));
 	BP_ASSERT(test_expr("cs3 < 4.5", vec_true));
 
