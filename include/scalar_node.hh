@@ -11,6 +11,7 @@
 #include <vector>
 #include <cmath>
 #include <map>
+#include <typeinfo>
 #include "config.hh"
 #include "assert.hh"
 
@@ -188,6 +189,7 @@ struct _add_ : public ScalarNode {
 	static const char op_code = 2;
 	static const char n_eval_args = 3;
 	inline static void eval(double &res, double a, double b) {
+		// std::cout << a << " + " << b << "\n";
 		res = a + b;
 	}
 };
@@ -196,7 +198,7 @@ struct _sub_ : public ScalarNode {
 	static const char op_code = 3;
 	static const char n_eval_args = 3;
 	inline static void eval(double &res, double a, double b) {
-		//std::cout << a << " - " << b << "\n";
+		// std::cout << a << " - " << b << "\n";
  		res = a - b;
 	}
 };
@@ -206,6 +208,7 @@ struct _mul_ : public ScalarNode {
 	static const char op_code = 4;
 	static const char n_eval_args = 3;
 	inline static void eval(double &res, double a, double b) {
+		// std::cout << a << " * " << b << "\n";
 		res = a * b;
 	}
 };

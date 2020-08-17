@@ -167,6 +167,7 @@ void test_operators() {
 	EXPECT(match("2 * -5", "*(2,-(5))")); // should possibly fail
 	//ASSERT(! match("-1.23e-2 * -5.3"));
 	//ASSERT(! match("+ -1.23e-2"));
+	EXPECT(match("[3, 4] @ [[1], [2]]", "@(array(3,4),array(array(1),array(2)))"));
 	EXPECT(match("+ + -1.23e-2", "+(+(-(0.0123)))"));
 
 	// relational operators

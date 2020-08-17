@@ -148,7 +148,10 @@ void test_expression() {
 	BP_ASSERT(test_expr("3 if cs3 < 4.5 else 4", {3}));
 	BP_ASSERT(test_expr("3 if cs3 > 4.5 else 4", {4}));
 
-	//BP_ASSERT(test_expr("cv4 > 4.5", {0, 1, 1}));
+
+	BP_ASSERT(test_expr("[3, 4] @ [[1], [2]]", {11}));
+	BP_ASSERT(test_expr("[3, 4, 1] @ [[1], [2], [3]]", {14}));
+	BP_ASSERT(test_expr("[[1, 2], [2, 3], [3, 4]] @ [[1], [2]]", {5, 8, 11}));
 	//BP_ASSERT(test_expr("0 if cv4 > 4.5 else 1", {1, 0, 0}));
 }
 

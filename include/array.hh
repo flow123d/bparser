@@ -391,7 +391,7 @@ struct MultiIdx {
 				return true;
 			}
 		}
-		return false;
+		return false; // all indeces_ set to zeros
 	}
 
 	/**
@@ -719,69 +719,73 @@ public:
 
 		auto a_broadcast = MultiIdxRange(a.shape()).full();
 		if (a.shape().size() == 1) {
-			a_broadcast.insert_axis(0, 1);
+			a_broadcast.insert_axis(0, 0, 1);
 		}
 		auto b_broadcast = MultiIdxRange(b.shape()).full();
 		if (b.shape().size() == 1) {
-			b_broadcast.insert_axis(1, 1);
+			b_broadcast.insert_axis(1, 1, 1);
 		}
-		Shape a_reduced = a_broadcast.full_shape_;
-		uint a_only_dim = *(a_reduced.end() - 2);
-		uint ab_common_dim = *(a_reduced.end() - 1);
-		a_reduced.erase(a_reduced.end() - 2);
+		Shape a_shape = a_broadcast.full_shape_;
+		//uint a_only_dim = *(a_shape.end() - 2);
+		uint a_common_dim = *(a_shape.end() - 1);
+		a_shape.insert(a_shape.end(), 1);
+		// a_shape : (...,i,j,k,l,1)
 
-		Shape b_reduced = b_broadcast.full_shape_;
-		uint b_only_dim = *(b_reduced.end() - 1);
-		uint ba_common_dim = *(b_reduced.end() - 2);
-		if (ab_common_dim != ba_common_dim)
-			Throw() << "Matmult summing dimension mismatch: " << ab_common_dim << " != " << ba_common_dim << "\n";
-		b_reduced.erase(b_reduced.end() - 1);
+		Shape b_shape = b_broadcast.full_shape_;
+		//uint b_only_dim = *(b_shape.end() - 1);
+		uint b_common_dim = *(b_shape.end() - 2);
+		b_shape.insert(b_shape.end() - 2, 1);
+		// b_shape : (...,i,j,1,l,m)
+		if (a_common_dim != b_common_dim)
+			Throw() << "Matmult summing dimension mismatch: " << a_common_dim << " != " << b_common_dim << "\n";
+		Shape common_shape = MultiIdxRange::broadcast_common_shape(a_shape, b_shape);
+		// common_shape : (...,i,j,k,l,m)
+		Shape result_shape(common_shape);
+		*(result_shape.end() - 2) = 1;
+		// result_shape : (...,i,j,k,1,m)
 
-		auto common_shape = MultiIdxRange::broadcast_common_shape(a_reduced, b_reduced);
-		common_shape.insert(common_shape.end() - 1, a_only_dim);
-		common_shape.insert(common_shape.end() - 1, b_only_dim);
-		// common_shape : (...,i,j,k,m,l)
-//
-//		// TODO: can not use MutliIndexRange for transposition.
-//		a_broadcast.insert_const_axis()
-//
-//
-//		Shape bs_broadcast = b.shape();
-//		if (bs_broadcast.size() == 0)
-//			Throw() << "Matmult can not multiply by scalar b." << "\n";
-//
-//		if (as_broadcast.size() == 0)
-//			Throw() << ""
+		MultiIdxRange a_range = MultiIdxRange(a_shape).full().broadcast(common_shape);
+		MultiIdxRange b_range = MultiIdxRange(b_shape).full().broadcast(common_shape);
+		MultiIdxRange result_range = MultiIdxRange(result_shape).full();
+		// transpose a_range and b_range in  order to have common_dim the last one
+		// b_shape : (...,i,j,1,m,l)
+		*(b_range.sub_transpose_.end() - 1) = b_range.sub_transpose_.size() - 2;
+		*(b_range.sub_transpose_.end() - 2) = b_range.sub_transpose_.size() - 1;
 
-//		...
-//		Shape result_shape = MultiIdxRange::broadcast_common_shape(as_broadcast, bs_broadcast);
-//		Shape common_shape; /// (..., i,j,k,m,l)
-//		MultiIdxRange a_range = a.range().broadcast(common_shape);
-//		MultiIdxRange b_range = b.range().broadcast(common_shape);
-//
-//		MultiIdx a_idx(a_range);
-//		MultiIdx b_idx(b_range);
-//		MultiIdx result_idx(result_range);
-//		ScalarNodePtr sum = nullptr;
-		Array result(common_shape);
-//		for(;;) {
-//
-//			ScalarNodePtr mult = details::ScalarNode::create<_mul_>(
-//					a.elements_[a_idx.linear_idx()],
-//					b.elements_[b_idx.linear_idx()]);
-//			if (result_idx.indices_.back() == 0) {
-//
-//				if (sum  != nullptr)
-//					result.elements_[result_idx.linear_idx()] = sum;
-//				ScalarNodePtr sum = mult;
-//			} else {
-//				// TODO: how to use inplace operations correctly ??
-//				ScalarNodePtr sum = details::ScalarNode::create<_add_>(sum, mult);
-//			}
-//			BP_ASSERT(a_idx.linear_subidx() == b_idx.linear_subidx());
-//			if (!a_idx.inc() || !b_idx.inc()) break;
-//		}
-		return result;
+
+		MultiIdx a_idx(a_range);
+		MultiIdx b_idx(b_range);
+		MultiIdx result_idx(result_range);
+		ScalarNodePtr sum = nullptr;
+		Array result(result_shape);
+		for(;;) {
+			a_idx.indices_ = result_idx.indices_;
+			*(a_idx.indices_.end() - 1) = 0;
+			b_idx.indices_ = result_idx.indices_;
+			*(b_idx.indices_.end() - 3) = 0;
+			*(b_idx.indices_.end() - 2) = *(b_idx.indices_.end() - 1);
+			*(b_idx.indices_.end() - 1) = 0;
+
+			sum = nullptr;
+			for(uint l = 0; l < a_common_dim; l++) {
+				ScalarNodePtr mult = details::ScalarNode::create<details::_mul_>(
+						a.elements_[a_idx.src_idx()],
+						b.elements_[b_idx.src_idx()]);
+				if (sum == nullptr) {
+					sum = mult;
+				} else {
+					// TODO: how to use inplace operations correctly ??
+					sum = details::ScalarNode::create<details::_add_>(sum, mult);
+				}
+				a_idx.inc();
+				b_idx.inc();
+			}
+			result.elements_[result_idx.src_idx()] = sum;
+			if (!result_idx.inc())
+				return result;
+
+		}
+
 	}
 
 
