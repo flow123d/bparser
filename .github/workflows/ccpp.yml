@@ -487,7 +487,12 @@ jobs:
 
       - name: make cmake_dbg
         run: make cmake_dbg
-        
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: CMakeOutput_dbg.log
+          path: build/CMakeFiles/CMakeOutput.log
+    
       - name: make test_grammar_dbg
         run: make test_grammar
 
@@ -508,6 +513,11 @@ jobs:
         
       - name: make cmake_rel
         run: make cmake_rel
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: CMakeOutput_rel.log
+          path: build/CMakeFiles/CMakeOutput.log
         
       - name: make test_grammar_rel
         run: make test_grammar
