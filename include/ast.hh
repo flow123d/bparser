@@ -279,16 +279,11 @@ struct make_array {
 
 
     result_type operator()(assign_op x) const  {
-    	//std::string& var_name = boos);
     	result_type rhs = boost::apply_visitor(*this, x.rhs);
-    	// extract single
-
-    	if (Array * rhs_array = boost::get<Array>(&rhs)) {
-    		symbols[x.lhs] = *rhs_array;
-    		return rhs;
-    	} else {
-    		BP_ASSERT(false);
-    	}
+    	if (Array* rhs_array = boost::get<Array>(&rhs)) return *rhs_array;
+    	Throw() << "Internal error.\n"
+    		<< "Wrong type: " << "operand:" << rhs.which() << "\n"
+			<< "Expected: Array\n";
     }
 
 };
