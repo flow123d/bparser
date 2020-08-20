@@ -176,6 +176,8 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
         bfunc.add
             BN_FN("atan2", binary_array<_atan2_>())
             BN_FN("pow"  , binary_array<_pow_>())
+			BN_FN("minimum", binary_array<_min_>())
+			BN_FN("maximum", binary_array<_max_>())
             ;
 
         unary_op.add

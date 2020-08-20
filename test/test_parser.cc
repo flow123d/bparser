@@ -153,6 +153,9 @@ void test_expression() {
 	BP_ASSERT(test_expr("[3, 4, 1] @ [[1], [2], [3]]", {14}));
 	BP_ASSERT(test_expr("[[1, 2], [2, 3], [3, 4]] @ [[1], [2]]", {5, 8, 11}));
 	//BP_ASSERT(test_expr("0 if cv4 > 4.5 else 1", {1, 0, 0}));
+
+	BP_ASSERT(test_expr("minimum([1,2,3], [0,4,3])", {0,2,3}));
+	BP_ASSERT(test_expr("maximum([1,2,3], [0,4,3])", {1,4,3}));
 }
 
 
