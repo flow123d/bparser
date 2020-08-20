@@ -387,6 +387,26 @@ struct _pow_ : public ScalarNode {
 	}
 };
 
+struct _max_ : public ScalarNode {
+	static const char op_code = 41;
+	static const char n_eval_args = 3;
+	inline static void eval(double &res, double a, double b) {
+		// TODO: vectorize
+		//std::cout << "max " << a << "," << b << "\n";
+		res =  (a>b) ? a : b;
+	}
+};
+
+struct _min_ : public ScalarNode {
+	static const char op_code = 42;
+	static const char n_eval_args = 3;
+	inline static void eval(double &res, double a, double b) {
+		// TODO: vectorize
+		//std::cout << "min " << a << "," << b << "\n";
+		res =  (a>b) ? b : a;
+	}
+};
+
 //struct _iadd_ : public ScalarNode {
 //	static const char op_code = 2;
 //	static const char n_eval_args = 2;
@@ -426,6 +446,7 @@ struct _ifelse_ : public ScalarNode {
 		res = double_to_mask(b) ? a : c;	// we use bit masks for bool values
 	}
 };
+
 
 
 

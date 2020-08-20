@@ -469,6 +469,8 @@ struct Processor {
 			CODE(_sgn_);
 			CODE(_atan2_);
 			CODE(_pow_);
+			CODE(_max_);
+			CODE(_min_);
 			CODE(_copy_);
 			CODE(_ifelse_);
 //			CODE(__);
