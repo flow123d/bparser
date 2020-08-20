@@ -280,7 +280,10 @@ struct make_array {
 
     result_type operator()(assign_op x) const  {
     	result_type rhs = boost::apply_visitor(*this, x.rhs);
-    	if (Array* rhs_array = boost::get<Array>(&rhs)) return *rhs_array;
+    	if (Array* rhs_array = boost::get<Array>(&rhs)) {
+    		symbols[x.lhs] = *rhs_array;
+    		return rhs;
+    	}
     	Throw() << "Internal error.\n"
     		<< "Wrong type: " << "operand:" << rhs.which() << "\n"
 			<< "Expected: Array\n";
