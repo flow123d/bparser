@@ -15,7 +15,7 @@ set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG")  #-fsanitize=address -static-libasan  
 
 # Set a default build type if none was specified
 set(default_build_type "Release")
-if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
   set(default_build_type "Debug")
 endif()
  
@@ -143,14 +143,14 @@ message(STATUS "=======================================================\n\n")
 
 
 include_directories(
-    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${Boost_INCLUDE_DIR}
 )
 
 # add tager for libbparser
 
 add_library(bparser 
-    ${CMAKE_SOURCE_DIR}/include/grammar.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/grammar.cc
 )
 
 
@@ -179,7 +179,7 @@ add_library(bparser
 # I let main makefile to make such links.
 macro(define_test src_name)
   
-  set(test_source "${CMAKE_SOURCE_DIR}/test/${src_name}.cc")
+  set(test_source "${CMAKE_CURRENT_SOURCE_DIR}/test/${src_name}.cc")
   set(test_binary "${src_name}_bin")
   set(test_name "${src_name}")
   set(test_valgrind "v${src_name}")
