@@ -495,7 +495,7 @@ jobs:
           path: build/CMakeFiles/CMakeOutput.log
     
       - name: make test_grammar_dbg
-        run: make test_grammar
+        run: cd build && make VERBOSE=1 test_grammar
 
       - name: make test_array_dbg
         run: make test_array
