@@ -60,6 +60,10 @@ std::vector<double> eval_expr_(std::string expr) {
 	std::cout << "  AST: " << p.print_ast() << "\n";
 	p.set_variable("as1", {}, as1);
 	p.set_variable("av2", {3}, av2);
+        
+//        auto mat = new double[vec_size * 3 * 3]; // (0,0,0),...,(0,0,999), (0,1,0),...,(0,1,999), ...
+//        p.set_variable("mat", {3, 3}, mat);
+        
 	p.set_constant("cs3", {}, 	{3});
 	p.set_constant("cv4", {3}, 	{4, 5, 6});
 	//p.set_variable("_result_", {result_size}, vres);

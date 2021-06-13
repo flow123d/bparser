@@ -50,7 +50,9 @@ class Parser {
 	double * tmp_result;
 
 public:
-    /// @brief Constructor
+    /** @brief Constructor
+     * max_vec_size - size of single array component in doubles
+     */
     Parser(uint max_vec_size)
 	: max_vec_size(max_vec_size), processor(nullptr), tmp_result(nullptr)
 	{}

@@ -130,7 +130,7 @@ if (NOT Boost_FOUND)
   unset(Boost_VERSION CACHE)
   
   set(BOOST_ROOT ${EXTERNAL_BOOST_DIR})    
-  find_package( Boost 1.62.0 REQUIRED)
+  find_package( Boost 1.58.0 REQUIRED)
 endif()
 
 message(STATUS "-------------------------------------------------------")
