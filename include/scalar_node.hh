@@ -156,11 +156,14 @@ union DoubleMask {
 };
 
 inline double mask_to_double(int64_t x) {
-	return reinterpret_cast<double &>(x);
+    MaskDouble a = {x};
+    return a.value;
+    //return reinterpret_cast<double &>(x);
 }
 
 inline int64_t double_to_mask(double x) {
-	return reinterpret_cast<int64_t &>(x);
+    DoubleMask a = {x};
+    return a.mask;
 }
 
 //inline constexpr double mask_to_double(int64_t x) {
