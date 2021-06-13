@@ -11,6 +11,7 @@
 #include <vector>
 #include <cmath>
 #include <map>
+#include <typeinfo>
 #include "config.hh"
 #include "assert.hh"
 
@@ -58,6 +59,7 @@ struct ScalarNode {
 	static ScalarNode * create_const(double a);
 	static ScalarNode * create_value(double *a);
 	static ScalarNode * create_result(ScalarNode *result, double *a);
+	static ScalarNode * create_ifelse(ScalarNode *a, ScalarNode *b, ScalarNode *c);
 
 	/**
 	 * Generic factory functions for operation nodes.
@@ -143,26 +145,56 @@ struct ResultNode : public ScalarNode {
  * Operation Nodes.
  */
 
-union DoubleMask {
+union MaskDouble {
 	int64_t	mask;
 	double  value;
 };
+
+union DoubleMask {
+	double  value;
+	int64_t	mask;
+};
+
 inline double mask_to_double(int64_t x) {
-	return reinterpret_cast<double &>(x);
+    MaskDouble a = {x};
+    return a.value;
+    //return reinterpret_cast<double &>(x);
 }
 
 inline int64_t double_to_mask(double x) {
-	return reinterpret_cast<int64_t &>(x);
+    DoubleMask a = {x};
+    return a.mask;
 }
 
-static const int64_t bitmask_false = 0x0000000000000000L;
-static const int64_t bitmask_true = 0x1111111111111111L;
-static const double double_false = mask_to_double(bitmask_false);
-static const double double_true = mask_to_double(bitmask_true);
+//inline constexpr double mask_to_double(int64_t x) {
+//	MaskDouble m = {x};
+//	return m.value;
+//}
+//
+//inline constexpr int64_t double_to_mask(double x) {
+//	DoubleMask m = {x};
+//	return m.mask;
+//}
+
+inline int64_t bitmask_false() {
+	return 0x0000000000000000L;
+}
+
+inline int64_t bitmask_true() {
+	return 0x1111111111111111L;
+}
+
+inline double double_false() {
+	return mask_to_double(bitmask_false());
+}
+
+inline double double_true() {
+	return mask_to_double(bitmask_true());
+}
 
 
 inline double double_bool(bool x) {
-	return x ? double_true : double_false;
+	return x ? double_true() : double_false();
 }
 
 #define UNARY_FN(NAME, OP_CODE, FN) 									\
@@ -187,6 +219,7 @@ struct _add_ : public ScalarNode {
 	static const char op_code = 2;
 	static const char n_eval_args = 3;
 	inline static void eval(double &res, double a, double b) {
+		// std::cout << a << " + " << b << "\n";
 		res = a + b;
 	}
 };
@@ -195,7 +228,7 @@ struct _sub_ : public ScalarNode {
 	static const char op_code = 3;
 	static const char n_eval_args = 3;
 	inline static void eval(double &res, double a, double b) {
-		//std::cout << a << " - " << b << "\n";
+		// std::cout << a << " - " << b << "\n";
  		res = a - b;
 	}
 };
@@ -205,6 +238,7 @@ struct _mul_ : public ScalarNode {
 	static const char op_code = 4;
 	static const char n_eval_args = 3;
 	inline static void eval(double &res, double a, double b) {
+		// std::cout << a << " * " << b << "\n";
 		res = a * b;
 	}
 };
@@ -268,7 +302,7 @@ struct _neg_ : public ScalarNode {
 	static const char n_eval_args = 2;
 	inline static void eval(double &res, double a) {
 		// TODO: vectorize
-		res =  a == double_true ? double_false : double_true;		// we use bit masks for bool values
+		res =  (a == double_true()) ? double_false() : double_true();		// we use bit masks for bool values
 	}
 };
 
@@ -290,6 +324,7 @@ struct _and_ : public ScalarNode {
 		res = mask_to_double( double_to_mask(a) & double_to_mask(b));	// we use bit masks for bool values
 	}
 };
+
 
 UNARY_FN(_abs_, 	20, abs);
 UNARY_FN(_sqrt_, 	21, sqrt);
@@ -355,6 +390,26 @@ struct _pow_ : public ScalarNode {
 	}
 };
 
+struct _max_ : public ScalarNode {
+	static const char op_code = 41;
+	static const char n_eval_args = 3;
+	inline static void eval(double &res, double a, double b) {
+		// TODO: vectorize
+		//std::cout << "max " << a << "," << b << "\n";
+		res =  (a>b) ? a : b;
+	}
+};
+
+struct _min_ : public ScalarNode {
+	static const char op_code = 42;
+	static const char n_eval_args = 3;
+	inline static void eval(double &res, double a, double b) {
+		// TODO: vectorize
+		//std::cout << "min " << a << "," << b << "\n";
+		res =  (a>b) ? b : a;
+	}
+};
+
 //struct _iadd_ : public ScalarNode {
 //	static const char op_code = 2;
 //	static const char n_eval_args = 2;
@@ -382,6 +437,16 @@ struct _copy_ : public ScalarNode {
 	inline static void eval(double &res, double a) {
 		res = a;
 		//std::cout << a << " -copy-> " << res << "\n";
+	}
+};
+
+
+struct _ifelse_ : public ScalarNode {
+	static const char op_code = 51;
+	static const char n_eval_args = 4;
+	inline static void eval(double &res, double a, double b, double c) {
+		// TODO: vectorize
+		res = double_to_mask(b) ? a : c;	// we use bit masks for bool values
 	}
 };
 
@@ -427,6 +492,7 @@ ScalarNode * ScalarNode::create(ScalarNode *a) {
 	node_ptr->set_name(typeid(T).name());
 	node_ptr->add_input(a);
 	if (T::n_eval_args == 1) {
+		// Note: in place operations are not supported
 		node_ptr->result_storage = none;
 	} else {
 		BP_ASSERT(T::n_eval_args == 2);
@@ -445,6 +511,7 @@ ScalarNode * ScalarNode::create(ScalarNode *a, ScalarNode *b) {
 	node_ptr->add_input(a);
 	node_ptr->add_input(b);
 	if (T::n_eval_args == 2) {
+		// Note: in place operations are not supported
 		node_ptr->result_storage = none;
 	} else {
 		BP_ASSERT(T::n_eval_args == 3);
@@ -455,6 +522,19 @@ ScalarNode * ScalarNode::create(ScalarNode *a, ScalarNode *b) {
 	return node_ptr;
 }
 
+inline ScalarNode * ScalarNode::create_ifelse(ScalarNode *a, ScalarNode *b, ScalarNode *c)  {
+	auto * node_ptr = new _ifelse_;
+	node_ptr->op_code_ = _ifelse_::op_code;
+	node_ptr->set_name(typeid(_ifelse_).name());
+	node_ptr->add_input(a);
+	node_ptr->add_input(b);
+	node_ptr->add_input(c);
+	BP_ASSERT(_ifelse_::n_eval_args == 4);
+	node_ptr->result_storage = temporary;
+
+//		nodes.push_back(node_ptr);
+	return node_ptr;
+}
 
 
 

@@ -6,127 +6,156 @@
  */
 
 #include <string>
+
+#include "test_tools.hh"
 #include "assert.hh"
 #include "parser.hh"
-#include "test_tools.hh"
 
-void test_ast(std::string expr, std::string ref_ast) {
-	using namespace bparser;
-	Parser p(4);
-	p.parse(expr);
-	std::string s = p.print_ast();
-	std::cout << "\n";
-	std::cout << "Expr: " << expr << "\n";
-	std::cout << "AST: " << s << "\n";
-	BP_ASSERT(s == ref_ast);
-	std::cout.flush();
-}
 
-void test_ast_cases() {
 
-	// primary rule
-	// -----------
-
-	// double
-	test_ast("123.0", "123");
-	// variable
-	test_ast("xyz", "<xyz>");
-	// constant
-	test_ast("pi", "3.14159");
-	// unary op
-	test_ast("+sin(1)", "+(sin(1))");
-	test_ast("-sin(1)", "-(sin(1))");
-	// unary_fn
-	test_ast("sin(123.0)", "sin(123)");
-	// binary_fn
-	test_ast("pow(1.2, 3.4)", "pow(1.2, 3.4)");
-	// parenthesis
-	test_ast("1.2 ** (3.4 ** 5.6)", "**(1.2, **(3.4, 5.6))"); // explicit
-	test_ast("(1.2 ** 3.4) ** 5.6", "**(**(1.2, 3.4), 5.6)"); // explicit
-
-	// factor rule - right associativity of power
-	// -----------
-
-	test_ast("1.2 ** 3.4", "**(1.2, 3.4)");
-	test_ast("1.2 ** 3.4 ** 5.6", "**(1.2, **(3.4, 5.6))"); // yet wrong power associativity
-
-	// multiplicative, additive, relational, equality, logical
-	// -----------
-	// multiplicative
-	test_ast("1 * 2**1 / 3", "/(*(1, **(2, 1)), 3)");
-	// additive
-	test_ast("1 + 2*1 - 3", "-(+(1, *(2, 1)), 3)");
-	// relational
-	test_ast("1 + 2 < 2", "<(+(1, 2), 2)");
-	// equality
-	test_ast("1 + 2 == 2", "==(+(1, 2), 2)");
-	//test_ast("1 == 2 != 3 < 4", "");
-	//ASSERT_THROW(test_ast("1 == 2 != 3", ""), "Parsing failed at != 3");
-	// TODO: capture all parser errors and throuw bparser exception
-	// current error handler doesn't capture:
-	// terminate called after throwing an instance of 'std::runtime_error'
-	// what():  Parsing failed at != 3
-
-//	// logical
-//	test_ast("1 * 2**1 * 3", "bin(bin(1, bin(2, 1)), 3)");
-
-	// program and assignment
-	test_ast("a=1;a+4", ";(a = 1, +(<a>, 4))");
-
-	// TODO: test error detection and reporting
-}
-
-void test_fv(std::string expr, std::vector<std::string> ref_vars) {
+bool test_fv(std::string expr, std::vector<std::string> ref_vars) {
 	using namespace bparser;
 	Parser p(4);
 	p.parse(expr);
 	auto vars = p.variables();
-	std::cout << "\n";
-	std::cout << "Expr: " << expr << "\n";
-	for(std::string v : vars)
-		std::cout << v << ", ";
-	std::cout << "\n";
-	BP_ASSERT(vars == ref_vars);
-	std::cout.flush();
 
+	std::cout << "free vars test: " << expr << "\n";
+	bool success = (vars == ref_vars);
+	if (!success) {
+		std::cout <<  "  ";
+		for(std::string v : vars)
+			std::cout << v << ", ";
+		std::cout << "\n";
+		std::cout.flush();
+	}
+	return success;
 }
+
 
 void test_free_variables() {
-	test_fv("1+2", {});
-	test_fv("a+b", {"a", "b"});
-	test_fv("a=1;a+b", {"b"});
+	std::cout << "\n" << "** test free variables" << "\n";
+	EXPECT(test_fv("1+2", {}));
+	EXPECT(test_fv("a+b", {"a", "b"}));
+	EXPECT(test_fv("a=1;a+b", {"b"}));
 }
 
+constexpr uint vec_size = 8;
 
-void test_expr(std::string expr) {
+std::vector<double> eval_expr_(std::string expr) {
+	std::cout << "parser test : " << expr << "\n";
 	using namespace bparser;
-	uint vec_size = 8;
+
 	//auto m1 = new double[vec_size * 6];
-	auto v1 = new double[vec_size * 3];
-	fill_const(v1, 3 * vec_size, 100);
-	auto v2 = new double[vec_size * 3];
-	fill_const(v2, 3 * vec_size, 200);
-	auto vres = new double[vec_size * 3];
-	fill_const(vres, 3 * vec_size, -100);
+	auto as1 = new double[vec_size];
+	fill_const(as1, vec_size, 1);
+	auto av2 = new double[vec_size * 3];
+	fill_const(av2, 3 * vec_size, 2);
+
+
+
+
 
 	Parser p(vec_size);
 	p.parse(expr);
-	p.set_constant("cs1", {}, 	{2});
-	p.set_constant("cv1", {3}, 	{1, 2, 3});
-	p.set_variable("v1", {3}, v1);
-	p.set_variable("v2", {3}, v2);
-	p.set_variable("_result_", {3}, vres);
-	std::cout << "vres: " << vres << ", " << vres + vec_size << ", " << vres + 2*vec_size << "\n";
-	std::cout << "Symbols: " << print_vector(p.symbols()) << "\n";
-	std::cout.flush();
+	std::cout << "  AST: " << p.print_ast() << "\n";
+	p.set_variable("as1", {}, as1);
+	p.set_variable("av2", {3}, av2);
+	p.set_constant("cs3", {}, 	{3});
+	p.set_constant("cv4", {3}, 	{4, 5, 6});
+	//p.set_variable("_result_", {result_size}, vres);
+//	std::cout << "vres: " << vres << ", " << vres + vec_size << ", " << vres + 2*vec_size << "\n";
+//	std::cout << "Symbols: " << print_vector(p.symbols()) << "\n";
+//	std::cout.flush();
 	p.compile();
+	double * vres = p.tmp_result_ptr();
+	uint result_size = shape_size(p.result_array().shape());
+	fill_const(vres, vec_size * result_size, -1e100); // undefined value
 	p.set_subset({0, 1});
 	p.run();
-	std::cout << print_vec(vres, 3*vec_size);
+
+	std::vector<double> res(result_size * vec_size);
+	for(uint i=0; i < res.size(); i++) res[i] = vres[i];
+	return res;
 }
 
+bool test_expr(std::string expr, std::vector<double> ref_result) {
+	auto res = eval_expr_(expr);
+
+	// check
+	bool success = true;
+	for(uint i=0; i < vec_size; i++) {
+		for(uint j=0; j < ref_result.size(); j++) {
+			if (fabs(res[j * vec_size + i] - ref_result[j]) > 1e-3 * fabs(ref_result[j]) ) {
+				success = false;
+				std::cout << "  " << i << "," << j <<
+				" ref: " << ref_result[j] <<
+				" res: " << res[i * ref_result.size() + j] << "\n";
+			}
+		}
+	}
+	std::cout.flush();
+	return success;
+}
+
+bool fail_expr(std::string expr, std::string ref_msg) {
+	try {
+		eval_expr_(expr);
+	} catch (bparser::Exception &e) {
+		size_t pos = std::string(e.what()).find(ref_msg);
+		if (pos == std::string::npos) {
+			std::cout << "\nBP exception msg: " << e.what() << "\n";
+			std::cout << "Expected msg: " << ref_msg << "\n";
+			return false;
+		}
+		return true;
+	}
+	return false;
+}
+
+
 void test_expression() {
-	test_expr("1 * v1 + cs1 * v2");
+	/**
+	 * All tests have defined:
+	 * as1 - scalar array == 1
+	 * av2 - vector array == [2, 2, 2]
+	 * cs3 - scalar constant == 3
+	 * cv4 - vector constant = [4,5,6]
+	 */
+	std::cout << "\n" << "** test expression" << "\n";
+	BP_ASSERT(test_expr("cs3 * av2", {6,6,6}));
+	BP_ASSERT(test_expr("cv4 * av2", {8,10,12}));
+	BP_ASSERT(test_expr("as1 - cv4", {-3,-4,-5}));
+	BP_ASSERT(test_expr("[2,3,4] / av2", {1,1.5,2}));
+
+
+	BP_ASSERT(test_expr("cv4[1] ** av2", {25, 25, 25}));
+	BP_ASSERT(test_expr("cv4[:2] ** 2", {16, 25}));
+	BP_ASSERT(test_expr("cv4[[0,1]] ** 2", {16, 25}));
+	BP_ASSERT(fail_expr("cs3[0]", "Too many indices")); // ?fail
+	BP_ASSERT(test_expr("cv4[0, None] * cv4[None, 1]", {})); // ?? matrix
+	BP_ASSERT(fail_expr("[]", "stack: need at least one array"));
+	BP_ASSERT(fail_expr("[1,cv4,av2]", "stack: all input arrays must have the same shape"));
+	BP_ASSERT(test_expr("[1,1]", {1, 1}));
+	BP_ASSERT(test_expr("a=[[1,1,1], cv4, av2]; a[:, 0]", {1, 4, 2}));
+	//BP_ASSERT(test_expr("cv4[2] ** av2", {25, 25, 25}));
+	//BP_ASSERT(test_expr("cv4[2] ** av2", {25, 25, 25}));
+
+	auto vec_false = std::vector<double>(1, bparser::details::double_false());
+	auto vec_true = std::vector<double>(1, bparser::details::double_true());
+	BP_ASSERT(test_expr("cs3 > 4.5", vec_false));
+	BP_ASSERT(test_expr("cs3 < 4.5", vec_true));
+
+	BP_ASSERT(test_expr("3 if cs3 < 4.5 else 4", {3}));
+	BP_ASSERT(test_expr("3 if cs3 > 4.5 else 4", {4}));
+
+
+	BP_ASSERT(test_expr("[3, 4] @ [[1], [2]]", {11}));
+	BP_ASSERT(test_expr("[3, 4, 1] @ [[1], [2], [3]]", {14}));
+	BP_ASSERT(test_expr("[[1, 2], [2, 3], [3, 4]] @ [[1], [2]]", {5, 8, 11}));
+	//BP_ASSERT(test_expr("0 if cv4 > 4.5 else 1", {1, 0, 0}));
+
+	BP_ASSERT(test_expr("minimum([1,2,3], [0,4,3])", {0,2,3}));
+	BP_ASSERT(test_expr("maximum([1,2,3], [0,4,3])", {1,4,3}));
 }
 
 
@@ -136,8 +165,7 @@ void test_speed_cases() {
 
 int main()
 {
-	test_ast_cases();
-	test_free_variables();
+	//test_free_variables();
 	test_expression();
 #ifdef NDEBUG
 	test_speed_cases();

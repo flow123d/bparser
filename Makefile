@@ -5,104 +5,84 @@
 #	Author: jb
 #
 
-COMPILER         := -g++
-#COMPILER        := -clang++
-OPTIMIZATION_OPT := -O1
-#BASE_OPTIONS     := -fmax-errors=5 #-pedantic-errors -Wall -Wextra -Werror -Wno-long-long
-BASE_OPTIONS     := -pedantic-errors -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing
-OPTIONS          := $(BASE_OPTIONS) $(OPTIMIZATION_OPT)
-LINKER_OPT       := -L/usr/lib -lstdc++ -lm
-DBG_OPT			 := -g -DDEBUG #-fsanitize=address -static-libasan  -fno-omit-frame-pointer
-
-ASAN_OPT         := -g -fsanitize=address -static-libasan -fno-omit-frame-pointer
-MSAN_OPT         := -g -fsanitize=memory    -fno-omit-frame-pointer
-LSAN_OPT         := -g -fsanitize=leak      -fno-omit-frame-pointer
-USAN_OPT         := -g -fsanitize=undefined -fno-omit-frame-pointer
-BUILD_SRC        := $(sort $(wildcard exprtk_*.cpp))
-BUILD_LIST       := $(BUILD_SRC:%.cpp=%)
-
-
-# all: $(BUILD_LIST)
-# 
-# $(BUILD_LIST) : %: %.cpp exprtk.hpp
-# 	$(COMPILER) $(OPTIONS) -o $@ $@.cpp $(LINKER_OPT)
-# 
-# strip_bin :
-# 	@for f in $(BUILD_LIST); do if [ -f $$f ]; then strip -s $$f; echo $$f; fi done;
-# 
-# valgrind :
-# 	@for f in $(BUILD_LIST); do \
-# 		if [ -f $$f ]; then \
-# 			cmd="valgrind --leak-check=full --show-reachable=yes --track-origins=yes --log-file=$$f.log -v ./$$f"; \
-# 			echo $$cmd; \
-# 			$$cmd; \
-# 		fi done;
-# 
-# pgo: exprtk_benchmark.cpp exprtk.hpp
-# 	$(COMPILER) $(BASE_OPTIONS) -O3 -march=native -fprofile-generate -o exprtk_benchmark exprtk_benchmark.cpp $(LINKER_OPT)
-# 	./exprtk_benchmark
-# 	$(COMPILER) $(BASE_OPTIONS) -O3 -march=native -fprofile-use -o exprtk_benchmark exprtk_benchmark.cpp $(LINKER_OPT)
 
 	
 clean:
-	cd build && rm -f *
+	cd build && rm -rf *
 
+cmake_dbg:
+	cd build && cmake -DCMAKE_BUILD_TYPE=debug ..
 
+cmake_rel:
+	cd build && cmake -DCMAKE_BUILD_TYPE=release ..
 	
-build/grammar.o:
-	$(COMPILER) $(BASE_OPTIONS) -std=c++11 -I include  -o build/grammar.o -c include/grammar.cc
+test_array: 
+	cd build && make test_array 
+
+test_processor: 
+	cd build && make test_processor 
+
+test_grammar: 
+	cd build && make test_grammar 
+
+test_parser: 
+	cd build && make test_parser
 	
-grammar: build/grammar.o
+test_speed: 
+	cd build && make test_speed
+	 
 
-
-## Proof of concept snippets.
-
-test_design:
-	rm -f build/test_design 2>/dev/null
-	#$(COMPILER) $(BASE_OPTIONS) $(DBG_OPT)  -std=c++11 -I include  -o build/test_design test/test_design.cc
-	$(COMPILER) $(BASE_OPTIONS) -O3 -mavx2  -std=c++11 -I include  -o build/test_design test/test_design.cc
-	build/test_design
-	#build/test_design
-	#build/test_design
-
-#test_design:	
-#	$(COMPILER) $(BASE_OPTIONS) -S -fverbose-asm -O2 -mavx2  -std=c++11 -I include  -o build/test_design.S test/test_design.cc
-#	as -alhnd build/test_design.S > build/test_design.info.S
-
-test_simd:
-	rm -f build/test_simd 2>/dev/null
-	#$(COMPILER) $(BASE_OPTIONS) $(DBG_OPT)  -std=c++11 -I include  -o build/test_design test/test_design.cc
-	$(COMPILER) $(BASE_OPTIONS) -O3 -mavx2  -std=c++11 -I include  -o build/test_simd test/test_simd.cc
-	build/test_simd
-	#build/test_design
-	#build/test_design
-
-
-
-## Unit tests.
-
-test_array:
-	rm -f build/test_array 2>/dev/null
-	$(COMPILER) $(BASE_OPTIONS) $(DBG_OPT)  -std=c++11 -I include  -o build/test_array test/test_array.cc
-	build/test_array
-	
-test_processor:
-	rm -f build/test_processor 2>/dev/null
-	$(COMPILER) $(BASE_OPTIONS) $(DBG_OPT)  -std=c++11 -I include  -o build/test_processor test/test_processor.cc
-	#$(COMPILER) $(BASE_OPTIONS) -O3 -mavx2  -std=c++11 -I include  -o build/test_simd test/test_simd.cc
-	build/test_processor
-
-test_parser: grammar
-	rm -f build/test_parser 2>/dev/null
-	$(COMPILER) $(BASE_OPTIONS) $(DBG_OPT)  -std=c++11 -I include  -o build/test_parser build/grammar.o test/test_parser.cc
-	#$(COMPILER) $(BASE_OPTIONS) -O3 -mavx2  -std=c++11 -I include  -o build/test_simd test/test_simd.cc
-	build/test_parser
-
-	
-test_speed: grammar
-	rm -f build/test_speed 2>/dev/null
-	#$(COMPILER) $(BASE_OPTIONS) $(DBG_OPT)  -std=c++11 -I include  -o build/test_speed build/grammar.o test/test_parser_speed.cc
-	$(COMPILER) $(BASE_OPTIONS) -O3 -mavx2  -std=c++11 -I include  -o build/test_speed build/grammar.o test/test_parser_speed.cc
-	build/test_speed
-
-tests: test_array test_processor test_parser test_speed
+#test_design:
+#	rm -f build/test_design 2>/dev/null
+#	#$(COMPILER) $(BASE_OPTIONS) $(DBG_OPT)  -std=c++11 -I include  -o build/test_design test/test_design.cc
+#	$(COMPILER) $(OPTIONS) -o build/test_design test/test_design.cc
+#	build/test_design
+#	#build/test_design
+#	#build/test_design
+#
+##test_design:	
+##	$(COMPILER) $(BASE_OPTIONS) -S -fverbose-asm -O2 -mavx2  -std=c++11 -I include  -o build/test_design.S test/test_design.cc
+##	as -alhnd build/test_design.S > build/test_design.info.S
+#
+#test_simd:
+#	rm -f build/test_simd 2>/dev/null
+#	#$(COMPILER) $(BASE_OPTIONS) $(DBG_OPT)  -std=c++11 -I include  -o build/test_design test/test_design.cc
+#	$(COMPILER) $(OPTIONS) -o build/test_simd test/test_simd.cc
+#	build/test_simd
+#	#build/test_design
+#	#build/test_design
+#
+#
+#
+### Unit tests.
+#
+#test_array:
+#	rm -f build/test_array 2>/dev/null
+#	$(COMPILER) $(OPTIONS) -o build/test_array test/test_array.cc
+#	build/test_array
+#	
+#test_processor:
+#	rm -f build/test_processor 2>/dev/null
+#	$(COMPILER) $(OPTIONS) -o build/test_processor test/test_processor.cc
+#	#$(COMPILER) $(BASE_OPTIONS) -O3 -mavx2  -std=c++11 -I include  -o build/test_simd test/test_simd.cc
+#	build/test_processor
+#
+#test_grammar: grammar
+#	rm -f build/test_grammar 2>/dev/null
+#	$(COMPILER) $(OPTIONS) -o build/test_grammar build/grammar.o test/test_grammar.cc
+#	build/test_grammar
+#
+#test_parser: grammar
+#	rm -f build/test_parser 2>/dev/null
+#	$(COMPILER) $(OPTIONS) -o build/test_parser build/grammar.o test/test_parser.cc
+#	#$(COMPILER) $(BASE_OPTIONS) -O3 -mavx2  -std=c++11 -I include  -o build/test_simd test/test_simd.cc
+#	build/test_parser
+#
+#	
+#test_speed: grammar
+#	rm -f build/test_speed 2>/dev/null
+#	#$(COMPILER) $(BASE_OPTIONS) $(DBG_OPT)  -std=c++11 -I include  -o build/test_speed build/grammar.o test/test_parser_speed.cc
+#	$(COMPILER) $(OPTIONS) -o build/test_speed build/grammar.o test/test_parser_speed.cc
+#	build/test_speed
+#
+#tests: test_grammar test_array  test_processor test_parser test_speed

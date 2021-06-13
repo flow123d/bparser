@@ -9,9 +9,21 @@
 #include <boost/spirit/home/qi/domain.hpp>
 
 #include "config.hh"
-#include "array.hh"
+#include "array_ast_interface.hh"
 
-
+/**
+ * TODO:
+ * 1. We can possibly skip the AST step and directly create ScalareNode DAG through the Array interface.
+ *    This needs some modifications:
+ *    a) We have to find a way to have PHOENIX delayed functions replaced by delayed methdos of some object.
+ *       We need one class (PrintBackend) to print AST of the grammar.
+ *       We need another class (EvalBackend) to construct the evaluation DAG through the Arrays.
+ *    b) Delayed construction of ValueNodes from identifiers. The `get_variables` step has to be replaced
+ *       by storing uncomplete ValueNodes as a map in EvalBackend.
+ *
+ *    Advantage: less code, possible small speed gain in parsing phase
+ *    Disadvantage: no mean for AST processing, however AST is a bit arbitrary structure anyway
+ */
 
 namespace bparser {
 
@@ -25,49 +37,55 @@ namespace ast {
  */
 
 
+//struct unary_fn {
+//	typedef Array (*function_type)(const Array &);
+//	std::string repr;
+//	function_type fn;
+//};
+//
+//struct binary_fn {
+//	typedef Array (*function_type)(const Array &, const Array &);
+//	std::string repr;
+//	function_type fn;
+//};
+//
+//struct ternary_fn {
+//	typedef Array (*function_type)(const Array &, const Array &, const Array &);
+//	std::string repr;
+//	function_type fn;
+//};
 
 
-struct unary_fn {
-	typedef Array (*type)(const Array &);
-	std::string repr;
-	type fn;
-};
 
-struct binary_fn {
-	typedef Array (*type)(const Array &, const Array &);
-	std::string repr;
-	type fn;
-};
-
-
-
-
-struct nil {};
-struct unary_op;
-struct binary_op;
+//struct nil {};
+struct list;
+struct call;
 struct assign_op;
 
 // clang-format off
 typedef boost::variant<
-        nil // can't happen!
-        , double
+        //nil, // can't happen!  TODO: remove
+        double
+		, int
         , std::string
-        , boost::recursive_wrapper<unary_op>
-        , boost::recursive_wrapper<binary_op>
+        , boost::recursive_wrapper<list>
+        , boost::recursive_wrapper<call>
 		, boost::recursive_wrapper<assign_op>
         >
 operand;
 // clang-format on
 
-struct unary_op {
-    unary_fn op;
-    operand rhs;
+/// a function: Array -> Array
+struct list {
+    operand head; // list; non-list type marks end of recursion
+    operand item; //
 };
 
-struct binary_op {
-    binary_fn op;
-    operand lhs;
-    operand rhs;
+
+/// a function: (Array, Array) -> Array
+struct call {
+    NamedArrayFn op;
+    operand arg_list;
 };
 
 
@@ -75,6 +93,15 @@ struct assign_op {
     std::string lhs;
     operand rhs;
 };
+
+/// TODO: eliminate call type, by allowing item to be a function
+/// This way we can further simplify visitors.
+
+//inline void assert_list(operand x) {
+//	//std::cout << x.which() << "\n";
+//	BP_ASSERT(boost::get<list>(&x) != nullptr);
+//}
+
 
 /**
  * operand visitors
@@ -90,31 +117,48 @@ struct print_vis : public boost::static_visitor<> {
     explicit print_vis()
     {}
 
-
-    void operator()(nil UNUSED(x)) const {
-    	ss << "NULL";
+    bool print_list(operand x) const {
+    	if (list *l = boost::get<list>(&x)) {
+			if (print_list(l->head))
+				ss << ",";
+			boost::apply_visitor(*this, l->item);
+			return true;
+    	}
+    	return false;
     }
 
     void operator()(double x) const
     {ss << x; }
 
+    void operator()(int x) const
+    {
+    	if (x == none_int) {
+    		ss << "none_idx";
+    	} else {
+    		ss << x;
+    	}
+    }
+
     void operator()(std::string const &x) const  {
-    	ss << "<" << x << ">";
+    	ss << "`" << x << "`";
     }
 
+    void operator()(call const &x) const {
+    	ss << x.op.repr;
+    	ss << '(';
+    	//std::cout << x.op.repr << "\n";
+    	//assert_list(x.arg_list);
+    	print_list(x.arg_list);
+    	ss << ')';
 
-    void operator()(unary_op const &x) const {
-    	ss << x.op.repr << "(";
-    	boost::apply_visitor(*this, x.rhs);
-    	ss << ")";
     }
 
-    void operator()(binary_op const &x) const {
-    	ss << x.op.repr << "(";
-    	boost::apply_visitor(*this, x.lhs);
-    	ss << ", ";
-    	boost::apply_visitor(*this, x.rhs);
-    	ss << ")";
+    void operator()(list x) const {
+    	std::cout << "List without call. \n";
+    	ss << '(';
+    	print_list(x);
+    	ss << ')';
+    	//BP_ASSERT(false);
     }
 
     void operator()(assign_op const &x) const  {
@@ -134,6 +178,13 @@ inline std::string print(operand const& ast_root) {
 	return pv.ss.str();
 }
 
+inline std::ostream &operator<<(std::ostream &os, const operand& a) {
+	print_vis pv;
+	boost::apply_visitor(pv, a);
+    os << pv.ss.str();
+    return os;
+}
+
 /**
  * Lazy AST print.
  */
@@ -151,50 +202,6 @@ BOOST_PHOENIX_ADAPT_CALLABLE(lazy_print, print_ast_t, 1)
 
 
 
-// unary expression factory
-struct make_unary_f {
-	unary_op operator()(unary_fn op, operand const& lhs) const {
-		// std::cout << "make_unary: " << lhs.which() << "\n";
-		return {op, lhs};
-	}
-};
-//inline boost::phoenix::function<make_unary_f> make_unary;
-BOOST_PHOENIX_ADAPT_CALLABLE(make_unary, make_unary_f, 2)
-
-// binary expression factory
-struct make_binary_f {
-	binary_op operator()(binary_fn op, operand const& lhs, operand const& rhs) const {
-		// std::cout << "make_binary: " << lhs.which() << ", " << rhs.which() << "\n";
-		return {op, lhs, rhs};
-	}
-};
-//inline boost::phoenix::function<make_binary_f> make_binary;
-BOOST_PHOENIX_ADAPT_CALLABLE(make_binary, make_binary_f, 3)
-
-struct make_relational_f {
-	binary_op operator()(binary_fn op, operand const& lhs, operand const& rhs, operand const& chained) const {
-		std::cout << "make_binary: " << lhs.which() << ", " << rhs.which() << ", " << print(chained) << "\n";
-		return {op, lhs, rhs};
-	}
-};
-//inline boost::phoenix::function<make_relational_f> make_relational;
-BOOST_PHOENIX_ADAPT_CALLABLE(make_relational, make_relational_f, 4)
-
-
-// assign expression factory
-struct make_assign_f {
-	assign_op operator()(std::string lhs, operand const& rhs) const {
-		return {lhs, rhs};
-	}
-};
-//inline boost::phoenix::function<make_assign_f> make_assign;
-BOOST_PHOENIX_ADAPT_CALLABLE(make_assign, make_assign_f, 2)
-
-
-inline Array semicol_fn(const Array & UNUSED(a), const Array &b) {
-	return b;
-}
-
 
 
 
@@ -203,50 +210,83 @@ inline Array semicol_fn(const Array & UNUSED(a), const Array &b) {
  * into scalar operations.
  */
 struct make_array {
-    typedef Array result_type;
+    typedef ParserResult result_type;
+
     mutable std::map<std::string, Array> symbols;
 
     explicit make_array(std::map<std::string, Array> const &symbols)
     : symbols(symbols)
     {}
 
-    result_type operator()(nil) const {
-        BOOST_ASSERT(0);
-        return Array();
+
+    ResultList make_list(operand x) const {
+    	ResultList alist;
+    	if (list *l = boost::get<list>(&x)) {
+    		alist = make_list(l->head);
+			ParserResult aitem = boost::apply_visitor(*this, l->item);
+			alist.push_back(aitem);
+    	}
+    	return alist;
     }
+
+
+//    result_type operator()(nil) const {
+//        BOOST_ASSERT(0);
+//        return Array();
+//    }
 
     result_type operator()(double x) const
     {
     	return Array::constant({x});
     }
 
+    result_type operator()(int x) const
+    {return x;}
+
+
     result_type operator()(std::string const &x) const  {
         auto it = symbols.find(x);
         if (it != symbols.end()) {
         	return it->second;
         } else {
-        	std::ostringstream s;
-        	s << "Undefined var: " << x << "\n";
         	// We do not call visitor for the assign_op's 'lhs' so this must be error.
-        	Throw(s.str());
+        	Throw() << "Undefined var: " << x << "\n";
         }
     }
 
-    result_type operator()(unary_op const &x) const {
-        return x.op.fn(boost::apply_visitor(*this, x.rhs));
+    result_type operator()(call const &x) const {
+    	//assert_list(x.arg_list);
+    	ResultList al = make_list(x.arg_list);
+    	//std::cout << "apply fn:" << x.op.repr << "\n";
+    	result_type res = boost::apply_visitor(call_visitor(al), x.op.fn);
+    	return res;
     }
 
-    result_type operator()(binary_op const &x) const {
-    	result_type lhs = boost::apply_visitor(*this, x.lhs);
-    	result_type rhs = boost::apply_visitor(*this, x.rhs);
-        return x.op.fn(lhs, rhs);
+    result_type operator()(list x) const {
+    	std::cout << "List without call: \n";
+    	std::cout << print(x) << "\n";
+    	BP_ASSERT(false);
+
+//    	result_type alist;
+//    	if (boost::get<list>(&x.head)) {
+//    		 alist = boost::apply_visitor(*this, x.head);
+//    	}
+//    	result_type aitem = boost::apply_visitor(*this, x.item);
+//    	alist = boost::apply_visitor(append_visitor(alist), aitem);
+//    	return alist;
+    	return 0;
     }
+
 
     result_type operator()(assign_op x) const  {
-    	//std::string& var_name = boos);
     	result_type rhs = boost::apply_visitor(*this, x.rhs);
-    	symbols[x.lhs] = rhs;
-        return rhs;
+    	if (Array* rhs_array = boost::get<Array>(&rhs)) {
+    		symbols[x.lhs] = *rhs_array;
+    		return rhs;
+    	}
+    	Throw() << "Internal error.\n"
+    		<< "Wrong type: " << "operand:" << rhs.which() << "\n"
+			<< "Expected: Array\n";
     }
 
 };
@@ -269,11 +309,21 @@ struct get_variables {
     explicit get_variables()
     {}
 
-
-    result_type operator()(nil) const {
-        BOOST_ASSERT(0);
-        return {};
+    result_type merge_list(operand x) const {
+    	if (list *l = boost::get<list>(&x)) {
+        	result_type head_vars = merge_list(l->head);
+        	result_type item_vars = boost::apply_visitor(*this, l->item);
+        	return merge(head_vars, item_vars);
+    	} else {
+    		return result_type();
+    	}
     }
+
+
+//    result_type operator()(nil) const {
+//        BOOST_ASSERT(0);
+//        return {};
+//    }
 
     result_type operator()(double UNUSED(x)) const
     { return {}; }
@@ -287,14 +337,16 @@ struct get_variables {
     }
 
 
-    result_type operator()(unary_op const &x) const {
-        return boost::apply_visitor(*this, x.rhs);
+    result_type operator()(call const &x) const {
+    	//assert_list(x.arg_list);
+    	return merge_list(x.arg_list);
     }
 
-    result_type operator()(binary_op const &x) const {
-    	result_type lhs = boost::apply_visitor(*this, x.lhs);
-    	result_type rhs = boost::apply_visitor(*this, x.rhs);
-        return merge(lhs, rhs);
+    result_type operator()(list x) const {
+    	std::cout << "List at wrong place: \n";
+    	std::cout << print(x) << "\n";
+    	BP_ASSERT(false);
+    	return {};
     }
 
     result_type operator()(assign_op const &x) const  {
@@ -316,50 +368,161 @@ private:
 /**
  * Remove 'nil' nodes from AST. Should not be necessary.
  */
-struct remove_nil {
-    typedef operand result_type;
+//struct remove_nil {
+//    typedef operand result_type;
+//
+//
+//    explicit remove_nil()
+//    {}
+//
+//
+//    result_type operator()(nil) const {
+//        return nil();
+//    }
+//
+//    result_type operator()(double x) const
+//    { return x; }
+//
+//    result_type operator()(std::string const &x) const  {
+//        return x;
+//    }
+//
+//
+//    result_type operator()(unary_op const &x) const {
+//    	result_type first = boost::apply_visitor(*this, x.first);
+//    	if (first.type() != typeid(nil)) return x;
+//    	return first;
+//    }
+//
+//    result_type operator()(binary_op const &x) const {
+//    	result_type first = boost::apply_visitor(*this, x.first);
+//    	if (first.type() != typeid(nil)) return x;
+//    	result_type second = boost::apply_visitor(*this, x.second);
+//    	if (second.type() != typeid(nil)) return x;
+//    	return second;
+//    }
+//
+//    result_type operator()(assign_op const &x) const  {
+//    	BP_ASSERT(x.lhs.size() > 0);
+//    	result_type rhs = boost::apply_visitor(*this, x.rhs);
+//    	BP_ASSERT(rhs.type() != typeid(nil));
+//        return x;
+//    }
+//
+//
+//
+//};
 
 
-    explicit remove_nil()
-    {}
 
+// Grammar PHOENIX lazy functions
+// using BOOST_PHOENIX_ADAPT_CALLABLE (instead of ..._ADAPT_FUNCTION)
+// in order to avoid specification of the return type.
 
-    result_type operator()(nil) const {
-        return nil();
-    }
-
-    result_type operator()(double x) const
-    { return x; }
-
-    result_type operator()(std::string const &x) const  {
-        return x;
-    }
-
-
-    result_type operator()(unary_op const &x) const {
-    	result_type rhs = boost::apply_visitor(*this, x.rhs);
-    	if (rhs.type() != typeid(nil)) return x;
-    	return rhs;
-    }
-
-    result_type operator()(binary_op const &x) const {
-    	result_type lhs = boost::apply_visitor(*this, x.lhs);
-    	if (lhs.type() != typeid(nil)) return x;
-    	result_type rhs = boost::apply_visitor(*this, x.rhs);
-    	if (rhs.type() != typeid(nil)) return x;
-    	return rhs;
-    }
-
-    result_type operator()(assign_op const &x) const  {
-    	BP_ASSERT(x.lhs.size() > 0);
-    	result_type rhs = boost::apply_visitor(*this, x.rhs);
-    	BP_ASSERT(rhs.type() != typeid(nil));
-        return x;
-    }
-
-
-
+// unary expression factory
+struct make_call_f {
+	call operator()(NamedArrayFn op, operand const& first) const {
+		return {op, first};
+	}
 };
+BOOST_PHOENIX_ADAPT_CALLABLE(make_call, make_call_f, 2)
+
+
+// unary expression factory
+struct make_unary_f {
+	call operator()(NamedArrayFn op, operand const& first) const {
+		// std::cout << "make_unary: " << first.which() << "\n";
+		list l = {0.0, first};
+		return {op, l};
+	}
+};
+BOOST_PHOENIX_ADAPT_CALLABLE(make_unary, make_unary_f, 2)
+
+// nulary expression factory
+struct make_const_f {
+	// In order to minimize number of differrent operations in AST
+	// the nulary 'fn' must in fact accept single double argument.
+	call operator()(std::string repr, ArrayFnUnary fn) const {
+		NamedArrayFn nulary_fn = {repr, fn};
+		list l = {0.0, 0.0};
+		return {nulary_fn, l};
+	}
+};
+BOOST_PHOENIX_ADAPT_CALLABLE(make_const, make_const_f, 2)
+
+
+// binary expression factory
+struct make_binary_f {
+	call operator()(NamedArrayFn op, operand const& first, operand const& second) const {
+		// std::cout << "make_binary: " << first.which() << ", " << second.which() << "\n";
+		list l1 = {0.0, first};
+		list l2 = {l1, second};
+		return {op, l2};
+	}
+};
+BOOST_PHOENIX_ADAPT_CALLABLE(make_binary, make_binary_f, 3)
+
+struct make_ternary_f {
+	call operator()(NamedArrayFn op, operand const& first, operand const& second, operand const& third) const {
+		// std::cout << "make_binary: " << first.which() << ", " << second.which() << "\n";
+		list l1 = {0.0, first};
+		list l2 = {l1, second};
+		list l3 = {l2, third};
+		return {op, l3};
+	}
+};
+BOOST_PHOENIX_ADAPT_CALLABLE(make_ternary, make_ternary_f, 4)
+
+
+
+//struct make_relational_f {
+//	binary_op operator()(binary_fn op, operand const& first, operand const& second, operand const& chained) const {
+//		std::cout << "make_binary: " << first.which() << ", " << second.which() << ", " << print(chained) << "\n";
+//		return {op, first, second};
+//	}
+//};
+//BOOST_PHOENIX_ADAPT_CALLABLE(make_relational, make_relational_f, 4)
+
+
+struct make_list_f {
+	operand operator()(operand const& head, operand const& item) const {
+		return list({head, item});
+	}
+};
+BOOST_PHOENIX_ADAPT_CALLABLE(make_list, make_list_f, 2)
+
+
+// assign expression factory
+struct make_assign_f {
+	assign_op operator()(std::string lhs, operand const& rhs) const {
+		return {lhs, rhs};
+	}
+};
+BOOST_PHOENIX_ADAPT_CALLABLE(make_assign, make_assign_f, 2)
+
+// Convert 'boost::optional' to 'operand'.
+struct treat_optional_f {
+	operand operator()(boost::optional<operand> const& v, operand const& default_) const {
+		if (v == boost::none) {
+			return default_;
+		} else {
+			return *v; // extract optional value
+		}
+	}
+};
+BOOST_PHOENIX_ADAPT_CALLABLE(treat_optional, treat_optional_f, 2)
+
+
+
+inline Array semicol_fn(const Array & UNUSED(a), const Array &b) {
+	return b;
+}
+
+
+
+
+
+
 
 
 } // namespace ast

@@ -136,13 +136,13 @@ struct Vec {
 		subset = s;
 	}
 
-	inline double4 & value(uint i) {
+	inline double4 * value(uint i) {
 //		std::cout << "self: " << this << std::endl;
 //		std::cout << "v: " << values << "s: " << subset << std::endl;
 //		std::cout << "i: " << i << "j: " << j << std::endl;
 //		std::cout << " si: " << subset[i] << std::endl;
 //		std::cout << " v: " << values[subset[i]][j] << "\n";
-		return values[subset[i]];
+		return &(values[subset[i]]);
 	}
 };
 
@@ -169,7 +169,7 @@ struct Operation {
 	// Op code. See scalar_expr.hh: XYZNode::op_code;
 	unsigned char code;
 	// index of arguments in the Processors's workspace
-	unsigned char arg[3];
+	unsigned char arg[4];
 };
 
 
@@ -185,9 +185,9 @@ struct EvalImpl<1, T> {
 	inline static void eval(Operation op,  Workspace &w) {
 		Vec v0 = w.vector[op.arg[0]];
 		for(uint i=0; i<w.subset_size; ++i) {
-			double4 & v0i = v0.value(i);
+			double4 * v0i = v0.value(i);
 			for(uint j=0; j<simd_size; ++j) {
-				T::eval(v0i[j]);
+				T::eval((*v0i)[j]);
 			}
 		}
 	}
@@ -200,10 +200,10 @@ struct EvalImpl<2, T> {
 		Vec v0 = w.vector[op.arg[0]];
 		Vec v1 = w.vector[op.arg[1]];
 		for(uint i=0; i<w.subset_size; ++i) {
-			double4 & v0i = v0.value(i);
-			double4 & v1i = v1.value(i);
+			double4 * v0i = v0.value(i);
+			double4 * v1i = v1.value(i);
 			for(uint j=0; j<simd_size; ++j) {
-				T::eval(v0i[j], v1i[j]);
+				T::eval((*v0i)[j], (*v1i)[j]);
 			}
 		}
 	}
@@ -220,15 +220,35 @@ struct EvalImpl<3, T> {
 //				<< "iv1:" << uint(op.arg[1])
 //				<< "iv2:" << uint(op.arg[2]) << std::endl;
 		for(uint i=0; i<w.subset_size; ++i) {
-			double4 &v0i = v0.value(i);
-			double4 &v1i = v1.value(i);
-			double4 &v2i = v2.value(i);
+			double4 *v0i = v0.value(i);
+			double4 *v1i = v1.value(i);
+			double4 *v2i = v2.value(i);
 			for(uint j=0; j<simd_size; ++j)
-				T::eval(v0i[j], v1i[j], v2i[j]);
+				T::eval((*v0i)[j], (*v1i)[j], (*v2i)[j]);
 		}
 	}
 };
 
+template <class T>
+struct EvalImpl<4, T> {
+	inline static void eval(Operation op,  Workspace &w) {
+		Vec v0 = w.vector[op.arg[0]];
+		Vec v1 = w.vector[op.arg[1]];
+		Vec v2 = w.vector[op.arg[2]];
+		Vec v3 = w.vector[op.arg[3]];
+//		std::cout << "iv0:" << uint(op.arg[0])
+//				<< "iv1:" << uint(op.arg[1])
+//				<< "iv2:" << uint(op.arg[2]) << std::endl;
+		for(uint i=0; i<w.subset_size; ++i) {
+			double4 *v0i = v0.value(i);
+			double4 *v1i = v1.value(i);
+			double4 *v2i = v2.value(i);
+			double4 *v3i = v3.value(i);
+			for(uint j=0; j<simd_size; ++j)
+				T::eval((*v0i)[j], (*v1i)[j], (*v2i)[j], (*v3i)[j]);
+		}
+	}
+};
 
 
 
@@ -449,7 +469,10 @@ struct Processor {
 			CODE(_sgn_);
 			CODE(_atan2_);
 			CODE(_pow_);
+			CODE(_max_);
+			CODE(_min_);
 			CODE(_copy_);
+			CODE(_ifelse_);
 //			CODE(__);
 //			CODE(__);
 //			CODE(__);
