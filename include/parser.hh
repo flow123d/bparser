@@ -46,7 +46,7 @@ class Parser {
 	std::map<std::string, Array> symbols_;
 	std::vector<std::string> free_variables;
 	Array result_array_;
-	Processor * processor;
+	ProcessorBase * processor;
 	double * tmp_result;
 
 public:
@@ -62,7 +62,7 @@ public:
 
     void destroy_processor() {
     	if (tmp_result) delete [] tmp_result;
-    	if (processor != nullptr) processor->~Processor();
+    	if (processor != nullptr) processor->~ProcessorBase();
     }
     /// @brief Parse the mathematical expression into an abstract syntax tree
     ///
@@ -137,7 +137,7 @@ public:
     ///
     /// All variable names have to be set before this call.
     /// TODO: set result variable
-    void compile() {
+    ExpressionDAG compile() {
     	destroy_processor();
 
         ParserResult res_array = boost::apply_visitor(ast::make_array(symbols_), ast);
@@ -158,9 +158,9 @@ public:
         }
 
 		ExpressionDAG se(result_array_.elements());
-
+        return se;
 		//se.print_in_dot();
-		processor = Processor::create_processor_(se, max_vec_size);
+		//processor = Processor::create_processor_(se, max_vec_size);
     }
 
     Array result_array() {
@@ -180,6 +180,11 @@ public:
 
     void run() {
     	processor->run();
+    }
+
+    void set_processor(ProcessorBase *p)
+    {
+        processor = p;
     }
 
 

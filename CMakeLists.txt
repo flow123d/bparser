@@ -3,8 +3,9 @@ cmake_minimum_required(VERSION 3.5.1)
 
 message(STATUS "CMakeLists.txt - BParser")
 
-set(CMAKE_CXX_FLAGS     "-std=c++11 -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -mavx2")
+set(CMAKE_CXX_FLAGS     "-std=c++17 -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native")
+#set(CMAKE_CXX_FLAGS_RELEASE "-O3 -mavx2")
 set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG")  #-fsanitize=address -static-libasan  -fno-omit-frame-pointer
 
 #ASAN_OPT         := -g -fsanitize=address -static-libasan -fno-omit-frame-pointer
@@ -130,7 +131,7 @@ if (NOT Boost_FOUND)
   unset(Boost_VERSION CACHE)
   
   set(BOOST_ROOT ${EXTERNAL_BOOST_DIR})    
-  find_package( Boost 1.62.0 REQUIRED)
+  find_package( Boost 1.71.0 REQUIRED)
 endif()
 
 message(STATUS "-------------------------------------------------------")

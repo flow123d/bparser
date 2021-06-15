@@ -20,11 +20,51 @@
 #include "assert.hh"
 #include "parser.hh"
 #include "test_tools.hh"
+#include "processor.hh"
+#include "vectorclass.h"
 
 #include "arena_alloc.hh"
 
+
+
+using namespace bparser;
+
+ProcessorBase *create_processor(ArenaAlloc &arena, ExpressionDAG &se, uint vector_size, uint simd_size) {
+	switch (simd_size) {
+	case 2:
+		return arena.create<Processor<MyVec2d>>(arena, se, vector_size / simd_size);
+	case 4:
+		return arena.create<Processor<MyVec4d>>(arena, se, vector_size / simd_size);
+	case 8:
+		return arena.create<Processor<MyVec8d>>(arena, se, vector_size / simd_size);	
+	}
+}
+
+uint get_simd_size()
+{
+	if (__builtin_cpu_supports("avx512f"))
+	{
+		return 8;
+	}
+	if (__builtin_cpu_supports("avx"))
+	{
+		return 4;
+	}
+	if (__builtin_cpu_supports("sse"))
+	{
+		return 2;
+	}
+	//if (__builtin_cpu_supports("mmx"))
+	else
+	{
+		return 1;
+	}
+	
+}
+
+
 struct ExprData {
-	ExprData(bparser::ArenaAlloc &arena, uint vec_size)
+	ExprData(ArenaAlloc &arena, uint vec_size)
 	: vec_size(vec_size)
 	{
 		v1 = arena.create_array<double>(vec_size * 3);
@@ -56,7 +96,7 @@ void expr1(ExprData &data) {
 			for(uint k = 0; k<4; k++) {
 				double v1 = data.v1[j+k];
 				double v2 = data.v2[j+k];
-				data.vres[j+k] = 3 * v1  + data.cs1 * v2 ;
+				data.vres[j+k] = v1 + v2 ;
 			}
 		}
 	}
@@ -72,7 +112,7 @@ void test_expr(std::string expr) {
 	// e.g. p.set_variable could return pointer to that pointer
 	// not so easy for vector and tensor variables, there are many pointers to set
 	// Rather modify the test to fill the
-	uint n_repeats = 1000000;
+	uint n_repeats = 100000;
 
 	ArenaAlloc arena_1(32, 10*vec_size *sizeof(double));
 	ExprData data1(arena_1, vec_size);
@@ -89,7 +129,11 @@ void test_expr(std::string expr) {
 	//std::cout << "vres: " << vres << ", " << vres + block_size << ", " << vres + 2*vec_size << "\n";
 	//std::cout << "Symbols: " << print_vector(p.symbols()) << "\n";
 	//std::cout.flush();
-	p.compile();
+	ExpressionDAG se = p.compile();
+
+	uint simd_size = get_simd_size();
+	ProcessorBase * processor = create_processor(arena_1, se, vec_size, simd_size);
+	p.set_processor(processor);
 
 	std::vector<uint> ss = std::vector<uint>(data1.subset, data1.subset+vec_size/4);
 	p.set_subset(ss);
@@ -139,7 +183,8 @@ void test_expr(std::string expr) {
 
 
 void test_expression() {
-	test_expr("3 * v1 + cs1 * v2");
+	//test_expr("3 * v1 + cs1 * v2");
+	test_expr("v1 + v2");
 }
 
 
