@@ -125,7 +125,7 @@ using namespace details;
 //};
 
 
-const uint simd_size = MAX_VECTOR_SIZE / 64;
+//const uint simd_size = MAX_VECTOR_SIZE / 64;
 // const uint simd_size = 4;	
 							//myTODO: nesmí být konstanta, ale je třeba nastavit..> v create detekci
 							//pote predat do areny jako parametr
@@ -290,8 +290,6 @@ typedef MyVec<Vec4d> MyVec4d;
 typedef MyVec<Vec4d> MyVec8d;
 
 //auto vt = MyVec<Vec2d>(vector_size);
-//auto vt = MyVec<Vec4d>(vector_size);
-
 
 
 /**
@@ -316,7 +314,7 @@ struct Processor : ProcessorBase {
 	 */
 
 	typedef typename MV::Vec MVec;
-	//const uint simd_size = sizeof(MVec) / 8;
+	static const uint simd_size = sizeof(MVec) / 8;
 
 	static Processor *create(std::vector<ScalarNode *> results, uint vector_size) {
 		ExpressionDAG se(results);
