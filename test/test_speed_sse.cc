@@ -116,7 +116,7 @@ void test_expr(std::string expr) {
 	// e.g. p.set_variable could return pointer to that pointer
 	// not so easy for vector and tensor variables, there are many pointers to set
 	// Rather modify the test to fill the
-	uint n_repeats = 1000000;
+	uint n_repeats = 1;
 
 	ArenaAlloc arena_1(32, 10*vec_size *sizeof(double));
 	ExprData data1(arena_1, vec_size);
@@ -135,7 +135,7 @@ void test_expr(std::string expr) {
 	//std::cout.flush();
 	ExpressionDAG se = p.compile();
 
-	uint simd_size = get_simd_size();
+	uint simd_size = 2; //get_simd_size();
 	ProcessorBase * processor = create_processor(arena_1, se, vec_size, simd_size);
 	p.set_processor(processor);
 
@@ -189,7 +189,6 @@ void test_expr(std::string expr) {
 
 void test_expression() {
 	//test_expr("3 * v1 + cs1 * v2");
-	//test_expr("v1 * v2");
 	test_expr("v1 * v2");
 }
 

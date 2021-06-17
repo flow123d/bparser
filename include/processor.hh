@@ -181,6 +181,7 @@ struct Operation {
 };
 
 
+//static uint testi = 0;
 
 template<uint NParams, class T, typename VecType>
 struct EvalImpl;
@@ -205,7 +206,13 @@ struct EvalImpl<2, T, VecType> {
 	inline static void eval(Operation op,  Workspace<VecType> &w) {
 		Vec<VecType> v0 = w.vector[op.arg[0]];
 		Vec<VecType> v1 = w.vector[op.arg[1]];
+
+		//std::cout << testi++ << " * " << "\n";
+
 		for(uint i=0; i<w.subset_size; ++i) {
+
+			//std::cout << "subset: " << i << std::endl;
+
 			VecType * v0i = v0.value(i);
 			VecType * v1i = v1.value(i);
 			T::eval(*v0i, *v1i);
@@ -213,7 +220,7 @@ struct EvalImpl<2, T, VecType> {
 	}
 };
 
-static uint testi = 0;
+
 template <class T, typename VecType>
 struct EvalImpl<3, T, VecType> {
 	inline static void eval(Operation op,  Workspace<VecType> &w) {
@@ -224,9 +231,12 @@ struct EvalImpl<3, T, VecType> {
 //				<< "iv1:" << uint(op.arg[1])
 //				<< "iv2:" << uint(op.arg[2]) << std::endl;
 
-		std::cout << testi++ << " * " << "\n";
+		//std::cout << testi++ << " * " << "\n";
+		
 		for(uint i=0; i<w.subset_size; ++i) {
-			std::cout << "subset: " << i << std::endl;
+
+			//std::cout << "subset: " << i << std::endl;
+
 			VecType *v0i = v0.value(i);
 			VecType *v1i = v1.value(i);
 			VecType *v2i = v2.value(i);
@@ -234,6 +244,7 @@ struct EvalImpl<3, T, VecType> {
 		}
 	}
 };
+
 
 template <class T, typename VecType>
 struct EvalImpl<4, T, VecType> {
@@ -482,8 +493,8 @@ struct Processor : ProcessorBase {
 			CODE(_add_);
 			CODE(_sub_);
 			CODE(_mul_);
-			/*
 			CODE(_div_);
+			/*
 			CODE(_mod_);
 			CODE(_eq_);
 			CODE(_ne_);
@@ -512,7 +523,9 @@ struct Processor : ProcessorBase {
 			CODE(_isinf_);
 			CODE(_sgn_);
 			CODE(_atan2_);
-			CODE(_pow_);
+			*/
+			//CODE(_pow_);
+			/*
 			CODE(_max_);
 			CODE(_min_);
 			CODE(_copy_);
