@@ -213,7 +213,7 @@ struct EvalImpl<2, T, VecType> {
 	}
 };
 
-
+static uint testi = 0;
 template <class T, typename VecType>
 struct EvalImpl<3, T, VecType> {
 	inline static void eval(Operation op,  Workspace<VecType> &w) {
@@ -223,7 +223,10 @@ struct EvalImpl<3, T, VecType> {
 //		std::cout << "iv0:" << uint(op.arg[0])
 //				<< "iv1:" << uint(op.arg[1])
 //				<< "iv2:" << uint(op.arg[2]) << std::endl;
+
+		std::cout << testi++ << " * " << "\n";
 		for(uint i=0; i<w.subset_size; ++i) {
+			std::cout << "subset: " << i << std::endl;
 			VecType *v0i = v0.value(i);
 			VecType *v1i = v1.value(i);
 			VecType *v2i = v2.value(i);
@@ -285,11 +288,10 @@ struct ProcessorBase {
 	}
 };
 
+typedef MyVec<double> MyDouble;
 typedef MyVec<Vec2d> MyVec2d;
 typedef MyVec<Vec4d> MyVec4d;
-typedef MyVec<Vec4d> MyVec8d;
-
-//auto vt = MyVec<Vec2d>(vector_size);
+typedef MyVec<Vec8d> MyVec8d;
 
 
 /**
@@ -314,7 +316,8 @@ struct Processor : ProcessorBase {
 	 */
 
 	typedef typename MV::Vec MVec;
-	static const uint simd_size = sizeof(MVec) / 8;
+	static const uint simd_size = sizeof(MVec) / sizeof(double);
+
 
 	static Processor *create(std::vector<ScalarNode *> results, uint vector_size) {
 		ExpressionDAG se(results);
@@ -360,9 +363,11 @@ struct Processor : ProcessorBase {
 		//std::cout << "&vec_subset: " << &(workspace_.vec_subset) << "\n";
 		//std::cout << "aloc vec_subset: " << workspace_.vec_subset << " size: " << vec_size << "\n";
 
+		std::cout << "vec_size: " << vec_size << ", simd: " << simd_size << std::endl;
+
 		workspace_.vector = (Vec<MVec> *) arena_.allocate(sizeof(Vec<MVec>) * se.temp_end);
 		MVec * temp_base = (MVec *) arena_.allocate(
-				sizeof(double) * vec_size * simd_size * (se.temp_end - se.values_end)); //simd size vzit z MV
+				sizeof(double) * vec_size * simd_size * (se.temp_end - se.values_end));
 		MVec * const_base = (MVec *) arena_.allocate(
 				sizeof(MVec) * se.constants_end);
 		for(uint i=0; i< se.constants_end; ++i)
@@ -457,7 +462,7 @@ struct Processor : ProcessorBase {
 	}
 
 
-	template<class T> // mozna pridat typename
+	template<class T>
 	inline void operation_eval(Operation op) {
 		EvalImpl<T::n_eval_args, T, MVec>::eval(op, workspace_);
 	}

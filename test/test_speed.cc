@@ -36,7 +36,9 @@ ProcessorBase *create_processor(ArenaAlloc &arena, ExpressionDAG &se, uint vecto
 	case 4:
 		return arena.create<Processor<MyVec4d>>(arena, se, vector_size / simd_size);
 	case 8:
-		return arena.create<Processor<MyVec8d>>(arena, se, vector_size / simd_size);	
+		return arena.create<Processor<MyVec8d>>(arena, se, vector_size / simd_size);
+	default:
+		return arena.create<Processor<MyDouble>>(arena, se, vector_size / simd_size);
 	}
 }
 
@@ -46,6 +48,10 @@ uint get_simd_size()
 	{
 		return 8;
 	}
+	if (__builtin_cpu_supports("avx2"))
+	{
+		return 4;
+	}
 	if (__builtin_cpu_supports("avx"))
 	{
 		return 4;
@@ -54,12 +60,10 @@ uint get_simd_size()
 	{
 		return 2;
 	}
-	//if (__builtin_cpu_supports("mmx"))
 	else
 	{
 		return 1;
 	}
-	
 }
 
 
@@ -96,7 +100,7 @@ void expr1(ExprData &data) {
 			for(uint k = 0; k<4; k++) {
 				double v1 = data.v1[j+k];
 				double v2 = data.v2[j+k];
-				data.vres[j+k] = v1 + v2 ;
+				data.vres[j+k] = v1 * v2;
 			}
 		}
 	}
@@ -112,7 +116,7 @@ void test_expr(std::string expr) {
 	// e.g. p.set_variable could return pointer to that pointer
 	// not so easy for vector and tensor variables, there are many pointers to set
 	// Rather modify the test to fill the
-	uint n_repeats = 100000;
+	uint n_repeats = 1;
 
 	ArenaAlloc arena_1(32, 10*vec_size *sizeof(double));
 	ExprData data1(arena_1, vec_size);
@@ -135,7 +139,7 @@ void test_expr(std::string expr) {
 	ProcessorBase * processor = create_processor(arena_1, se, vec_size, simd_size);
 	p.set_processor(processor);
 
-	std::vector<uint> ss = std::vector<uint>(data1.subset, data1.subset+vec_size/4);
+	std::vector<uint> ss = std::vector<uint>(data1.subset, data1.subset + vec_size/simd_size); //bylo lomeno 4
 	p.set_subset(ss);
 	auto start_time = std::chrono::high_resolution_clock::now();
 	for(uint i_rep=0; i_rep < n_repeats; i_rep++) {
@@ -160,7 +164,7 @@ void test_expr(std::string expr) {
 	for(uint dim=0; dim < 3; dim++) {
 		for(uint i=0; i<data1.vec_size; i++) {
 			double v1 = data1.vres[dim*data1.vec_size + i];
-			double v2 = data1.vres[dim*data2.vec_size + i];
+			double v2 = data2.vres[dim*data2.vec_size + i];
 			//std::cout << "res: " << v1 <<std::endl;
 			diff += std::fabs(v1 - v2);
 			p_sum += v1;
@@ -176,7 +180,8 @@ void test_expr(std::string expr) {
 	double n_flop = n_repeats * vec_size * 9;
 	std::cout << "parser FLOPS: " << n_flop / parser_time << "\n";
 	std::cout << "c++ FLOPS   : " << n_flop / cpp_time << "\n";
-
+	//std::cout << "velikost Vec4d :" << sizeof(Vec4d) << "\n";
+	//std::cout << "velikost Vec8d :" << sizeof(Vec8d) << "\n";
 }
 
 
@@ -184,7 +189,7 @@ void test_expr(std::string expr) {
 
 void test_expression() {
 	//test_expr("3 * v1 + cs1 * v2");
-	test_expr("v1 + v2");
+	test_expr("v1 * v2");
 }
 
 
