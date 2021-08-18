@@ -7,6 +7,11 @@ set(CMAKE_CXX_FLAGS     "-std=c++11 -pedantic-errors -Werror=pedantic -Wall -Wex
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -mavx2")
 set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG")  #-fsanitize=address -static-libasan  -fno-omit-frame-pointer
 
+# intel compiler
+if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -diag-disable=68")
+endif()
+
 #ASAN_OPT         := -g -fsanitize=address -static-libasan -fno-omit-frame-pointer
 #MSAN_OPT         := -g -fsanitize=memory    -fno-omit-frame-pointer
 #LSAN_OPT         := -g -fsanitize=leak      -fno-omit-frame-pointer
