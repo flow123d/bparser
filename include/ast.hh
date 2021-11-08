@@ -246,7 +246,8 @@ struct make_array {
 
     result_type operator()(std::string const &x) const  {
         auto it = symbols.find(x);
-        if (it != symbols.end()) {
+        BP_ASSERT(it != symbols.end());
+        if (! it->second.is_none()) {
         	return it->second;
         } else {
         	// We do not call visitor for the assign_op's 'lhs' so this must be error.

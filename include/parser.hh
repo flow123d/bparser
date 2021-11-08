@@ -44,7 +44,6 @@ class Parser {
 	ast::operand ast;
 	uint max_vec_size;
 	std::map<std::string, Array> symbols_;
-	std::vector<std::string> free_variables;
 	Array result_array_;
 	Processor * processor;
 	double * tmp_result;
@@ -76,9 +75,16 @@ public:
         //std::cout << ast::print(ast) << "\n";
 
         //ASSERT(ast.type() != typeid(ast::nil));
-        free_variables  = boost::apply_visitor(ast::get_variables(), ast);
 
-        // dafault constants
+    	std::vector<std::string> free_variables;
+    	free_variables = boost::apply_visitor(ast::get_variables(), ast);
+    	for(std::string &s: free_variables) {
+        	symbols_[s] = Array(); // none array
+
+        }
+
+
+        // default constants
         set_constant("e", {}, {boost::math::constants::e<double>()});
         set_constant("pi", {}, {boost::math::constants::pi<double>()});
         //set_constant("phi", {}, {boost::math::constants::phi<double>()});
@@ -111,8 +117,12 @@ public:
     /**
      * @brief Return names (undefined) variables in the expression.
      */
-    std::vector<std::string> const &variables() {
-    	return free_variables;
+    std::vector<std::string> free_symbols() {
+    	std::vector<std::string> keys;
+    	for(auto s : symbols_) {
+    		if (s.second.is_none())	keys.push_back(s.first);
+    	}
+    	return keys;
     }
 
     /**

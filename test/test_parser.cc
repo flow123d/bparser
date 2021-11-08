@@ -17,14 +17,15 @@ bool test_fv(std::string expr, std::vector<std::string> ref_vars) {
 	using namespace bparser;
 	Parser p(4);
 	p.parse(expr);
-	auto vars = p.variables();
+	auto vars = p.free_symbols();
 
 	std::cout << "free vars test: " << expr << "\n";
 	bool success = (vars == ref_vars);
 	if (!success) {
-		std::cout <<  "  ";
-		for(std::string v : vars)
-			std::cout << v << ", ";
+		std::cout <<  "vars:  ";
+		for(std::string v : vars) std::cout << v << ", ";
+		std::cout <<  "ref_vars:  ";
+		for(std::string v : ref_vars) std::cout << v << ", ";
 		std::cout << "\n";
 		std::cout.flush();
 	}
@@ -35,6 +36,7 @@ bool test_fv(std::string expr, std::vector<std::string> ref_vars) {
 void test_free_variables() {
 	std::cout << "\n" << "** test free variables" << "\n";
 	EXPECT(test_fv("1+2", {}));
+	EXPECT(test_fv("pi+e+epsilon+dd", {"dd"}));
 	EXPECT(test_fv("a+b", {"a", "b"}));
 	EXPECT(test_fv("a=1;a+b", {"b"}));
 }
@@ -89,7 +91,7 @@ bool test_expr(std::string expr, std::vector<double> ref_result) {
 	bool success = true;
 	for(uint i=0; i < vec_size; i++) {
 		for(uint j=0; j < ref_result.size(); j++) {
-			if (fabs(res[j * vec_size + i] - ref_result[j]) > 1e-3 * fabs(ref_result[j]) ) {
+			if (fabs(res[j * vec_size + i] - ref_result[j]) > 1e-3 * fabs(ref_result[j]) + 1e-15 ) {
 				success = false;
 				std::cout << "  " << i << "," << j <<
 				" ref: " << ref_result[j] <<
@@ -160,6 +162,8 @@ void test_expression() {
 
 	BP_ASSERT(test_expr("minimum([1,2,3], [0,4,3])", {0,2,3}));
 	BP_ASSERT(test_expr("maximum([1,2,3], [0,4,3])", {1,4,3}));
+
+	BP_ASSERT(test_expr("sin(pi*as1)", {0})); // sin(pi*1)
 }
 
 
@@ -169,7 +173,7 @@ void test_speed_cases() {
 
 int main()
 {
-	//test_free_variables();
+	test_free_variables();
 	test_expression();
 #ifdef NDEBUG
 	test_speed_cases();

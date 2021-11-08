@@ -807,7 +807,8 @@ public:
 	{}
 
 	Array(const Array &other)
-	: Array(other, other.range())
+	: shape_(other.shape_),
+	  elements_(other.elements_)
 	{}
 
 	/**
@@ -933,6 +934,7 @@ public:
 
 
 	bool is_none() const {
+		// shape == {} means a scalar
 		return shape_.size() == 0 && elements_.size() == 0;
 	}
 
@@ -1021,6 +1023,7 @@ private:
 	 * Fill all elements of *this to the subset of 'other' given by the 'range'.
 	 */
 	void from_subset(const Array &other, const MultiIdxRange &range) {
+		if (other.elements_.size() == 0) return; // none value
 		MultiIdx idx(range);
 		for(;;) {
 			elements_[idx.dest_idx()] = other.elements_[idx.src_idx()];
@@ -1029,8 +1032,8 @@ private:
 	}
 
 
-	std::vector<ScalarNodePtr> elements_;
 	Shape shape_;
+	std::vector<ScalarNodePtr> elements_;
 
 };
 

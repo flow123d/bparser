@@ -58,6 +58,16 @@ bool shape_eq(Shape a, Shape b) {
 	return true;
 }
 
+void test_constructors() {
+	Array a;
+	EXPECT(a.is_none());
+	EXPECT(TEST_EQ(a.range().full_shape_.size(), uint(0)));
+	Array b;
+	b=a;
+	EXPECT(b.is_none());
+	Array c(a);
+	EXPECT(c.is_none());
+}
 
 void test_absolute_idx() {
 	EXPECT(TEST_EQ(uint(0), absolute_idx(0, 5)));
@@ -161,6 +171,7 @@ void test_Array() {
 }
 
 int main() {
+	test_constructors();
 	test_absolute_idx();
 	test_MultiIdxRange();
 	test_Array();
