@@ -100,7 +100,7 @@ void expr1(ExprData &data) {
 			for(uint k = 0; k<4; k++) {
 				double v1 = data.v1[j+k];
 				double v2 = data.v2[j+k];
-				data.vres[j+k] = v1 * v2;
+				data.vres[j+k] = v1 * v2 * v1;
 			}
 		}
 	}
@@ -116,9 +116,9 @@ void test_expr(std::string expr) {
 	// e.g. p.set_variable could return pointer to that pointer
 	// not so easy for vector and tensor variables, there are many pointers to set
 	// Rather modify the test to fill the
-	uint n_repeats = 1000000;
+	uint n_repeats = 1000;
 
-	ArenaAlloc arena_1(32, 10*vec_size *sizeof(double));
+	ArenaAlloc arena_1(32, 10*vec_size *sizeof(double));	//32 zarovnání paměti.. delat dle procesoru
 	ExprData data1(arena_1, vec_size);
 	ArenaAlloc arena_2(32, 10*vec_size *sizeof(double));
 	ExprData data2(arena_2, vec_size);
@@ -190,7 +190,7 @@ void test_expr(std::string expr) {
 void test_expression() {
 	//test_expr("3 * v1 + cs1 * v2");
 	//test_expr("v1 * v2");
-	test_expr("v1 * v2");
+	test_expr("v1 * v2 * v1");
 }
 
 
