@@ -131,7 +131,7 @@ if (NOT Boost_FOUND)
   unset(Boost_VERSION CACHE)
   
   set(BOOST_ROOT ${EXTERNAL_BOOST_DIR})    
-  find_package( Boost 1.71.0 REQUIRED)
+  find_package( Boost 1.58.0 REQUIRED)  #1.58.0 minimum
 endif()
 
 message(STATUS "-------------------------------------------------------")
@@ -146,6 +146,7 @@ message(STATUS "=======================================================\n\n")
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${Boost_INCLUDE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/VCL_v2
 )
 
 # add tager for libbparser
