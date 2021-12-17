@@ -197,6 +197,12 @@ inline double double_bool(bool x) {
 	return x ? double_true() : double_false();
 }
 
+
+/***
+ * Declaration of particular scalar nodes for distinct operations.
+ * Unique 'op_code' must be set to every particular operation ScalarNode.
+ */
+
 #define UNARY_FN(NAME, OP_CODE, FN) 									\
 	struct NAME : public ScalarNode {									\
 		static const char op_code = OP_CODE;							\

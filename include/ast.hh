@@ -364,7 +364,70 @@ private:
 
 
 
+/**
+ * Get list head.
+ * Fail for other AST nodes.
+ */
+/*
+struct _aux_get_head {
+    typedef operand result_type;
 
+    explicit _aux_get_head()
+    {}
+
+    result_type operator()(double UNUSED(x)) const
+    { BP_ASSERT(false);}
+
+    result_type operator()(std::string const &x) const
+    { BP_ASSERT(false);}
+
+
+    result_type operator()(call const &x) const
+    { BP_ASSERT(false);}
+
+    result_type operator()(list x) const
+    {
+    	return x.head;
+    }
+
+    result_type operator()(assign_op const &x) const
+    { BP_ASSERT(false); }
+
+};
+*/
+
+
+/**
+ * Get list item, or list of args for the function call.
+ * Fail for other AST nodes.
+ */
+/*struct _aux_get_next {
+	typedef operand result_type;
+
+	explicit _aux_get_next()
+	{}
+
+	result_type operator()(double UNUSED(x)) const
+	{ BP_ASSERT(false);}
+
+	result_type operator()(std::string const &x) const
+	{ BP_ASSERT(false);}
+
+
+	result_type operator()(call const &x) const
+	{
+		return x.arg_list;
+	}
+
+	result_type operator()(list x) const
+	{
+		return x.item;
+	}
+
+	result_type operator()(assign_op const &x) const
+	{ BP_ASSERT(false); }
+
+};*/
 
 /**
  * Remove 'nil' nodes from AST. Should not be necessary.
@@ -476,13 +539,15 @@ BOOST_PHOENIX_ADAPT_CALLABLE(make_ternary, make_ternary_f, 4)
 
 
 
-//struct make_relational_f {
-//	binary_op operator()(binary_fn op, operand const& first, operand const& second, operand const& chained) const {
-//		std::cout << "make_binary: " << first.which() << ", " << second.which() << ", " << print(chained) << "\n";
-//		return {op, first, second};
-//	}
-//};
-//BOOST_PHOENIX_ADAPT_CALLABLE(make_relational, make_relational_f, 4)
+struct make_chained_comparison_f {
+	call operator()(NamedArrayFn op, operand const& head, operand const& other) const {
+		//std::cout << "make_binary: " << first.which() << ", " << second.which() << ", " << print(chained) << "\n";
+		list l1 = {0.0, head};
+		list l2 = {l1, other};
+		return {op, l2};
+	}
+};
+BOOST_PHOENIX_ADAPT_CALLABLE(make_chained_comparison, make_chained_comparison_f, 3)
 
 
 struct make_list_f {

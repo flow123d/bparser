@@ -270,6 +270,10 @@ inline RangeList range_list(const RangeList &slice_list) {
 	return slice_list;
 }
 
+inline Array close_chain(const Array & x) {
+// TODO: pass ComparisonPair as parameter
+	return x;
 }
 
+} // namespace bparser
 #endif /* INCLUDE_ARRAY_AST_INTERFACE_HH_ */
