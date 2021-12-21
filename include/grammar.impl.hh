@@ -54,6 +54,7 @@ Array error_reserved(const Array & UNUSED(x)) {
 	// TODO report
 	Throw() << "Reserved identifier.";
 }
+
 //ast::binary_fn::function_type append_to() {
 //	return static_cast<ast::binary_fn::function_type>(&(Array::append_to));
 //}
@@ -211,12 +212,12 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
         // TODO: wrap relation operation into chained comparison
         // supported in array_ast_interface
         relational_op.add
-            BN_FN("<" , binary_array<_lt_>())
-            BN_FN("<=", binary_array<_le_>())
-            BN_FN(">" , &gt_op)
-            BN_FN(">=", &ge_op)
-            BN_FN("==", binary_array<_eq_>())
-            BN_FN("!=", binary_array<_ne_>())
+            BN_FN("<" , ChainedCompareFn(Array::binary_op<_lt_>))
+            BN_FN("<=", ChainedCompareFn(Array::binary_op<_le_>))
+            BN_FN(">" , ChainedCompareFn(&gt_op))
+            BN_FN(">=", ChainedCompareFn(&ge_op))
+            BN_FN("==", ChainedCompareFn(Array::binary_op<_eq_>))
+            BN_FN("!=", ChainedCompareFn(Array::binary_op<_ne_>))
             ;
 
         power_op.add
