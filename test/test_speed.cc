@@ -68,20 +68,34 @@ uint get_simd_size()
 
 
 struct ExprData {
-	ExprData(ArenaAlloc &arena, uint vec_size)
+	ExprData(uint vec_size, uint simd_size)
 	: vec_size(vec_size)
 	{
-		v1 = arena.create_array<double>(vec_size * 3);
+		uint var_cnt = 3 * (vec_cnt + 1) + cvec_cnt + const_cnt;  			// +1 je na result
+		arena = new ArenaAlloc(simd_size * sizeof(double), var_cnt * vec_size * sizeof(double));
+
+
+		std::cout << "In test_speed.cc, ExprData:" << std::endl;
+		std::cout << "var_cnt: " << var_cnt << std::endl;
+		std::cout << "arena: " << var_cnt * vec_size * sizeof(double) << std::endl;
+		
+		
+		v1 = (*arena).create_array<double>(vec_size * 3);
 		fill_seq(v1, 100, 100 + 3 * vec_size);
-		v2 = arena.create_array<double>(vec_size * 3);
+
+		v2 = (*arena).create_array<double>(vec_size * 3);
 		fill_seq(v2, 200, 200 + 3 * vec_size);
-		// v3 = arena.create_array<double>(vec_size * 3);
-		// fill_seq(v3, 100, 100 + 3 * vec_size * 0.5, 0.5);
-		// v4 = arena.create_array<double>(vec_size * 3);
-		// fill_seq(v4, 200, 200 + 3 * vec_size * 0.5, 0.5);
-		vres = arena.create_array<double>(vec_size * 3);
+		
+		//v3 = (*arena).create_array<double>(vec_size * 3);
+		//fill_seq(v3, 100, 100 + 3 * vec_size * 0.5, 0.5);
+		
+		//v4 = (*arena).create_array<double>(vec_size * 3);
+		//fill_seq(v4, 200, 200 + 3 * vec_size * 0.5, 0.5);
+		
+		vres = (*arena).create_array<double>(vec_size * 3);
 		fill_const(vres, 3 * vec_size, -100);
-		subset = arena.create_array<uint>(vec_size);
+		
+		subset = (*arena).create_array<uint>(vec_size);
 		for(uint i=0; i<vec_size/4; i++) subset[i] = i;
 		cs1 = 4;
 
@@ -91,14 +105,23 @@ struct ExprData {
 		// }
 	}
 
+	~ExprData()
+	{
+		delete arena;
+	}
+
 	uint vec_size;
 	double *v1, *v2, *v3, *v4, *vres;
 	double cs1;
 	double cv1[3];
 	uint *subset;
+	ArenaAlloc * arena;
 
+
+	uint vec_cnt = 2;
+	uint cvec_cnt = 0;
+	uint const_cnt = 1;
 };
-
 
 
 
@@ -110,7 +133,8 @@ void expr1(ExprData &data) {
 				double v1 = data.v1[j+k];
 				double v2 = data.v2[j+k];
 
-				data.vres[j+k] = v1 * v2 * v1;
+				data.vres[j+k] = v1 * v2;
+				//data.vres[j+k] = v1 * v2 * v1;
 
 				//double v3 = data.v3[j+k];
 				//double v4 = data.v4[j+k];
@@ -134,14 +158,11 @@ void test_expr(std::string expr) {
 	uint n_repeats = 1000;
 	uint simd_size = get_simd_size();
 
-	ArenaAlloc arena_1(simd_size * sizeof(double), 10*vec_size *(sizeof(double) + simd_size));
-	//ArenaAlloc arena_1(32, 10*vec_size *sizeof(double));
-	ExprData data1(arena_1, vec_size);
-	ArenaAlloc arena_2(32, 10*vec_size *sizeof(double));
-	ExprData data2(arena_2, vec_size);
+	//ArenaAlloc arena_1(0, 0);
+	ExprData data1(vec_size, simd_size);
 
-	std::cout << "arena1: " << 10*vec_size *(sizeof(double) + simd_size) << std::endl;
-	std::cout << "arena2: " << 10*vec_size *sizeof(double) << std::endl;
+	ExprData data2(vec_size, simd_size);
+
 
 	Parser p(block_size);
 	p.parse(expr);
@@ -158,7 +179,7 @@ void test_expr(std::string expr) {
 	ExpressionDAG se = p.compile();
 
 	//uint simd_size = get_simd_size();
-	ProcessorBase * processor = create_processor(arena_1, se, vec_size, simd_size);
+	ProcessorBase * processor = create_processor((*data1.arena), se, vec_size, simd_size);
 	p.set_processor(processor);
 
 	std::vector<uint> ss = std::vector<uint>(data1.subset, data1.subset + vec_size/simd_size); //bylo lomeno 4
@@ -211,8 +232,10 @@ void test_expr(std::string expr) {
 
 void test_expression() {
 	//test_expr("3 * v1 + cs1 * v2 + cv1 * v3 + v4**2");
-	//test_expr("v1 * v2");
-	test_expr("v1 * v2 * v1");
+	test_expr("v1 * v2");
+	//test_expr("v1 * v2 * v1");
+	//test_expr("v1 * v2 * v3");
+	//test_expr("v1 * v2 * v1 * v2");
 }
 
 
