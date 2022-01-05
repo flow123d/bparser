@@ -71,11 +71,10 @@ struct ExprData {
 	ExprData(uint vec_size, uint simd_size)
 	: vec_size(vec_size)
 	{
-		uint var_cnt = 3 * (vec_cnt + 1) + cvec_cnt + const_cnt;  			// +1 je na result
 		arena = new ArenaAlloc(simd_size * sizeof(double), var_cnt * vec_size * sizeof(double));
 
 
-		std::cout << "In test_speed.cc, ExprData:" << std::endl;
+		std::cout << "\nIn test_speed.cc, ExprData:" << std::endl;
 		std::cout << "var_cnt: " << var_cnt << std::endl;
 		std::cout << "arena: " << var_cnt * vec_size * sizeof(double) << std::endl;
 		
@@ -86,18 +85,19 @@ struct ExprData {
 		v2 = (*arena).create_array<double>(vec_size * 3);
 		fill_seq(v2, 200, 200 + 3 * vec_size);
 		
-		//v3 = (*arena).create_array<double>(vec_size * 3);
-		//fill_seq(v3, 100, 100 + 3 * vec_size * 0.5, 0.5);
+		// v3 = (*arena).create_array<double>(vec_size * 3);
+		// fill_seq(v3, 100, 100 + 3 * vec_size * 0.5, 0.5);
 		
-		//v4 = (*arena).create_array<double>(vec_size * 3);
-		//fill_seq(v4, 200, 200 + 3 * vec_size * 0.5, 0.5);
+		// v4 = (*arena).create_array<double>(vec_size * 3);
+		// fill_seq(v4, 200, 200 + 3 * vec_size * 0.5, 0.5);
 		
 		vres = (*arena).create_array<double>(vec_size * 3);
 		fill_const(vres, 3 * vec_size, -100);
 		
 		subset = (*arena).create_array<uint>(vec_size);
 		for(uint i=0; i<vec_size/4; i++) subset[i] = i;
-		cs1 = 4;
+
+		// cs1 = 4;
 
 		// for (uint i = 0; i < 3; i++)
 		// {
@@ -115,12 +115,14 @@ struct ExprData {
 	double cs1;
 	double cv1[3];
 	uint *subset;
-	ArenaAlloc * arena;
+	ArenaAlloc *arena;
 
 
 	uint vec_cnt = 2;
 	uint cvec_cnt = 0;
-	uint const_cnt = 1;
+	uint const_cnt = 0;
+
+	uint var_cnt = 3 * (vec_cnt + cvec_cnt + 1) + const_cnt + 1;  	// +1 je na result (vres) a na subset
 };
 
 
@@ -133,13 +135,14 @@ void expr1(ExprData &data) {
 				double v1 = data.v1[j+k];
 				double v2 = data.v2[j+k];
 
-				data.vres[j+k] = v1 * v2;
-				//data.vres[j+k] = v1 * v2 * v1;
+				//data.vres[j+k] = v1 * v2;
+				
+				data.vres[j+k] = v1 * v2 * v1;
 
-				//double v3 = data.v3[j+k];
-				//double v4 = data.v4[j+k];
-				//double cv1 = data.cv1[j+k];
-				//data.vres[j+k] = 3 * v1 + data.cs1 * v2 + cv1 * v3 + pow(v4,2);
+				// double v3 = data.v3[j+k];
+				// double v4 = data.v4[j+k];
+				// double cv1 = data.cv1[j+k];
+				// data.vres[j+k] = 3 * v1 + data.cs1 * v2 + cv1 * v3 + pow(v4,2);
 			}
 		}
 	}
@@ -158,21 +161,21 @@ void test_expr(std::string expr) {
 	uint n_repeats = 1000;
 	uint simd_size = get_simd_size();
 
-	//ArenaAlloc arena_1(0, 0);
+	
 	ExprData data1(vec_size, simd_size);
-
 	ExprData data2(vec_size, simd_size);
 
 
 	Parser p(block_size);
 	p.parse(expr);
-	p.set_constant("cs1", {}, {data1.cs1});
-	p.set_constant("cv1", {3}, std::vector<double>(data1.cv1, data1.cv1+3));
+	//p.set_constant("cs1", {}, {data1.cs1});
+	//p.set_constant("cv1", {3}, std::vector<double>(data1.cv1, data1.cv1+3));
 	p.set_variable("v1", {3}, data1.v1);
 	p.set_variable("v2", {3}, data1.v2);
 	//p.set_variable("v3", {3}, data1.v3);
 	//p.set_variable("v4", {3}, data1.v4);
 	p.set_variable("_result_", {3}, data1.vres);
+
 	//std::cout << "vres: " << vres << ", " << vres + block_size << ", " << vres + 2*vec_size << "\n";
 	//std::cout << "Symbols: " << print_vector(p.symbols()) << "\n";
 	//std::cout.flush();
@@ -182,7 +185,8 @@ void test_expr(std::string expr) {
 	ProcessorBase * processor = create_processor((*data1.arena), se, vec_size, simd_size);
 	p.set_processor(processor);
 
-	std::vector<uint> ss = std::vector<uint>(data1.subset, data1.subset + vec_size/simd_size); //bylo lomeno 4
+	// std::vector<uint> ss = std::vector<uint>(data1.subset, data1.subset + vec_size / simd_size); //bylo lomeno 4
+	std::vector<uint> ss = std::vector<uint>(data1.subset, data1.subset + simd_size * sizeof(double) * sizeof(double));
 	p.set_subset(ss);
 	auto start_time = std::chrono::high_resolution_clock::now();
 	for(uint i_rep=0; i_rep < n_repeats; i_rep++) {
@@ -232,8 +236,8 @@ void test_expr(std::string expr) {
 
 void test_expression() {
 	//test_expr("3 * v1 + cs1 * v2 + cv1 * v3 + v4**2");
-	test_expr("v1 * v2");
-	//test_expr("v1 * v2 * v1");
+	//test_expr("v1 * v2");
+	test_expr("v1 * v2 * v1");
 	//test_expr("v1 * v2 * v3");
 	//test_expr("v1 * v2 * v1 * v2");
 }
