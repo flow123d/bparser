@@ -339,7 +339,6 @@ struct Processor : ProcessorBase {
 	
 	static Processor *create_processor_(ExpressionDAG &se, uint vector_size) 
 	{
-		vector_size = (vector_size / simd_size) * simd_size;
 		uint simd_bytes = sizeof(double) * simd_size;
 		ExpressionDAG::NodeVec & sorted_nodes = se.sort_nodes();
 		//std::cout << "n_nodes: " << sorted_nodes.size() << " n_vec: " << se.n_vectors() << "\n";
@@ -354,7 +353,10 @@ struct Processor : ProcessorBase {
 
 				;
 		ArenaAlloc arena(simd_bytes, memory_est);
-		return arena.create<Processor>(arena, se, vector_size / simd_size);
+
+		//uint vec_size = (vector_size / simd_size);
+		uint vec_size = simd_size * sizeof(double) * sizeof(double);	//lepsi hodit do promenny?
+		return arena.create<Processor>(arena, se, vec_size);
 	}
 
 	/**
@@ -374,7 +376,9 @@ struct Processor : ProcessorBase {
 		//std::cout << "&vec_subset: " << &(workspace_.vec_subset) << "\n";
 		//std::cout << "aloc vec_subset: " << workspace_.vec_subset << " size: " << vec_size << "\n";
 
-		std::cout << "vec_size: " << vec_size << ", simd: " << simd_size << std::endl;
+		//std::cout << "In porcessor.hh: vec_size: " << vec_size << ", simd_size: " << simd_size << std::endl;
+		std::cout << "In porcessor.hh: \nvec_size: " << vec_size << "\nsimd_size: " << simd_size << "\nsOfDouble: " << sizeof(double) << "\nsOfMVec: " << sizeof(MVec) << "\nse.temp_end: " << se.temp_end << "\nse.values_end: " << se.values_end << "\nse.constants_end: " << se.constants_end << std::endl;
+
 
 		workspace_.vector = (Vec<MVec> *) arena_.allocate(sizeof(Vec<MVec>) * se.temp_end);
 		MVec * temp_base = (MVec *) arena_.allocate(
