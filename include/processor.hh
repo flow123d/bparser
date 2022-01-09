@@ -137,6 +137,8 @@ struct Vec {
 	VecType *values;
 	uint *subset;
 
+	typedef VecType MyVec;
+
 	void set(VecType * v, uint * s) {
 		values = v;
 		subset = s;
@@ -284,11 +286,17 @@ struct ProcessorSetup {
 //typedef std::conditional<INSTRSET >= 7, Vec4d, Vec2d>::type tmp;
 //typedef std::conditional<INSTRSET >= 9, Vec8d, tmp>::type VecType;
 
-template<typename VecType>
-struct MyVec {
-	typedef VecType Vec;
-	uint vector_size;
-};
+// template<typename VecType>
+// struct MyVec {
+// 	typedef VecType Vec;
+// 	uint vector_size;
+// };
+
+// typedef MyVec<double> MyDouble;
+// typedef MyVec<Vec2d> MyVec2d;
+// typedef MyVec<Vec4d> MyVec4d;
+// typedef MyVec<Vec8d> MyVec8d;
+
 
 struct ProcessorBase {
 	virtual void run() = 0;
@@ -299,17 +307,11 @@ struct ProcessorBase {
 	}
 };
 
-typedef MyVec<double> MyDouble;
-typedef MyVec<Vec2d> MyVec2d;
-typedef MyVec<Vec4d> MyVec4d;
-typedef MyVec<Vec8d> MyVec8d;
-
-
 /**
  * Store and execute generated "bytecode".
  */
 
-template <typename MV>
+template <typename VecType>
 struct Processor : ProcessorBase {
 	/**
 	 *hh
@@ -326,7 +328,7 @@ struct Processor : ProcessorBase {
 	 * - create processor
 	 */
 
-	typedef typename MV::Vec MVec;
+	typedef typename VecType::MyVec MVec;
 	static const uint simd_size = sizeof(MVec) / sizeof(double);
 
 

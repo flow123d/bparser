@@ -32,13 +32,13 @@ using namespace bparser;
 ProcessorBase *create_processor(ArenaAlloc &arena, ExpressionDAG &se, uint vector_size, uint simd_size) {
 	switch (simd_size) {
 	case 2:
-		return arena.create<Processor<MyVec2d>>(arena, se, vector_size / simd_size);
+		return arena.create<Processor<Vec<Vec2d>>>(arena, se, vector_size / simd_size);
 	case 4:
-		return arena.create<Processor<MyVec4d>>(arena, se, vector_size / simd_size);
+		return arena.create<Processor<Vec<Vec4d>>>(arena, se, vector_size / simd_size);
 	case 8:
-		return arena.create<Processor<MyVec8d>>(arena, se, vector_size / simd_size);
+		return arena.create<Processor<Vec<Vec8d>>>(arena, se, vector_size / simd_size);
 	default:
-		return arena.create<Processor<MyDouble>>(arena, se, vector_size / simd_size);
+		return arena.create<Processor<Vec<double>>>(arena, se, vector_size / simd_size);
 	}
 }
 
@@ -135,9 +135,9 @@ void expr1(ExprData &data) {
 				double v1 = data.v1[j+k];
 				double v2 = data.v2[j+k];
 
-				//data.vres[j+k] = v1 * v2;
+				data.vres[j+k] = v1 * v2;
 				
-				data.vres[j+k] = v1 * v2 * v1;
+				// data.vres[j+k] = v1 * v2 * v1;
 
 				// double v3 = data.v3[j+k];
 				// double v4 = data.v4[j+k];
@@ -181,7 +181,6 @@ void test_expr(std::string expr) {
 	//std::cout.flush();
 	ExpressionDAG se = p.compile();
 
-	//uint simd_size = get_simd_size();
 	ProcessorBase * processor = create_processor((*data1.arena), se, vec_size, simd_size);
 	p.set_processor(processor);
 
@@ -236,8 +235,8 @@ void test_expr(std::string expr) {
 
 void test_expression() {
 	//test_expr("3 * v1 + cs1 * v2 + cv1 * v3 + v4**2");
-	//test_expr("v1 * v2");
-	test_expr("v1 * v2 * v1");
+	test_expr("v1 * v2");
+	//test_expr("v1 * v2 * v1");
 	//test_expr("v1 * v2 * v3");
 	//test_expr("v1 * v2 * v1 * v2");
 }
