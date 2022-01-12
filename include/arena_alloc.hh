@@ -42,7 +42,7 @@ struct ArenaAlloc {
 		size = align_size(alignment_, size);
 		void * ptr = ptr_;
 		ptr_ += size;
-		std::cout << "allocated: " << ptr << " end: " << (void *)ptr_ << " aend: " << end() << "\n";
+		// std::cout << "allocated: " << ptr << " end: " << (void *)ptr_ << " aend: " << end() << "\n";
 		BP_ASSERT(ptr_ <= end());
 		return ptr;
 	}

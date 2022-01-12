@@ -74,9 +74,9 @@ struct ExprData {
 		arena = new ArenaAlloc(simd_size * sizeof(double), var_cnt * vec_size * sizeof(double));
 
 
-		std::cout << "\nIn test_speed.cc, ExprData:" << std::endl;
-		std::cout << "var_cnt: " << var_cnt << std::endl;
-		std::cout << "arena: " << var_cnt * vec_size * sizeof(double) << std::endl;
+		// std::cout << "\nIn test_speed.cc, ExprData:" << std::endl;
+		// std::cout << "var_cnt: " << var_cnt << std::endl;
+		// std::cout << "arena: " << var_cnt * vec_size * sizeof(double) << std::endl;
 		
 		
 		v1 = (*arena).create_array<double>(vec_size * 3);
@@ -226,8 +226,15 @@ void test_expr(std::string expr) {
 	double n_flop = n_repeats * vec_size * 9;
 	std::cout << "parser FLOPS: " << n_flop / parser_time << "\n";
 	std::cout << "c++ FLOPS   : " << n_flop / cpp_time << "\n";
-	//std::cout << "velikost Vec4d :" << sizeof(Vec4d) << "\n";
-	//std::cout << "velikost Vec8d :" << sizeof(Vec8d) << "\n";
+
+	// std::cout << "velikost Vec2d        : " << sizeof(Vec2d) << "\n";
+	// std::cout << "velikost Vec4d        : " << sizeof(Vec4d) << "\n";
+	// std::cout << "velikost Vec8d        : " << sizeof(Vec8d) << "\n";
+	// std::cout << "velikost double       : " << sizeof(double) << "\n";
+	// std::cout << "velikost Proc<Vec2d>  : " << sizeof(Processor<Vec<Vec2d>>) << "\n";
+	// std::cout << "velikost Proc<Vec4d>  : " << sizeof(Processor<Vec<Vec4d>>) << "\n";
+	// std::cout << "velikost Proc<Vec8d>  : " << sizeof(Processor<Vec<Vec8d>>) << "\n";
+	// std::cout << "velikost Proc<double> : " << sizeof(Processor<Vec<double>>) << "\n";
 }
 
 
