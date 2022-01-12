@@ -29,18 +29,6 @@
 
 using namespace bparser;
 
-ProcessorBase *create_processor(ArenaAlloc &arena, ExpressionDAG &se, uint vector_size, uint simd_size) {
-	switch (simd_size) {
-	case 2:
-		return arena.create<Processor<Vec<Vec2d>>>(arena, se, vector_size / simd_size);
-	case 4:
-		return arena.create<Processor<Vec<Vec4d>>>(arena, se, vector_size / simd_size);
-	case 8:
-		return arena.create<Processor<Vec<Vec8d>>>(arena, se, vector_size / simd_size);
-	default:
-		return arena.create<Processor<Vec<double>>>(arena, se, vector_size / simd_size);
-	}
-}
 
 uint get_simd_size()
 {
@@ -71,7 +59,8 @@ struct ExprData {
 	ExprData(uint vec_size, uint simd_size)
 	: vec_size(vec_size)
 	{
-		arena = new ArenaAlloc(simd_size * sizeof(double), var_cnt * vec_size * sizeof(double));
+		uint simd_bytes = sizeof(double) * simd_size;
+		arena = new ArenaAlloc(simd_bytes, var_cnt * vec_size * sizeof(double));
 
 
 		std::cout << "\nIn test_speed.cc, ExprData:" << std::endl;
@@ -181,7 +170,7 @@ void test_expr(std::string expr) {
 	//std::cout.flush();
 	ExpressionDAG se = p.compile();
 
-	ProcessorBase * processor = create_processor((*data1.arena), se, vec_size, simd_size);
+	ProcessorBase * processor = ProcessorBase::create_processor((*data1.arena), se, vec_size, simd_size);
 	p.set_processor(processor);
 
 	// std::vector<uint> ss = std::vector<uint>(data1.subset, data1.subset + vec_size / simd_size); //bylo lomeno 4
@@ -226,8 +215,15 @@ void test_expr(std::string expr) {
 	double n_flop = n_repeats * vec_size * 9;
 	std::cout << "parser FLOPS: " << n_flop / parser_time << "\n";
 	std::cout << "c++ FLOPS   : " << n_flop / cpp_time << "\n";
-	//std::cout << "velikost Vec4d :" << sizeof(Vec4d) << "\n";
-	//std::cout << "velikost Vec8d :" << sizeof(Vec8d) << "\n";
+	
+	// std::cout << "velikost Vec2d        : " << sizeof(Vec2d) << "\n";
+	// std::cout << "velikost Vec4d        : " << sizeof(Vec4d) << "\n";
+	// std::cout << "velikost Vec8d        : " << sizeof(Vec8d) << "\n";
+	// std::cout << "velikost double       : " << sizeof(double) << "\n";
+	// std::cout << "velikost Proc<Vec2d>  : " << sizeof(Processor<Vec<Vec2d>>) << "\n";
+	// std::cout << "velikost Proc<Vec4d>  : " << sizeof(Processor<Vec<Vec4d>>) << "\n";
+	// std::cout << "velikost Proc<Vec8d>  : " << sizeof(Processor<Vec<Vec8d>>) << "\n";
+	// std::cout << "velikost Proc<double> : " << sizeof(Processor<Vec<double>>) << "\n";
 }
 
 
