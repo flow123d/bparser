@@ -356,8 +356,7 @@ struct Processor : ProcessorBase {
 				;
 		ArenaAlloc arena(simd_bytes, memory_est);
 
-		//uint vec_size = (vector_size / simd_size);
-		uint vec_size = simd_size * sizeof(double) * sizeof(double);	//lepsi hodit do promenny?
+		uint vec_size = (vector_size / simd_size);
 		return arena.create<Processor>(arena, se, vec_size);
 	}
 
