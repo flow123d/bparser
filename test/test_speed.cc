@@ -184,8 +184,7 @@ void test_expr(std::string expr) {
 	ProcessorBase * processor = create_processor((*data1.arena), se, vec_size, simd_size);
 	p.set_processor(processor);
 
-	// std::vector<uint> ss = std::vector<uint>(data1.subset, data1.subset + vec_size / simd_size); //bylo lomeno 4
-	std::vector<uint> ss = std::vector<uint>(data1.subset, data1.subset + simd_size * sizeof(double) * sizeof(double));
+	std::vector<uint> ss = std::vector<uint>(data1.subset, data1.subset + vec_size / simd_size); //bylo lomeno 4
 	p.set_subset(ss);
 	auto start_time = std::chrono::high_resolution_clock::now();
 	for(uint i_rep=0; i_rep < n_repeats; i_rep++) {
