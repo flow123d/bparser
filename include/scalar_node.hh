@@ -261,7 +261,10 @@ struct _mod_ : public ScalarNode {
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a, VecType b) {
 		// TODO: vectorize
-		res = a /= b;
+		//VecType s = a / b;
+		//VecType q = truncate(s);
+		//res = a - b * q;
+		res = a + b;
 	}
 };
 
@@ -271,7 +274,8 @@ struct _eq_ : public ScalarNode {
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a, VecType b) {
 		// TODO: vectorize
-		res = a == b;
+		//double_to_mask(res) = a == b;
+		res = a + b;
 	}
 };
 
@@ -281,7 +285,8 @@ struct _ne_ : public ScalarNode {
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a, VecType b) {
 		// TODO: vectorize
-		res = a != b;
+		//res = a != b;
+		res = a + b;
 	}
 };
 
@@ -292,7 +297,8 @@ struct _lt_ : public ScalarNode {
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a, VecType b) {
 		// TODO: vectorize
-		res = a < b;
+		//res = a < b;
+		res = a + b;
 	}
 };
 
@@ -302,7 +308,8 @@ struct _le_ : public ScalarNode {
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a, VecType b) {
 		// TODO: vectorize
-		res = a <= b;
+		//res = a <= b;
+		res = a + b;
 	}
 };
 
@@ -312,7 +319,8 @@ struct _neg_ : public ScalarNode {
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a) {
 		// TODO: vectorize
-		res =  !a;		// we use bit masks for bool values
+		//res =  !a;		// we use bit masks for bool values
+		res = a;
 	}
 };
 
@@ -323,7 +331,7 @@ struct _or_ : public ScalarNode {
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a, VecType b) {
 		// TODO: vectorize
-		res = a | b;	// we use bit masks for bool values
+		res = a+b;	// we use bit masks for bool values
 	}
 };
 
@@ -333,7 +341,7 @@ struct _and_ : public ScalarNode {
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a, VecType b) {
 		// TODO: vectorize
-		res = a & b;	// we use bit masks for bool values
+		res = a+b;//a & b;	// we use bit masks for bool values
 	}
 };
 
@@ -363,7 +371,8 @@ struct _isnan_ : public ScalarNode {
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a) {
 		// TODO: vectorize
-		res = is_nan(a);
+		//res = is_nan(a);
+		res = a;
 	}
 };
 
@@ -373,7 +382,8 @@ struct _isinf_ : public ScalarNode {
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a) {
 		// TODO: vectorize
-		res = is_inf(a);
+		//res = is_inf(a);
+		res = a;
 	}
 };
 
@@ -383,7 +393,8 @@ struct _sgn_ : public ScalarNode {
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a) {
 		// TODO: vectorize
-		res =   sign_bit(a);
+		//res =   sign_bit(a);
+		res = a;
 	}
 };
 
@@ -414,7 +425,7 @@ struct _max_ : public ScalarNode {
 	inline static void eval(VecType &res, VecType a, VecType b) {
 		// TODO: vectorize
 		//std::cout << "max " << a << "," << b << "\n";
-		res =  max(a, b);
+		res =  a+b;//max(a, b);
 	}
 };
 
@@ -425,7 +436,7 @@ struct _min_ : public ScalarNode {
 	inline static void eval(VecType &res, VecType a, VecType b) {
 		// TODO: vectorize
 		//std::cout << "min " << a << "," << b << "\n";
-		res =  min(a, b);
+		res =  a+b;//min(a, b);
 	}
 };
 
@@ -467,7 +478,8 @@ struct _ifelse_ : public ScalarNode {
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a, VecType b, VecType c) {
 		// TODO: vectorize
-		res = vector_select(b, a, c);	// we use bit masks for bool values
+		//res = vector_select(b, a, c);	// we use bit masks for bool values
+		res = a+b+c;
 	}
 };
 

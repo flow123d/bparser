@@ -84,7 +84,7 @@ struct ExprData {
 		fill_const(vres, 3 * vec_size, -100);
 		
 		subset = (*arena).create_array<uint>(vec_size);
-		for(uint i=0; i<vec_size/4; i++) subset[i] = i;
+		for(uint i=0; i<vec_size/simd_size; i++) subset[i] = i;
 
 		cs1 = 4;
 
