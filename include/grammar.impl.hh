@@ -54,6 +54,7 @@ Array error_reserved(const Array & UNUSED(x)) {
 	// TODO report
 	Throw() << "Reserved identifier.";
 }
+
 //ast::binary_fn::function_type append_to() {
 //	return static_cast<ast::binary_fn::function_type>(&(Array::append_to));
 //}
@@ -99,7 +100,8 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 		and_test,
 		not_test,
 		not_test_op,
-		comparison,
+		comparison_chain,
+		comparison_chained,
 		additive_expr,
 		multiplicative_expr,
 		signed_optional,
@@ -207,13 +209,15 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 //        array_slice_comma_op.add
 //			BN_FN(",", &append_slice_list);
 
+        // TODO: wrap relation operation into chained comparison
+        // supported in array_ast_interface
         relational_op.add
-            BN_FN("<" , binary_array<_lt_>())
-            BN_FN("<=", binary_array<_le_>())
-            BN_FN(">" , &gt_op)
-            BN_FN(">=", &ge_op)
-            BN_FN("==", binary_array<_eq_>())
-            BN_FN("!=", binary_array<_ne_>())
+            BN_FN("<" , ChainedCompareFn(Array::binary_op<_lt_>))
+            BN_FN("<=", ChainedCompareFn(Array::binary_op<_le_>))
+            BN_FN(">" , ChainedCompareFn(&gt_op))
+            BN_FN(">=", ChainedCompareFn(&ge_op))
+            BN_FN("==", ChainedCompareFn(Array::binary_op<_eq_>))
+            BN_FN("!=", ChainedCompareFn(Array::binary_op<_ne_>))
             ;
 
         power_op.add
@@ -228,6 +232,7 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
         NamedArrayFn slice_fn = {"slice", &create_slice};
         NamedArrayFn index_fn = {"index", &create_index};
         NamedArrayFn range_list_fn = {"list", &range_list};
+        NamedArrayFn close_chain_fn = {"close_chain", &close_chain};
 
         //auto head_const = ast::make_const("Head", &Array::empty_array);
 
@@ -292,12 +297,14 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
         				*(or_op > and_test)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)];
         RULE(and_test) = not_test[qi::_val = qi::_1] >>
         				*(and_op > not_test)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)];
-		RULE(not_test) = not_test_op | comparison;
+		RULE(not_test) = not_test_op | comparison_chain;
 		RULE(not_test_op) = (not_op > not_test)[qi::_val = ast::make_unary(qi::_1, qi::_2)];
 
+ 		RULE(comparison_chain) =  comparison_chained | additive_expr;
+        RULE(comparison_chained) = (additive_expr[qi::_val = qi::_1]
+        		     >> +(relational_op > additive_expr)[qi::_val = ast::make_chained_comparison(qi::_1, qi::_val, qi::_2)]
+						)[qi::_val = ast::make_unary( close_chain_fn ,qi::_val)];
 
-        RULE(comparison) = additive_expr[qi::_val = qi::_1] >>
-        		  	    -(relational_op > additive_expr)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)];
         RULE(additive_expr) = multiplicative_expr[qi::_val = qi::_1] >>
         				*(additive_op > multiplicative_expr)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)];
         RULE(multiplicative_expr) = signed_optional[qi::_val = qi::_1] >>
@@ -388,7 +395,7 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 //        qi::debug(or_test);
 //        qi::debug(and_test);
 //        qi::debug(not_test);
-//        qi::debug(comparison);
+//        qi::debug(comparison_chained);
 //        qi::debug(signed_optional);
 //        qi::debug(power);
 //        qi::debug(array_constr);

@@ -151,6 +151,9 @@ void test_expression() {
 	BP_ASSERT(test_expr("cs3 > 4.5", vec_false));
 	BP_ASSERT(test_expr("cs3 < 4.5", vec_true));
 
+	BP_ASSERT(test_expr("2 < cs3 < 4.5", vec_true));
+	BP_ASSERT(test_expr("(2 < cs3) < 2", vec_true));
+
 	BP_ASSERT(test_expr("3 if cs3 < 4.5 else 4", {3}));
 	BP_ASSERT(test_expr("3 if cs3 > 4.5 else 4", {4}));
 
