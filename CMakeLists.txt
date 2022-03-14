@@ -1,9 +1,12 @@
+
 project(BParser)
 cmake_minimum_required(VERSION 3.5.1)
 
 message(STATUS "CMakeLists.txt - BParser")
 
-set(CMAKE_CXX_FLAGS     "-std=c++11 -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION")
+# CLANG
+#set(CMAKE_CXX_FLAGS     "-std=c++14 -finline-hint-functions -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION")
+set(CMAKE_CXX_FLAGS     "-std=c++14 -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -mavx2")
 set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG")  #-fsanitize=address -static-libasan  -fno-omit-frame-pointer
 
@@ -213,4 +216,4 @@ define_test(test_array)
 define_test(test_grammar bparser)
 define_test(test_processor)
 define_test(test_speed bparser)  
-
+define_test(test_simd)

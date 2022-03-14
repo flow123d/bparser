@@ -25,6 +25,9 @@ typedef boost::variant<int, IndexList, Slice> Range;
 typedef std::vector<Range> RangeList;
 typedef std::pair<Array, RangeList> SubscribePair;
 
+/// pair( 'a<b') , b); support for  comparison chaining for the 'b'
+typedef std::pair<Array, Array> ComparisonPair;
+
 //typedef boost::variant<
 //		ArrayList,
 //		IndexList,
@@ -37,7 +40,8 @@ typedef boost::variant<
 		Array,
 		int,
 		Range,
-		RangeList
+		RangeList,
+		ComparisonPair
 		> ParserResult;
 
 typedef std::vector<ParserResult> ResultList;
@@ -112,10 +116,28 @@ typedef Array (*SubscribeFn)(const Array &, const RangeList &);
 typedef RangeList (*RangeListFn)(const RangeList &);
 typedef Range (*IndexFn)(int);
 
+struct ChainedCompareFn {
+	ChainedCompareFn(ArrayFnBinary cmp_fn)
+	: cmp_fn_(cmp_fn)
+	{}
+
+	ComparisonPair operator() (const ComparisonPair &pair, const Array &other) {
+		const Array &previous_cmp = pair.first;
+		Array current_cmp(cmp_fn_(pair.second, other));
+		Array previous_and_current(Array::binary_op<details::_and_>(previous_cmp, current_cmp));
+		return ComparisonPair(previous_and_current, other);
+	}
+
+	ArrayFnBinary cmp_fn_;
+};
+
+typedef Array (*CloseChain)(const ComparisonPair &);
 
 typedef boost::variant <
 	ArrayFnUnary,
 	ArrayFnBinary,
+	ChainedCompareFn,
+	CloseChain,
 	ArrayFnTernary,
 	ArrayFnVariadic,
 	IntListFn,  //IndexArray and Slice
@@ -124,6 +146,11 @@ typedef boost::variant <
 	IndexFn
 	> ArrayFn;
 
+/**
+ * Usage: call_visitor(a_list)(fn)
+ *
+ * Apply function 'fn' to 'a_list' of arguments
+ */
 struct call_visitor {
 	typedef ParserResult result_type;
 	const ResultList &alist_;
@@ -140,6 +167,13 @@ struct call_visitor {
 			<< "Expected: " << typeid(T).name() << "\n";
     }
 
+    static ComparisonPair make_cmp_pair(ParserResult result) {
+    	if (ComparisonPair* l = boost::get<ComparisonPair>(&result))
+    		return *l;
+    	else
+    		return ComparisonPair(Array::true_array(get_type<Array>(result)), get_type<Array>(result));
+    }
+
     result_type operator()(ArrayFnUnary fn) const {
     	BP_ASSERT(alist_.size() == 1);
     	//std::cout << "unary fn" << "\n";
@@ -152,6 +186,19 @@ struct call_visitor {
     	return fn(
     			get_type<Array>(alist_[0]),
 				get_type<Array>(alist_[1]));
+    }
+
+    result_type operator()(ChainedCompareFn fn) const {
+    	BP_ASSERT(alist_.size() == 2);
+    	//std::cout << "binary fn" << "\n";
+    	return fn(
+    			make_cmp_pair(alist_[0]),
+				get_type<Array>(alist_[1]));
+    }
+
+    result_type operator()(CloseChain fn) const {
+    	BP_ASSERT(alist_.size() == 1);
+    	return fn(get_type<ComparisonPair>(alist_[0]));
     }
 
     result_type operator()(ArrayFnTernary fn) const {
@@ -209,7 +256,7 @@ struct subscribe_visitor {
 	typedef MultiIdxRange result_type;
 	const MultiIdxRange &range_;
 	uint axis_;
-	subscribe_visitor(MultiIdxRange r, uint axis)
+	subscribe_visitor(const MultiIdxRange &r, uint axis)
 	: range_(r), axis_(axis)
 	{}
 
@@ -270,6 +317,10 @@ inline RangeList range_list(const RangeList &slice_list) {
 	return slice_list;
 }
 
+inline Array close_chain(const ComparisonPair & x) {
+	return x.first;
 }
 
+
+} // namespace bparser
 #endif /* INCLUDE_ARRAY_AST_INTERFACE_HH_ */

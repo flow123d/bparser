@@ -171,14 +171,17 @@ void test_operators() {
 	EXPECT(match("+ + -1.23e-2", "+(+(-(0.0123)))"));
 
 	// relational operators
-	EXPECT(match("2 > 1", ">(2,1)"));
-	EXPECT(match("2 == 1", "==(2,1)"));
-	EXPECT(match("2 <= 1", "<=(2,1)"));
+	EXPECT(match("2 > 1", "close_chain(>(2,1))"));
+	EXPECT(match("2 == 1", "close_chain(==(2,1))"));
+	EXPECT(match("2 <= 1", "close_chain(<=(2,1))"));
+	// TODO: fix these: do not produce close_chain
+	EXPECT(match("0 < 1 < 2", "close_chain(<(<(0,1),2))"));
+	EXPECT(match("(3 > 2) > 1", "close_chain(>(close_chain(>(3,2)),1))"));
 
 	// boolean
-	EXPECT(match("not 2 <= 1", "not(<=(2,1))"));
-	EXPECT(match("not 2 <= 1 or False", "or(not(<=(2,1)),False(0))"));
-	EXPECT(match("not 2 <= 1 or False and 1", "or(not(<=(2,1)),and(False(0),1))"));
+	EXPECT(match("not 2 <= 1", "not(close_chain(<=(2,1)))"));
+	EXPECT(match("not 2 <= 1 or False", "or(not(close_chain(<=(2,1))),False(0))"));
+	EXPECT(match("not 2 <= 1 or False and 1", "or(not(close_chain(<=(2,1))),and(False(0),1))"));
 	EXPECT(match("10 if True else 20", "ifelse(10,True(0),20)"));
 }
 
