@@ -484,7 +484,7 @@ struct Processor : ProcessorBase {
 			CODE(_add_);
 			CODE(_sub_);
 			CODE(_mul_);
-			/*CODE(_div_);
+			CODE(_div_);
 			CODE(_mod_);
 			CODE(_eq_);
 			CODE(_ne_);
@@ -517,7 +517,7 @@ struct Processor : ProcessorBase {
 			CODE(_max_);
 			CODE(_min_);
 			CODE(_copy_);
-			CODE(_ifelse_);*/
+			CODE(_ifelse_);
 //			CODE(__);
 //			CODE(__);
 //			CODE(__);
