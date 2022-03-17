@@ -59,6 +59,7 @@ struct ExprData {
 	ExprData(uint vec_size, uint simd_size)
 	: vec_size(vec_size)
 	{
+		ExprData::simd_size = simd_size;
 		uint simd_bytes = sizeof(double) * simd_size;
 		arena = new ArenaAlloc(simd_bytes, var_cnt * vec_size * sizeof(double));
 
@@ -100,6 +101,7 @@ struct ExprData {
 	}
 
 	uint vec_size;
+	uint simd_size;
 	double *v1, *v2, *v3, *v4, *vres;
 	double cs1;
 	double cv1[3];
@@ -118,18 +120,18 @@ struct ExprData {
 
 void expr1(ExprData &data) {
 	for(uint i_comp=0; i_comp < 3*data.vec_size; i_comp += data.vec_size) {
-		for(uint i=0; i<data.vec_size/4; ++i) {
-			uint j = i_comp + 4*data.subset[i];
-			for(uint k = 0; k<4; k++) {
+		for(uint i=0; i<data.vec_size/data.simd_size; ++i) {
+			uint j = i_comp + data.simd_size*data.subset[i];
+			for(uint k = 0; k<data.simd_size; k++) {
 				double v1 = data.v1[j+k];
 				double v2 = data.v2[j+k];
 
-				// data.vres[j+k] = v1 * v2;
+				data.vres[j+k] = v1 * v2;
 				// data.vres[j+k] = v1 * v2 * v1;
 				// data.vres[j+k] = v1 * v2 * v1 * v2;
 
-				double v3 = data.v3[j+k];
-				data.vres[j+k] = v1 * v2 * v3;
+				// double v3 = data.v3[j+k];
+				// data.vres[j+k] = v1 * v2 * v3;
 
 				// double v3 = data.v3[j+k];
 				// double v4 = data.v4[j+k];
@@ -233,9 +235,9 @@ void test_expr(std::string expr) {
 
 void test_expression() {
 	//test_expr("3 * v1 + cs1 * v2 + cv1 * v3 + v4**2");
-	//test_expr("v1 * v2");
+	test_expr("v1 * v2");
 	//test_expr("v1 * v2 * v1");
-	test_expr("v1 * v2 * v3");
+	//test_expr("v1 * v2 * v3");
 	//test_expr("v1 * v2 * v1 * v2");
 }
 
