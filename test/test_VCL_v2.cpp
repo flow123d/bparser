@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <chrono>
-//#include <iostream>
-#include "../include/vectorclass.h"
-#include "../include/instrset_detect.cpp"
+#include <iostream>
+#include "..//third_party/VCL_v2/vectorclass.h"
+#include "..//third_party/VCL_v2/instrset_detect.cpp"
 
 //#define MAX_VECTOR_SIZE 256
 int main() 
@@ -35,10 +35,10 @@ int main()
     for (int i = 1; i < 1000000; i++)
     {
 
-    VecType test(1.2, 2.4, 3.6, 4.8);
-    VecType trst(5.6, 4.2, 23.4, 234.6);
+    //VecType test(1.2, 2.4, 3.6, 4.8);
+    //VecType trst(5.6, 4.2, 23.4, 234.6);
 
-    res = test + trst;
+    //res = test + trst;
     }
     end_time = std::chrono::high_resolution_clock::now();
 
@@ -52,6 +52,8 @@ int main()
     printf("%i ", instrs);
     printf("%i ", INSTRSET);
     printf("%i ", MAX_VECTOR_SIZE);
+    printf("%li ", sizeof(Vec4d));
+    printf("%li ", sizeof(Vec4db));
     printf("\nResult res_test = ");
     for(int i = 0; i < res.size(); i++)
     {
