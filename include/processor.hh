@@ -283,21 +283,6 @@ struct ProcessorSetup {
 };
 
 
-//typedef std::conditional<INSTRSET >= 7, Vec4d, Vec2d>::type tmp;
-//typedef std::conditional<INSTRSET >= 9, Vec8d, tmp>::type VecType;
-
-// template<typename VecType>
-// struct MyVec {
-// 	typedef VecType Vec;
-// 	uint vector_size;
-// };
-
-// typedef MyVec<double> MyDouble;
-// typedef MyVec<Vec2d> MyVec2d;
-// typedef MyVec<Vec4d> MyVec4d;
-// typedef MyVec<Vec8d> MyVec8d;
-
-
 struct ProcessorBase {
 	virtual void run() = 0;
 	virtual void set_subset(std::vector<uint> const &subset) = 0;
@@ -358,7 +343,6 @@ struct Processor : ProcessorBase {
 		ArenaAlloc arena(simd_bytes, memory_est);
 
 		uint vec_size = (vector_size / simd_size);
-		// uint vec_size = simd_size * sizeof(double) * sizeof(double);	//lepsi hodit do promenny?
 		return arena.create<Processor<MVec>>(arena, se, vec_size);
 	}
 	
@@ -380,7 +364,6 @@ struct Processor : ProcessorBase {
 		//std::cout << "&vec_subset: " << &(workspace_.vec_subset) << "\n";
 		//std::cout << "aloc vec_subset: " << workspace_.vec_subset << " size: " << vec_size << "\n";
 
-		//std::cout << "In porcessor.hh: vec_size: " << vec_size << ", simd_size: " << simd_size << std::endl;
 		std::cout << "\nIn porcessor.hh: \nvec_size: " << vec_size << "\nsimd_size: " << simd_size << "\nsOfDouble: " << sizeof(double) << "\nsOfMVec: " << sizeof(MVec) << "\nse.temp_end: " << se.temp_end << "\nse.values_end: " << se.values_end << "\nse.constants_end: " << se.constants_end << std::endl;
 
 
@@ -501,7 +484,7 @@ struct Processor : ProcessorBase {
 			CODE(_add_);
 			CODE(_sub_);
 			CODE(_mul_);
-			CODE(_div_);
+			/*CODE(_div_);
 			CODE(_mod_);
 			CODE(_eq_);
 			CODE(_ne_);
@@ -534,7 +517,7 @@ struct Processor : ProcessorBase {
 			CODE(_max_);
 			CODE(_min_);
 			CODE(_copy_);
-			CODE(_ifelse_);
+			CODE(_ifelse_);*/
 //			CODE(__);
 //			CODE(__);
 //			CODE(__);
