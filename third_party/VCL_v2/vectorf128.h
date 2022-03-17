@@ -2110,10 +2110,12 @@ static inline Vec2d round(Vec2d const a) {
 }
 #else
 
-// preventing gcc bug
-#ifdef __MINGW32__
+// preventing gcc 7.x.x and 8.x.x bug
+#ifdef __GNUC__
+#if (__GNUC__ > 6 && __GNUC__ < 9)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wattributes"
+#endif
 #endif
 
 // avoid unsafe optimization in function round
@@ -2126,8 +2128,11 @@ static inline Vec2d round(Vec2d const a) __attribute__((optnone));
 #pragma float_control(precise,on)
 #endif
 
-#ifdef __MINGW32__
-#pragma GCC diagnostic pop
+#ifdef __GNUC__
+#if (__GNUC__ > 6 && __GNUC__ < 9)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wattributes"
+#endif
 #endif
 
 // function round: round to nearest integer (even). (result as double vector)
