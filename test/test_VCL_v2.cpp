@@ -13,18 +13,53 @@ int main()
         // Vec8d dsd(1.2, 2.4, 3.6, 4.8, 5.6, 4.2, 23.4, 234.6);
         // Vec8d res8dsd = dsd + dsd;
 
-         Vec4d dsd1(1.2, 2.4, 3.6, 4.8);
+        // Vec4d dsd1(1.2, 2.4, 3.6, 4.8);
         // Vec4d dsd2(5.6, 4.2, 23.4, 234.6);
-         Vec4d res4dsd1 = dsd1 + dsd1;
+        // Vec4d res4dsd1 = dsd1 + dsd1;
         // Vec4d res4dsd2 = dsd2 + dsd2;
     }
-    
-
     auto end_time = std::chrono::high_resolution_clock::now();
 
 	double time  = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time).count();
-    printf("%f \n", time);
+    printf("time: %f \n", time);
 
+    ///
+    // Conditional testing
+    // a < b ? a : b
+    /// 
+    Vec4d aa(-1.0, 0.0, 1.0, 4.0);
+    Vec4d yy(1.0, -1.0, -2.0, 10.0);
+
+    Vec4db bb = aa >= 0.0f;
+    Vec4d cc = aa >= 0.0f;
+    
+    Vec4d rr = select(cc, sqrt(aa), 0.0f);
+
+    Vec4db zz = aa < yy;
+
+    printf("\nResult bb = ");
+    for(int i = 0; i < bb.size(); i++)
+    {
+        printf("%i ", bb[i]);
+    }
+    printf("\nResult cc = ");
+    for(int i = 0; i < cc.size(); i++)
+    {
+        printf("%f ", cc[i]);
+    }
+    printf("\nResult rr = ");
+    for(int i = 0; i < rr.size(); i++)
+    {
+        printf("%f ", rr[i]);
+    }
+    printf("\nResult zz = ");
+    for(int i = 0; i < zz.size(); i++)
+    {
+        printf("%d ", zz[i]);
+    }
+    printf("\n");
+    return 0;
+    ////////////////
 
     typedef std::conditional<INSTRSET >= 7, Vec4d, Vec2d>::type tmp;
     typedef std::conditional<INSTRSET >= 9, Vec8d, tmp>::type VecType;
@@ -43,7 +78,7 @@ int main()
     end_time = std::chrono::high_resolution_clock::now();
 
 	time  = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time).count();
-    printf("%f \n", time);
+    printf("\n%f \n", time);
 
 
     int is = instrset_detect();
