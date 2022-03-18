@@ -77,7 +77,7 @@ operand;
 
 /// a function: Array -> Array
 struct list {
-    operand head; // list; non-list type marks end of recursion
+    operand head; // list; any non-list type marks end of recursion; none-int is convention
     operand item; //
 };
 
@@ -267,14 +267,6 @@ struct make_array {
     	std::cout << "List without call: \n";
     	std::cout << print(x) << "\n";
     	BP_ASSERT(false);
-
-//    	result_type alist;
-//    	if (boost::get<list>(&x.head)) {
-//    		 alist = boost::apply_visitor(*this, x.head);
-//    	}
-//    	result_type aitem = boost::apply_visitor(*this, x.item);
-//    	alist = boost::apply_visitor(append_visitor(alist), aitem);
-//    	return alist;
     	return 0;
     }
 

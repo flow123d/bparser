@@ -284,7 +284,7 @@ struct Processor {
 	 * - assigne result ids
 	 * - create processor
 	 */
-	static Processor *create(std::vector<ScalarNode *> results, uint vector_size) {
+	static Processor *create(std::vector<ScalarNodePtr > results, uint vector_size) {
 		ExpressionDAG se(results);
 
 		return create_processor_(se, vector_size);
@@ -356,7 +356,7 @@ struct Processor {
 		Operation *op = program_;
 		for(auto it=sorted_nodes.rbegin(); it != sorted_nodes.rend(); ++it) {
 			//se._print_node(*it);
-			ScalarNode * node = *it;
+			ScalarNodePtr  node = *it;
 			switch (node->result_storage) {
 			case constant: {
 				double c_val = *node->get_value();
@@ -383,7 +383,7 @@ struct Processor {
 				++op;
 
 				//ASSERT(node->n_inputs_ == 1);
-				//ScalarNode * prev_node = node->inputs_[0];
+				//ScalarNodePtr  prev_node = node->inputs_[0];
 				//ASSERT(prev_node->result_storage == temporary);
 				//workspace_.vector[prev_node->result_idx_].set((double4 *)node->get_value(), workspace_.vec_subset);
 //				std::cout << " ir: " << node->result_idx_ << " a0: "
@@ -407,7 +407,7 @@ struct Processor {
 		arena_.destroy();
 	}
 
-	Operation make_operation(ScalarNode * node) {
+	Operation make_operation(ScalarNodePtr  node) {
 		Operation op = {(unsigned char)0xff, {0,0,0}}  ;
 		op.code = node->op_code_;
 		uint i_arg = 0;

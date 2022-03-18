@@ -43,25 +43,19 @@ void test_free_variables() {
 
 constexpr uint vec_size = 8;
 
-std::vector<double> eval_expr_(std::string expr) {
+std::vector<double> eval_expr_(std::string expr, bparser::Shape ref_shape = {}) {
 	std::cout << "parser test : " << expr << "\n";
 	using namespace bparser;
 
 	//auto m1 = new double[vec_size * 6];
-	auto as1 = new double[vec_size];
-	fill_const(as1, vec_size, 1);
-	auto av2 = new double[vec_size * 3];
-	fill_const(av2, 3 * vec_size, 2);
-
-
-
-
+	std::vector<double> as1(vec_size, 1);
+	std::vector<double> av2(3*vec_size, 2);
 
 	Parser p(vec_size);
 	p.parse(expr);
 	std::cout << "  AST: " << p.print_ast() << "\n";
-	p.set_variable("as1", {}, as1);
-	p.set_variable("av2", {3}, av2);
+	p.set_variable("as1", {}, &(as1[0]));
+	p.set_variable("av2", {3}, &(av2[0]));
         
 //        auto mat = new double[vec_size * 3 * 3]; // (0,0,0),...,(0,0,999), (0,1,0),...,(0,1,999), ...
 //        p.set_variable("mat", {3, 3}, mat);
@@ -74,6 +68,13 @@ std::vector<double> eval_expr_(std::string expr) {
 //	std::cout.flush();
 	p.compile();
 	double * vres = p.tmp_result_ptr();
+	Shape res_shape = p.result_array().shape();
+	if (ref_shape.size() > 0 and ! bparser::same_shape(ref_shape, res_shape)) {
+		std::cout << "Wrong result shape.\n" <<
+				"ref: " << print_vector(ref_shape) << "\n"
+				"res: " << print_vector(res_shape) << "\n";
+	}
+
 	uint result_size = shape_size(p.result_array().shape());
 	fill_const(vres, vec_size * result_size, -1e100); // undefined value
 	p.set_subset({0, 1});
@@ -81,11 +82,12 @@ std::vector<double> eval_expr_(std::string expr) {
 
 	std::vector<double> res(result_size * vec_size);
 	for(uint i=0; i < res.size(); i++) res[i] = vres[i];
+	p.destroy_processor();
 	return res;
 }
 
-bool test_expr(std::string expr, std::vector<double> ref_result) {
-	auto res = eval_expr_(expr);
+bool test_expr(std::string expr, std::vector<double> ref_result, bparser::Shape ref_shape = {}) {
+	auto res = eval_expr_(expr, ref_shape);
 
 	// check
 	bool success = true;
@@ -137,6 +139,9 @@ void test_expression() {
 	BP_ASSERT(test_expr("cv4[1] ** av2", {25, 25, 25}));
 	BP_ASSERT(test_expr("cv4[:2] ** 2", {16, 25}));
 	BP_ASSERT(test_expr("cv4[[0,1]] ** 2", {16, 25}));
+	BP_ASSERT(test_expr("cv4[[0]] ** 2", {16}));
+	//BP_ASSERT(test_expr("m=[cv4, av2]; m[[0,0,1], [0, 2, 0]]", {4, 6, 2}, {3}));
+
 	BP_ASSERT(fail_expr("cs3[0]", "Too many indices")); // ?fail
 	BP_ASSERT(test_expr("cv4[0, None] * cv4[None, 1]", {})); // ?? matrix
 	BP_ASSERT(fail_expr("[]", "stack: need at least one array"));
@@ -167,6 +172,11 @@ void test_expression() {
 	BP_ASSERT(test_expr("maximum([1,2,3], [0,4,3])", {1,4,3}));
 
 	BP_ASSERT(test_expr("sin(pi*as1)", {0})); // sin(pi*1)
+
+	//BP_ASSERT(test_expr("flatten([[1,2],[3,4]])", {1, 2, 3, 4}, {4}));
+	//BP_ASSERT(test_expr("eye(2)", {0, 1, 1, 0}, {2,2}));
+	//BP_ASSERT(test_expr("flatten(eye(3))", {1, 0, 0, 0, 1, 0, 0, 0, 1}));
+	//BP_ASSERT(test_expr("norm([2, 3])", {5}));
 }
 
 

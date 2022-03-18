@@ -62,8 +62,10 @@ public:
     }
 
     void destroy_processor() {
-    	if (tmp_result) delete [] tmp_result;
+    	if (tmp_result != nullptr) delete [] tmp_result;
+    	tmp_result = nullptr;
     	if (processor != nullptr) processor->~Processor();
+    	processor = nullptr;
     }
     /// @brief Parse the mathematical expression into an abstract syntax tree
     ///
@@ -158,7 +160,7 @@ public:
         	Shape result_shape = a_ptr->shape();
         	auto res_it = symbols_.find("_result_");
         	if (res_it == symbols_.end()) {
-        		// TODO: replace be storing result in the temporary variable of the processor
+        		// TODO: replace by storing result in the temporary variable of the processor
         		tmp_result = new double[shape_size(result_shape) * max_vec_size];
         		result_array_ = Array::value(tmp_result, max_vec_size, result_shape);
         		result_array_ = a_ptr->make_result(result_array_);

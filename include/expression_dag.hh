@@ -30,7 +30,7 @@ namespace details {
  */
 class ExpressionDAG {
 public:
-	typedef std::vector<ScalarNode *> NodeVec;
+	typedef std::vector<ScalarNodePtr > NodeVec;
 
 private:
 	/// All nodes in the expressions (reached from the results).
@@ -62,7 +62,7 @@ public:
 	uint temp_end;
 
 
-	ExpressionDAG(std::vector<ScalarNode *> res)
+	ExpressionDAG(std::vector<ScalarNodePtr > res)
 	:
 		results(res.begin(), res.end()),
 		constants_end(0),
@@ -74,9 +74,6 @@ public:
 
 
 	~ExpressionDAG() {
-		for(ScalarNode *node : nodes) {
-			delete node;
-		}
 	}
 
 	/**
@@ -104,7 +101,7 @@ public:
 	 * Print ScalarExpression graph in the dot format.
 	 */
 	void print_in_dot() {
-		std::map<ScalarNode *, uint> i_node;
+		std::map<ScalarNodePtr , uint> i_node;
 		sort_nodes();
 		for(uint i=0; i<sorted.size(); ++i) i_node[sorted[i]] = i;
 
@@ -127,7 +124,7 @@ public:
 		std::cout.flush();
 	}
 
-	void _print_node(ScalarNode * node) {
+	void _print_node(ScalarNodePtr  node) {
 		std::cout << node->op_name_ <<  "_" << node->result_idx_;
 	}
 
@@ -155,9 +152,9 @@ private:
 			node->result_idx_ = -2;
 		nodes.insert(nodes.begin(), results.begin(), results.end());
 		for(uint i=0; i < nodes.size(); ++i) {
-			ScalarNode * node = nodes[i];
+			ScalarNodePtr  node = nodes[i];
 			for(uint in=0; in < node->n_inputs_; ++in)  {
-				ScalarNode * other = node->inputs_[in];
+				ScalarNodePtr  other = node->inputs_[in];
 				if (other->result_idx_ != -2) {
 					BP_ASSERT(other->result_idx_ == -1);
 					BP_ASSERT(other->result_storage != expr_result);
@@ -170,12 +167,12 @@ private:
 
 		// set result_idx_ of constant nodes
 		uint i_storage = 0;
-		for(ScalarNode * node : nodes)
+		for(ScalarNodePtr  node : nodes)
 			if (node->result_storage == constant)
 				node->result_idx_ = i_storage++;
 		constants_end = i_storage;
 		// set result_idx_ of value/result nodes
-		for(ScalarNode * node : nodes)
+		for(ScalarNodePtr  node : nodes)
 			if (node->result_storage == value || node->result_storage == expr_result)
 				node->result_idx_ = i_storage++;
 		values_end = i_storage;
@@ -186,8 +183,8 @@ private:
 	void _topological_sort() {
 
 		// in-degree of nodes (number of dependent nodes).
-		for(ScalarNode *node : nodes) node->n_dep_nodes_ = 0;
-		for(ScalarNode *node : nodes) {
+		for(ScalarNodePtr node : nodes) node->n_dep_nodes_ = 0;
+		for(ScalarNodePtr node : nodes) {
 			for(uint in=0; in < node->n_inputs_; ++in) {
 				node->inputs_[in]->n_dep_nodes_ += 1;
 			}
@@ -204,7 +201,7 @@ private:
 				stack.push_back(node);
 
 		while (stack.size() > 0) {
-			ScalarNode * node = stack.back();
+			ScalarNodePtr  node = stack.back();
 			// std::cout << "node: " << node << " res: " << node->result_storage << " n_dep: " << node->n_dep_nodes_  << "\n";
 			stack.pop_back();
 			sorted.push_back(node);
@@ -225,13 +222,13 @@ private:
 	 */
 	void _setup_result_storage() {
 		// in-degree of nodes (number of dependent nodes).
-		for(ScalarNode *node : nodes) node->n_dep_nodes_ = 0;
-		for(ScalarNode *node : nodes)
+		for(ScalarNodePtr node : nodes) node->n_dep_nodes_ = 0;
+		for(ScalarNodePtr node : nodes)
 			for(uint in=0; in < node->n_inputs_; ++in) node->inputs_[in]->n_dep_nodes_ += 1;
 
 		// Mimic expression evaluation, reversed topological order.
 		for(auto it=sorted.rbegin(); it != sorted.rend(); ++it) {
-			ScalarNode * node = *it;
+			ScalarNodePtr  node = *it;
 			_allocate_storage(node);
 			for(uint in=0; in < node->n_inputs_; ++in) {
 				node->inputs_[in]->n_dep_nodes_ -= 1;
@@ -256,7 +253,7 @@ private:
 	 * deallocate M if --M.n_dep == 0
 	 *
 	 */
-	void _allocate_storage(ScalarNode *node) {
+	void _allocate_storage(ScalarNodePtr node) {
 		if (node->result_storage == temporary) {
 			for(uint i=0; i<storage.size(); ++i)
 				if (storage[i] == 0) {
@@ -271,7 +268,7 @@ private:
 	}
 
 
-	void _deallocate_storage(ScalarNode *node) {
+	void _deallocate_storage(ScalarNodePtr node) {
 		if (node->result_storage == temporary) {
 			storage[node->result_idx_ - temp_end] = 0;
 		}

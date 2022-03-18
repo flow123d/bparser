@@ -80,8 +80,7 @@ struct expectation_handler {
     }
 };
 
-#define UN_FN(repr, fn) (repr, {repr, fn})
-#define BN_FN(repr, fn) (repr, {repr, fn})
+#define FN(repr, fn) (repr, {repr, fn})
 
 template <typename Iterator>
 struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
@@ -110,7 +109,7 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
         array_constr,
 		array_constr_list_opt,
 		array_constr_list,
-		literal_double,
+		literal_number,
 		literal_int,
 		const_lit,
 		const_idx,
@@ -131,9 +130,10 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
     	identifier;
 
     qi::symbols<typename std::iterator_traits<Iterator>::value_type, NamedArrayFn>
-    	reserved, ufunc, unary_op, not_op;
-    qi::symbols<typename std::iterator_traits<Iterator>::value_type, NamedArrayFn>
-        bfunc,
+    	reserved,
+		func,
+		unary_op,
+		not_op,
 		additive_op,
 		multiplicative_op,
 		and_op, or_op,
@@ -148,80 +148,74 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
     : grammar::base_type(program, "bparser_program")
     {
     	reserved.add
-    			UN_FN("None", &error_reserved)
+    			FN("None", &error_reserved)
     			;
 
-        ufunc.add
-            UN_FN("abs"  , unary_array<_abs_>())
-        	UN_FN("acos" , unary_array<_acos_>())
-			UN_FN("asin" , unary_array<_asin_>())
-			UN_FN("atan" , unary_array<_atan_>())
-			UN_FN("ceil" , unary_array<_ceil_>())
-            UN_FN("cos"  , unary_array<_cos_>())
-            UN_FN("cosh" , unary_array<_cosh_>())
-            UN_FN("deg"  , &deg_fn)
-            UN_FN("exp"  , unary_array<_exp_>())
-            UN_FN("floor", unary_array<_floor_>())
-            UN_FN("isinf", unary_array<_isinf_>())
-            UN_FN("isnan", unary_array<_isnan_>())
-            UN_FN("log"  , unary_array<_log_>())
-            UN_FN("log10", unary_array<_log10_>())
-            UN_FN("rad"  , &rad_fn)
-            UN_FN("sgn"  , unary_array<_sgn_>())
-            UN_FN("sin"  , unary_array<_sin_>())
-            UN_FN("sinh" , unary_array<_sinh_>())
-            UN_FN("sqrt" , unary_array<_sqrt_>())
-            UN_FN("tan"  , unary_array<_tan_>())
-            UN_FN("tanh" , unary_array<_tanh_>())
-            ;
-
-        bfunc.add
-            BN_FN("atan2", binary_array<_atan2_>())
-            BN_FN("pow"  , binary_array<_pow_>())
-			BN_FN("minimum", binary_array<_min_>())
-			BN_FN("maximum", binary_array<_max_>())
+        func.add
+            FN("abs"  , unary_array<_abs_>())
+        	FN("acos" , unary_array<_acos_>())
+			FN("asin" , unary_array<_asin_>())
+			FN("atan" , unary_array<_atan_>())
+			FN("ceil" , unary_array<_ceil_>())
+            FN("cos"  , unary_array<_cos_>())
+            FN("cosh" , unary_array<_cosh_>())
+            FN("deg"  , &deg_fn)
+            FN("exp"  , unary_array<_exp_>())
+            FN("floor", unary_array<_floor_>())
+            FN("isinf", unary_array<_isinf_>())
+            FN("isnan", unary_array<_isnan_>())
+            FN("log"  , unary_array<_log_>())
+            FN("log10", unary_array<_log10_>())
+            FN("rad"  , &rad_fn)
+            FN("sgn"  , unary_array<_sgn_>())
+            FN("sin"  , unary_array<_sin_>())
+            FN("sinh" , unary_array<_sinh_>())
+            FN("sqrt" , unary_array<_sqrt_>())
+            FN("tan"  , unary_array<_tan_>())
+            FN("tanh" , unary_array<_tanh_>())
+			FN("flatten", &Array::flatten)
+			FN("eye"  , &Array::eye)
+            FN("atan2", binary_array<_atan2_>())
+            FN("pow"  , binary_array<_pow_>())
+			FN("minimum", binary_array<_min_>())
+			FN("maximum", binary_array<_max_>())
             ;
 
         unary_op.add
-            UN_FN("+", &unary_plus)
-            UN_FN("-", unary_array<_minus_>())
+            FN("+", &unary_plus)
+            FN("-", unary_array<_minus_>())
             ;
 
         additive_op.add
-            BN_FN("+", binary_array<_add_>())
-            BN_FN("-", binary_array<_sub_>())
+            FN("+", binary_array<_add_>())
+            FN("-", binary_array<_sub_>())
             ;
 
         multiplicative_op.add
-            BN_FN("*", binary_array<_mul_>())
-            BN_FN("/", binary_array<_div_>())
-			BN_FN("//", &floor_div)	// floor division
-			BN_FN("@", &Array::mat_mult)	// numpy matrix multiplication
-            BN_FN("%", binary_array<_mod_>())
+            FN("*", binary_array<_mul_>())
+            FN("/", binary_array<_div_>())
+			FN("//", &floor_div)	// floor division
+			FN("@", &Array::mat_mult)	// numpy matrix multiplication
+            FN("%", binary_array<_mod_>())
             ;
 
-        and_op.add BN_FN("and", binary_array<_and_>());
-        or_op.add BN_FN("or", binary_array<_or_>());
-        not_op.add UN_FN("not", unary_array<_neg_>());
+        and_op.add FN("and", binary_array<_and_>());
+        or_op.add FN("or", binary_array<_or_>());
+        not_op.add FN("not", unary_array<_neg_>());
 
         NamedArrayFn subscribe_fn = {"[]", &subscribe};
 
-//        array_slice_comma_op.add
-//			BN_FN(",", &append_slice_list);
-
-        // TODO: wrap relation operation into chained comparison
-        // supported in array_ast_interface
         relational_op.add
-            BN_FN("<" , ChainedCompareFn(Array::binary_op<_lt_>))
-            BN_FN("<=", ChainedCompareFn(Array::binary_op<_le_>))
-            BN_FN(">" , ChainedCompareFn(&gt_op))
-            BN_FN(">=", ChainedCompareFn(&ge_op))
-            BN_FN("==", ChainedCompareFn(Array::binary_op<_eq_>))
-            BN_FN("!=", ChainedCompareFn(Array::binary_op<_ne_>))
+            FN("<" , ChainedCompareFn(Array::binary_op<_lt_>))
+            FN("<=", ChainedCompareFn(Array::binary_op<_le_>))
+            FN(">" , ChainedCompareFn(&gt_op))
+            FN(">=", ChainedCompareFn(&ge_op))
+            FN("==", ChainedCompareFn(Array::binary_op<_eq_>))
+            FN("!=", ChainedCompareFn(Array::binary_op<_ne_>))
             ;
 
         power_op.add
-            BN_FN("**", binary_array<_pow_>())
+            FN("**", binary_array<_pow_>())
             ;
 
 
@@ -234,14 +228,10 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
         NamedArrayFn range_list_fn = {"list", &range_list};
         NamedArrayFn close_chain_fn = {"close_chain", &close_chain};
 
-        //auto head_const = ast::make_const("Head", &Array::empty_array);
-
         auto true_const = ast::make_const("True", &Array::true_array);
         auto false_const = ast::make_const("False", &Array::false_array);
 
-//        semicol_op.add
-//            (";", &ast::semicol_fn)  // TODO: possibly some special function
-//			;
+        qi::real_parser<double, qi::strict_real_policies<double>> strict_double;
 
         /**
          * Spirit:Qi syntax notes:
@@ -315,14 +305,11 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
         RULE(power) = primary[qi::_val = qi::_1] >>
         				-(power_op > signed_optional)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)];
 
-        RULE(primary) = literal_double | const_lit | subscription;
+        RULE(primary) = literal_number | const_lit | subscription;
         RULE(subscriptable) = array_constr | enclosure | call | identifier;
 
-        RULE(call) = binary_call | unary_call;
-        RULE(unary_call) = (qi::no_skip[ufunc > '('] > expression > ')')
-        		           [qi::_val = ast::make_unary(qi::_1, qi::_2)];
-        RULE(binary_call) = (qi::no_skip[bfunc > '('] > expression > ',' > expression > ')')
-        		            [qi::_val = ast::make_binary(qi::_1, qi::_2, qi::_3)];
+        RULE(call) = (qi::no_skip[func > '('] > array_constr_list_opt > ')')
+        		           [qi::_val = ast::make_call(qi::_1, qi::_2)];
 
         RULE(subscription) = subscriptable[qi::_val = qi::_1] >> -('[' >> slicing > ']')
                              [qi::_val = ast::make_binary(subscribe_fn, qi::_val,
@@ -342,7 +329,8 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
         		[qi::_val = ast::treat_optional(qi::_1, none_int)];
         RULE(array_constr_list) = expression[qi::_val = ast::make_list(0.0, qi::_1)]
 						 >> *(',' > expression)[qi::_val = ast::make_list(qi::_val, qi::_1)];
-        RULE(literal_double) = qi::double_; // includes ints
+        RULE(literal_number) = (strict_double | qi::int_); // includes ints
+
         RULE(identifier) =
         		&(! reserved) >>
         		qi::raw[qi::lexeme[(qi::alpha | '_') >> *(qi::alnum | '_')]];
@@ -355,7 +343,7 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 										ast::treat_optional(qi::_1, none_int),
 										ast::treat_optional(qi::_2, none_int),
 										ast::treat_optional(qi::_3, none_int))];
-        RULE(index_array) = ('[' > index_array_list > ']')		// todo: index_array
+        RULE(index_array) = ('[' > index_array_list > ']')
 						[qi::_val = ast::make_call(index_array_fn, qi::_1)];
         RULE(index_array_list) = const_idx[qi::_val = ast::make_list(0.0, qi::_1)]
 						 >> *("," > const_idx)[qi::_val = ast::make_list(qi::_val, qi::_1)];
