@@ -156,20 +156,17 @@ public:
 
         ParserResult res_array = boost::apply_visitor(ast::make_array(symbols_), ast);
 
-        if (Array *a_ptr = boost::get<Array>(&res_array)) {
-        	Shape result_shape = a_ptr->shape();
-        	auto res_it = symbols_.find("_result_");
-        	if (res_it == symbols_.end()) {
-        		// TODO: replace by storing result in the temporary variable of the processor
-        		tmp_result = new double[shape_size(result_shape) * max_vec_size];
-        		result_array_ = Array::value(tmp_result, max_vec_size, result_shape);
-        		result_array_ = a_ptr->make_result(result_array_);
-        	} else {
-        		result_array_ = a_ptr->make_result(res_it->second);
-        	}
-        } else {
-        	BP_ASSERT(false);
-        }
+        Array array = get_array(res_array);
+		Shape result_shape = array.shape();
+		auto res_it = symbols_.find("_result_");
+		if (res_it == symbols_.end()) {
+			// TODO: replace by storing result in the temporary variable of the processor
+			tmp_result = new double[shape_size(result_shape) * max_vec_size];
+			result_array_ = Array::value(tmp_result, max_vec_size, result_shape);
+			result_array_ = array.make_result(result_array_);
+		} else {
+			result_array_ = array.make_result(res_it->second);
+		}
 
 		ExpressionDAG se(result_array_.elements());
 

@@ -86,6 +86,8 @@ void test_primary() {
 	EXPECT(match("sin(1.0)", "sin(1)"));
 	EXPECT(fail("sin (2)", "Expected \"(\" at \" (2)\""));
 	EXPECT(match("atan2(1, 2)", "atan2(1,2)"));
+	EXPECT(match("zeros([1, 2, 3])", "zeros(idxarray(1,2,3))"));
+	EXPECT(match("full([1, 2, 3], 4.5)", "full(idxarray(1,2,3),4.5)"));
 
 	// identifier
 	EXPECT(match("e", "`e`"));

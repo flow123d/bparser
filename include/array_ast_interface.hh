@@ -30,8 +30,9 @@ typedef std::pair<Array, Array> ComparisonPair;
 
 
 typedef boost::variant<
-		Array,
 		int,
+		double,
+		Array,
 		Range,
 		ListRange,
 		ComparisonPair
@@ -46,7 +47,8 @@ typedef Array (*ArrayFnTernary)(const Array &, const Array &, const Array &);
 typedef Array (*ArrayFnVariadic)(const ListArray &);
 typedef Array (*ArrayFnSubscribe)(const Array &, const ListRange &);
 typedef Array (*ArrayFnInt)(int);
-typedef Array (*ArrayFnListInt)(ListInt);
+typedef Array (*ArrayFnShape)(const Shape &);
+typedef Array (*ArrayFnShapeDbl)(const Shape &, double);
 
 typedef Range (*RangeFnListInt)(const ListInt &);
 typedef ListRange (*ListRangeFnListRange)(const ListRange &);
@@ -77,12 +79,32 @@ typedef boost::variant <
 	ArrayFnTernary,
 	ArrayFnVariadic,
 	ArrayFnSubscribe,  // slicing
-	ArrayFnListInt,
+	ArrayFnShape,
 	ArrayFnInt,
+	ArrayFnShapeDbl,
 	RangeFnListInt,
 	ListRangeFnListRange,  //IndexArray and Slice
 	RangeFnInt
 	> ArrayFn;
+
+
+template <class Target, class Source>
+Target get_type(Source result) {
+	if (Target* l = boost::get<Target>(&result)) return *l;
+
+	Throw() << "Internal error.\n"
+		<< "Wrong type: " << typeid(Target).name() << "variant subtype:" << result.which() << "\n"
+		<< "Expected: " << typeid(Target).name() << "\n";
+}
+
+
+template <class Target, class Source>
+bool check_type(Source result) {
+	if (Target* l = boost::get<Target>(&result)) return true;
+	else return false;
+}
+
+
 
 /**
  * Usage: call_visitor(a_list)(fn)
@@ -98,6 +120,19 @@ struct array_conversion_visitor {
 
     }
 
+	result_type operator()(double val) const {
+    	return Array::constant({double(val)});
+
+    }
+
+	result_type operator()(Range val) const {
+		ListInt l = get_type<ListInt>(val);
+		std::vector<double> conv(l.begin(), l.end());
+		Shape res_shape({uint(l.size())});
+    	return Array::constant(conv, res_shape);
+
+    }
+
 	result_type operator()(Array val) const {
     	return val;
 
@@ -106,13 +141,10 @@ struct array_conversion_visitor {
 	static result_type error(ParserResult val) {
     	Throw() << "Internal error.\n"
     		<< "Wrong type: " << "ParserResult:" << val.which() << "\n"
-			<< "Expected: Array or int\n";
+			<< "Expected: Array,  int, double, Shape\n";
 		return Array();
 	}
 
-    result_type operator()(Range val) const {
-		return error(val);
-    }
     result_type operator()(ListRange val) const {
 		return error(val);
     }
@@ -120,6 +152,17 @@ struct array_conversion_visitor {
 		return error(val);
     }
 };
+
+
+
+
+/// Similar to get_type<Array> but with conversion from int.
+static Array get_array(ParserResult result) {
+	return boost::apply_visitor(array_conversion_visitor(), result);
+}
+
+
+
 
 
 /**
@@ -133,20 +176,6 @@ struct call_visitor {
     explicit call_visitor(const ResultList &alist)
 	: alist_(alist)
 	{}
-
-    template <class T>
-    static T get_type(ParserResult result) {
-    	if (T* l = boost::get<T>(&result)) return *l;
-
-    	Throw() << "Internal error.\n"
-    		<< "Wrong type: " << "ParserResult:" << result.which() << "\n"
-			<< "Expected: " << typeid(T).name() << "\n";
-    }
-
-    /// Similar to get_type<Array> but with conversion from int.
-    static Array get_array(ParserResult result) {
-    	return boost::apply_visitor(array_conversion_visitor(), result);
-    }
 
     static ComparisonPair make_cmp_pair(ParserResult result) {
     	if (ComparisonPair* l = boost::get<ComparisonPair>(&result))
@@ -191,7 +220,6 @@ struct call_visitor {
     }
 
     result_type operator()(ArrayFnVariadic fn) const {
-    	//std::cout << "array variadic fn" << "\n";
     	std::vector<Array> alist;
     	for(ParserResult item : alist_)
     		alist.push_back(get_array(item));
@@ -206,15 +234,25 @@ struct call_visitor {
 				get_type<ListRange>(alist_[1]));
     }
 
-    result_type operator()(ArrayFnListInt fn) const {
-    	std::vector<int> alist;
+    result_type operator()(ArrayFnShape fn) const {
+    	BP_ASSERT(alist_.size() == 1);
     	//std::cout << "int list fn" << "\n";
-    	for(ParserResult item : alist_)
-    		alist.push_back(get_type<int>(item));
-    	return fn(alist);
+    	Range range =get_type<Range>(alist_[0]);
+		ListInt l = get_type<ListInt>(range);
+    	Shape shape(l.begin(), l.end());
+    	return fn(shape);
+    }
+
+    result_type operator()(ArrayFnShapeDbl fn) const {
+    	BP_ASSERT(alist_.size() == 2);
+    	Range range = get_type<Range>(alist_[0]);
+		ListInt l = get_type<ListInt>(range);
+    	Shape shape(l.begin(), l.end());
+    	return fn(shape, get_type<double>(alist_[1]));
     }
 
     result_type operator()(ArrayFnInt fn) const {
+    	BP_ASSERT(alist_.size() == 1);
     	return fn(get_type<int>(alist_[0]));
     }
 
@@ -277,6 +315,12 @@ struct NamedArrayFn {
 	std::string repr;
 	ArrayFn fn;
 };
+
+inline Range empty_array(const ListInt& UNUSED(x)) {
+	Throw() << "Empty Array not allowed.";
+	return ListInt();
+}
+
 
 inline Range create_index_array(const ListInt& l) {
 	return l;

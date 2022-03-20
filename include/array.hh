@@ -90,6 +90,9 @@ inline uint absolute_idx(int i, int size) {
  * Shape of the source array is given by full_shape_. The values of the ranges_ must be compatible:
  *
  *       ranges_[i][:] < full_shape_[i]
+ *
+ * TODO: Better documentation, with introduction of transpose
+ *
  */
 struct MultiIdxRange {
 	//typedef std::vector<std::vector<int>> GeneralRanges;
@@ -428,6 +431,9 @@ struct MultiIdx {
 		return lin_idx;
 	}
 
+	const VecUint &indices() const {
+		return indices_;
+	}
 
 
 	// List of indices for every axis.
@@ -799,14 +805,12 @@ public:
 
 	}
 
-
 	static Array flatten(const Array &tensor) {
-		Shape res_shape(1, shape_size(tensor.shape()));
+		uint n_elements = shape_size(tensor.shape());
+		Shape res_shape(1, n_elements);
 		Array result(res_shape);
-		MultiIdxRange result_range = MultiIdxRange(res_shape).full();
-		MultiIdx result_idx(result_range);
-		for(MultiIdx result_idx(result_range);result_idx.valid(); result_idx.inc()) {
-			result.elements_[result_idx.dest_idx()] = tensor.elements_[result_idx.src_idx()];
+		for(uint i = 0; i<n_elements; ++i) {
+			result.elements_[i] = tensor.elements_[i];
 		}
 		return result;
 	}
@@ -815,18 +819,15 @@ public:
 		if (size < 1)
 				Throw() << "eye works only for positive sizes.";
 		Shape shape(2, size);
-		Array result = (shape);
+		Array result = Array(shape);
 		MultiIdxRange result_range = MultiIdxRange(shape).full();
 		MultiIdx result_idx(result_range);
-		for(int i=0; i<size; ++i)
-			for(int j=0; j<size; ++j) {
-				if (i == j) {
-					result.elements_[result_idx.src_idx()] = details::ScalarNode::create_one();
-				} else {
-					result.elements_[result_idx.src_idx()] = details::ScalarNode::create_zero();
-				}
-			result_idx.inc(1);
-			result_idx.inc();
+		for(MultiIdx result_idx(result_range); result_idx.valid(); result_idx.inc()) {
+			if (result_idx.indices()[0]  == result_idx.indices()[1]) {
+				result.elements_[result_idx.src_idx()] = details::ScalarNode::create_one();
+			} else {
+				result.elements_[result_idx.src_idx()] = details::ScalarNode::create_zero();
+			}
 		}
 		return result;
 	}

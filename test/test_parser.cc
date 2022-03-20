@@ -97,7 +97,7 @@ bool test_expr(std::string expr, std::vector<double> ref_result, bparser::Shape 
 				success = false;
 				std::cout << "  " << i << "," << j <<
 				" ref: " << ref_result[j] <<
-				" res: " << res[i * ref_result.size() + j] << "\n";
+				" res: " << res[j * vec_size + i] << "\n";
 			}
 		}
 	}
@@ -144,10 +144,13 @@ void test_expression() {
 
 	BP_ASSERT(fail_expr("cs3[0]", "Too many indices")); // ?fail
 	BP_ASSERT(test_expr("cv4[0, None] * cv4[None, 1]", {})); // ?? matrix
-	BP_ASSERT(fail_expr("[]", "stack: need at least one array"));
+	//BP_ASSERT(test_expr("[]", {0}));
+	BP_ASSERT(fail_expr("[]", "Empty Array"));
 	BP_ASSERT(fail_expr("[1,cv4,av2]", "stack: all input arrays must have the same shape"));
 	BP_ASSERT(test_expr("[1,1]", {1, 1}));
 	BP_ASSERT(test_expr("a=[[1,1,1], cv4, av2]; a[:, 0]", {1, 4, 2}));
+	BP_ASSERT(test_expr("[[1,2], [3,4]]", {1, 2, 3, 4}, {2,2}));
+
 	//BP_ASSERT(test_expr("cv4[2] ** av2", {25, 25, 25}));
 	//BP_ASSERT(test_expr("cv4[2] ** av2", {25, 25, 25}));
 
@@ -173,9 +176,14 @@ void test_expression() {
 
 	BP_ASSERT(test_expr("sin(pi*as1)", {0})); // sin(pi*1)
 
-	//BP_ASSERT(test_expr("flatten([[1,2],[3,4]])", {1, 2, 3, 4}, {4}));
-	//BP_ASSERT(test_expr("eye(2)", {0, 1, 1, 0}, {2,2}));
-	//BP_ASSERT(test_expr("flatten(eye(3))", {1, 0, 0, 0, 1, 0, 0, 0, 1}));
+	BP_ASSERT(test_expr("flatten([[1,2],[3,4]])", {1, 2, 3, 4}, {4}));
+	BP_ASSERT(test_expr("eye(2)[0,0]", {1}));
+	BP_ASSERT(test_expr("eye(2)[1,0]", {0}));
+	BP_ASSERT(test_expr("eye(2)", {1, 0, 0, 1}, {2, 2}));
+	BP_ASSERT(test_expr("flatten(eye(3))", {1, 0, 0, 0, 1, 0, 0, 0, 1}));
+	BP_ASSERT(test_expr("zeros([2,3])", {0, 0, 0, 0, 0, 0}, {2,3}));
+	BP_ASSERT(test_expr("ones([2,3])", {1, 1, 1, 1, 1, 1}, {2,3}));
+	//BP_ASSERT(test_expr("full([2,3], 5)", {5, 5, 5, 5, 5, 5}, {2,3}));
 	//BP_ASSERT(test_expr("norm([2, 3])", {5}));
 }
 

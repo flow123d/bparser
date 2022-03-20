@@ -60,7 +60,6 @@ struct ScalarNode {
 	// Pointer to (user provided) vector of values.
 	double * values_;
 
-	bool is_allocated = true;
 	/**
 	 * Factory functions fro special nodes.
 	 */
@@ -121,10 +120,9 @@ struct ScalarNode {
 
 
 struct ConstantNode : public ScalarNode {
-	ConstantNode(double v, bool allocated=true)
+	ConstantNode(double v)
 	: value_(v)
 	{
-		is_allocated = allocated;
 		op_name_ = "Const";
 		values_ = &value_;
 		result_storage = constant;
@@ -488,12 +486,12 @@ struct _ifelse_ : public ScalarNode {
  */
 
 ScalarNodePtr ScalarNode::create_zero() {
-	static ScalarNodePtr zero = std::make_shared<ConstantNode>(0.0, false);
+	static ScalarNodePtr zero = std::make_shared<ConstantNode>(0.0);
 	return zero;
 }
 
 ScalarNodePtr ScalarNode::create_one() {
-	static ScalarNodePtr one = std::make_shared<ConstantNode>(1.0, false);
+	static ScalarNodePtr one = std::make_shared<ConstantNode>(1.0);
 	return one;
 }
 

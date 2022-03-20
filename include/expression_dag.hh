@@ -156,7 +156,7 @@ private:
 			for(uint in=0; in < node->n_inputs_; ++in)  {
 				ScalarNodePtr  other = node->inputs_[in];
 				if (other->result_idx_ != -2) {
-					BP_ASSERT(other->result_idx_ == -1);
+					//BP_ASSERT(other->result_idx_ == -1);
 					BP_ASSERT(other->result_storage != expr_result);
 					other->result_idx_ = -2;
 					nodes.push_back(other);

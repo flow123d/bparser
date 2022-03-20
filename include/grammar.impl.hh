@@ -122,6 +122,9 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 		index_array,
 		index_array_list,
 		call,
+		param_list_opt,
+		param_list,
+		param,
 		unary_call,
 		binary_call,
 		none_lit
@@ -175,6 +178,9 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
             FN("tanh" , unary_array<_tanh_>())
 			FN("flatten", &Array::flatten)
 			FN("eye"  , &Array::eye)
+			FN("zeros"  , &Array::zeros)
+			FN("ones"  , &Array::ones)
+			FN("full"  , &Array::full)
             FN("atan2", binary_array<_atan2_>())
             FN("pow"  , binary_array<_pow_>())
 			FN("minimum", binary_array<_min_>())
@@ -219,8 +225,8 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
             ;
 
 
-        NamedArrayFn array_fn = {"array", &Array::stack_zero};
-        NamedArrayFn index_array_fn = {"idxarray", &create_index_array};
+        //NamedArrayFn array_fn = {"array", &Array::stack_zero};
+        NamedArrayFn empty_array_fn = {"empty_array", &empty_array};
         NamedArrayFn semicol_fn = {";", &ast::semicol_fn};
         NamedArrayFn if_else_fn = {"ifelse", &Array::if_else};
         NamedArrayFn slice_fn = {"slice", &create_slice};
@@ -308,9 +314,14 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
         RULE(primary) = literal_number | const_lit | subscription;
         RULE(subscriptable) = array_constr | enclosure | call | identifier;
 
-        RULE(call) = (qi::no_skip[func > '('] > array_constr_list_opt > ')')
+        RULE(call) = (qi::no_skip[func > '('] > param_list_opt > ')')
         		           [qi::_val = ast::make_call(qi::_1, qi::_2)];
+        RULE(param_list_opt) = (-(param_list))
+        		[qi::_val = ast::treat_optional(qi::_1, none_int)]; //TODO: test fail for function with no arguments.
+        RULE(param_list) = param[qi::_val = ast::make_list(0.0, qi::_1)]
+						 >> *(',' > param)[qi::_val = ast::make_list(qi::_val, qi::_1)];
 
+        RULE(param) = expression;
         RULE(subscription) = subscriptable[qi::_val = qi::_1] >> -('[' >> slicing > ']')
                              [qi::_val = ast::make_binary(subscribe_fn, qi::_val,
                             		 ast::make_call(range_list_fn, qi::_1))];
@@ -324,9 +335,9 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 
         RULE(enclosure) = '(' > expression > ')';
         RULE(array_constr) = ('[' > array_constr_list_opt  > ']')
-        		             [qi::_val = ast::make_call(array_fn,qi::_1)];
+        		             [qi::_val = qi::_1];
         RULE(array_constr_list_opt) = (-(array_constr_list))
-        		[qi::_val = ast::treat_optional(qi::_1, none_int)];
+        		[qi::_val = ast::treat_optional(qi::_1, ast::make_unary(empty_array_fn, none_int))];
         RULE(array_constr_list) = expression[qi::_val = ast::make_list(0.0, qi::_1)]
 						 >> *(',' > expression)[qi::_val = ast::make_list(qi::_val, qi::_1)];
         RULE(literal_number) = (strict_double | qi::int_); // includes ints
@@ -344,8 +355,8 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 										ast::treat_optional(qi::_2, none_int),
 										ast::treat_optional(qi::_3, none_int))];
         RULE(index_array) = ('[' > index_array_list > ']')
-						[qi::_val = ast::make_call(index_array_fn, qi::_1)];
-        RULE(index_array_list) = const_idx[qi::_val = ast::make_list(0.0, qi::_1)]
+						[qi::_val = qi::_1];
+        RULE(index_array_list) = const_idx[qi::_val = ast::make_list(none_int, qi::_1)]
 						 >> *("," > const_idx)[qi::_val = ast::make_list(qi::_val, qi::_1)];
         RULE(const_index) = (const_idx)[qi::_val = ast::make_unary(
         		index_fn, qi::_1)];
