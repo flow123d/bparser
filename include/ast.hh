@@ -147,9 +147,9 @@ struct print_vis : public boost::static_visitor<> {
     }
 
     void operator()(list x) const {
-    	ss << '(';
+    	ss << '[';
     	print_list(x);
-    	ss << ')';
+    	ss << ']';
     	//BP_ASSERT(false);
     }
 
