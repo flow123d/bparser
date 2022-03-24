@@ -14,10 +14,7 @@
 #include <typeinfo>
 #include "config.hh"
 #include "assert.hh"
-#include "vectorclass.h"
-#include "vectormath_exp.h"
-#include "vectormath_hyp.h"
-#include "vectormath_trig.h"
+#include "VCL_v2_include.h"
 
 
 namespace bparser {
