@@ -14,8 +14,7 @@
 #include <typeinfo>
 #include "config.hh"
 #include "assert.hh"
-#include "vectorclass.h"
-#include "vectormath_lib.h"
+#include "VCL_v2_include.h"
 
 
 namespace bparser {
@@ -261,7 +260,10 @@ struct _mod_ : public ScalarNode {
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a, VecType b) {
 		// TODO: vectorize
-		res = a /= b;
+		//VecType s = a / b;
+		//VecType q = truncate(s);
+		//res = a - b * q;
+		res = a+b;
 	}
 };
 
@@ -271,7 +273,7 @@ struct _eq_ : public ScalarNode {
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a, VecType b) {
 		// TODO: vectorize
-		res = a == b;
+		res = a+b; //a == b;
 	}
 };
 
@@ -281,7 +283,7 @@ struct _ne_ : public ScalarNode {
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a, VecType b) {
 		// TODO: vectorize
-		res = a != b;
+		res = a+b; //a != b;
 	}
 };
 
@@ -292,7 +294,7 @@ struct _lt_ : public ScalarNode {
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a, VecType b) {
 		// TODO: vectorize
-		res = a < b;
+		res = a+b; //a < b;
 	}
 };
 
@@ -302,7 +304,7 @@ struct _le_ : public ScalarNode {
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a, VecType b) {
 		// TODO: vectorize
-		res = a <= b;
+		res = a+b; //a <= b;
 	}
 };
 
@@ -312,7 +314,7 @@ struct _neg_ : public ScalarNode {
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a) {
 		// TODO: vectorize
-		res =  !a;		// we use bit masks for bool values
+		res = a; //!a;		// we use bit masks for bool values
 	}
 };
 
@@ -323,7 +325,7 @@ struct _or_ : public ScalarNode {
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a, VecType b) {
 		// TODO: vectorize
-		res = a | b;	// we use bit masks for bool values
+		res = a+b;//a | b;	// we use bit masks for bool values
 	}
 };
 
@@ -333,7 +335,7 @@ struct _and_ : public ScalarNode {
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a, VecType b) {
 		// TODO: vectorize
-		res = a & b;	// we use bit masks for bool values
+		res = a+b;//a & b;	// we use bit masks for bool values
 	}
 };
 
@@ -363,7 +365,7 @@ struct _isnan_ : public ScalarNode {
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a) {
 		// TODO: vectorize
-		res = is_nan(a);
+		res = a; //is_nan(a);
 	}
 };
 
@@ -373,7 +375,7 @@ struct _isinf_ : public ScalarNode {
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a) {
 		// TODO: vectorize
-		res = is_inf(a);
+		res = a; //is_inf(a);
 	}
 };
 
@@ -383,7 +385,7 @@ struct _sgn_ : public ScalarNode {
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a) {
 		// TODO: vectorize
-		res =   sign_bit(a);
+		res = a; //sign_bit(a);
 	}
 };
 
@@ -393,7 +395,7 @@ struct _atan2_ : public ScalarNode {
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a, VecType b) {
 		// TODO: vectorize
-		res =  atan2(a, b);
+		res = atan2(a, b);
 	}
 };
 
@@ -403,7 +405,7 @@ struct _pow_ : public ScalarNode {
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a, VecType b) {
 		// TODO: vectorize
-		res =  pow(a, b);
+		res = pow(a, b);
 	}
 };
 
@@ -414,7 +416,7 @@ struct _max_ : public ScalarNode {
 	inline static void eval(VecType &res, VecType a, VecType b) {
 		// TODO: vectorize
 		//std::cout << "max " << a << "," << b << "\n";
-		res =  max(a, b);
+		res = a+b;//max(a, b);
 	}
 };
 
@@ -425,7 +427,7 @@ struct _min_ : public ScalarNode {
 	inline static void eval(VecType &res, VecType a, VecType b) {
 		// TODO: vectorize
 		//std::cout << "min " << a << "," << b << "\n";
-		res =  min(a, b);
+		res = a+b;//min(a, b);
 	}
 };
 
@@ -467,7 +469,7 @@ struct _ifelse_ : public ScalarNode {
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a, VecType b, VecType c) {
 		// TODO: vectorize
-		res = vector_select(b, a, c);	// we use bit masks for bool values
+		res = a+b+c; // vector_select(b, a, c);	// we use bit masks for bool values
 	}
 };
 
