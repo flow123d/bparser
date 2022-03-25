@@ -183,9 +183,13 @@ void expr4(ExprData &data) {
 }
 
 
-void test_expr(std::string expr, uint i_expr) {
+/**
+ * @param expr       Parser expression
+ * @param block_size Number of floats
+ * @param i_expr     Specifies C++ expression function
+ */
+void test_expr(std::string expr, uint block_size, uint i_expr) {
 	using namespace bparser;
-	uint block_size = 1024; // number of floats
 	uint vec_size = 1*block_size;
 
 	// TODO: allow changing variable pointers, between evaluations
@@ -283,6 +287,7 @@ void test_expr(std::string expr, uint i_expr) {
 
 
 	std::cout << "=== Parsing of expression: '" << expr << "' ===\n";
+	std::cout << "Block size: " << block_size << "\n";
 	std::cout << "Diff: " << diff << " parser: " << p_sum << " c++: " << c_sum << "\n";
 	std::cout << "parser time optim : " << parser_time_optim << "\n";
 	std::cout << "parser time noopt : " << parser_time_noopt << "\n";
@@ -299,10 +304,13 @@ void test_expr(std::string expr, uint i_expr) {
 
 
 void test_expression() {
-	test_expr("v1 + v2 + + v3 + v4", 1);
-	test_expr("3 * v1 + cs1 * v2 + v3 + 2.5 * v4", 2);
-	test_expr("3 * v1 - cs1 * v2 + sin(0.5*pi) * v3 - cos(0.25*pi) * v4", 3);
-	test_expr("[v1 @ v2, v2 @ v3, v3 @ v4]", 4);
+	std::vector<uint> block_sizes = {1024};
+	for (uint i=0; i<block_sizes.size(); ++i) {
+		test_expr("v1 + v2 + + v3 + v4", block_sizes[i], 1);
+		test_expr("3 * v1 + cs1 * v2 + v3 + 2.5 * v4", block_sizes[i], 2);
+		test_expr("sin(v1)", block_sizes[i], 3);
+		test_expr("[[v2], [v2], [v2]] * v1 + v3", block_sizes[i], 4);
+	}
 }
 
 
