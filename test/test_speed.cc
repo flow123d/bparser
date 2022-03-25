@@ -44,6 +44,11 @@ struct ExprData {
 		cs1 = 4;
 	}
 
+	~ExprData()
+	{
+		arena.destroy();
+	}
+
 	bparser::ArenaAlloc arena;
 	uint vec_size;
 	double *v1, *v2, *v3, *v4, *vres;
@@ -79,6 +84,16 @@ struct ExprData2 {
 		subset = arena_subs.create_array<uint>(vec_size);
 		for(uint i=0; i<vec_size/4; i++) subset[i] = i;
 		cs1 = 4;
+	}
+
+	~ExprData2()
+	{
+		arena_1.destroy();
+		arena_2.destroy();
+		arena_3.destroy();
+		arena_4.destroy();
+		arena_res.destroy();
+		arena_subs.destroy();
 	}
 
 	void copy_to_arena() {
@@ -175,8 +190,8 @@ void expr4(ExprData &data) {
 				double v2 = data.v2[j+k];
 				double v3 = data.v3[j+k];
 				double v4 = data.v4[j+k];
-				data.vres[j+k] = v1 * v2 + v2 * v3 + v3 * v4 ;
-				//incorrect evaluation of res: test_expr = "[v1 @ v2, v2 @ v3, v3 @ v4]";
+				data.vres[j+k] = std::min(v1, v2) + std::max(v3, v4);
+				//expression will be changed
 			}
 		}
 	}
@@ -284,8 +299,6 @@ void test_expr(std::string expr, uint block_size, uint i_expr) {
 			c_sum += v2;
 		}
 	}
-	arena_1.destroy();
-	arena_2.destroy();
 
 	std::cout << "=== Parsing of expression: '" << expr << "' ===\n";
 	std::cout << "Block size: " << block_size << "\n";
@@ -305,12 +318,13 @@ void test_expr(std::string expr, uint block_size, uint i_expr) {
 
 
 void test_expression() {
-	std::vector<uint> block_sizes = {1024};
+	std::vector<uint> block_sizes = {64, 256, 1024};
 	for (uint i=0; i<block_sizes.size(); ++i) {
 		test_expr("v1 + v2 + + v3 + v4", block_sizes[i], 1);
 		test_expr("3 * v1 + cs1 * v2 + v3 + 2.5 * v4", block_sizes[i], 2);
 		test_expr("sin(v1)", block_sizes[i], 3);
-		test_expr("[[v2], [v2], [v2]] * v1 + v3", block_sizes[i], 4);
+		test_expr("minimum(v1, v2) + maximum(v3, v4)", block_sizes[i], 4);
+		//test_expr("[v2, v2, v2] @ v1 + v3", block_sizes[i], 4); // correct expression
 	}
 }
 
