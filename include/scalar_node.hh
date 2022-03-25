@@ -12,6 +12,7 @@
 #include <cmath>
 #include <map>
 #include <typeinfo>
+#include <memory>
 #include "config.hh"
 #include "assert.hh"
 
@@ -29,6 +30,10 @@ enum ResultStorage {
 	expr_result = 4
 };
 
+struct ScalarNode;
+typedef std::shared_ptr<ScalarNode> ScalarNodePtr;
+
+
 /**
  * ScalarNodes describes DAG of elementary operations. From this
  * description of the expression the Processor instance is constructed
@@ -43,33 +48,37 @@ struct ScalarNode {
 
 	ResultStorage result_storage;
 	uint n_inputs_;
-	ScalarNode * inputs_[3];
+	ScalarNodePtr  inputs_[3];
 	// Number of (yet unprocessed) nodes depending on stored result.
 	// Used in Processor to reuse temporary result storage.
 	uint n_dep_nodes_;
 	// index of the result in workspace, can be reused
 	int result_idx_;
+
 	unsigned char op_code_;
 	std::string op_name_;
+	// Pointer to (user provided) vector of values.
 	double * values_;
 
 	/**
 	 * Factory functions fro special nodes.
 	 */
-	static ScalarNode * create_const(double a);
-	static ScalarNode * create_value(double *a);
-	static ScalarNode * create_result(ScalarNode *result, double *a);
-	static ScalarNode * create_ifelse(ScalarNode *a, ScalarNode *b, ScalarNode *c);
+	inline static ScalarNodePtr create_zero();
+	inline static ScalarNodePtr create_one();
+	inline static ScalarNodePtr create_const(double a);
+	inline static ScalarNodePtr create_value(double *a);
+	inline static ScalarNodePtr create_result(ScalarNodePtr result, double *a);
+	inline static ScalarNodePtr create_ifelse(ScalarNodePtr a, ScalarNodePtr b, ScalarNodePtr c);
 
 	/**
 	 * Generic factory functions for operation nodes.
 	 * Separate template for different number of inputs (incoming edges in the graph).
 	 */
 	template <class T>
-	static ScalarNode * create(ScalarNode *a);
+	static ScalarNodePtr  create(ScalarNodePtr a);
 
 	template <class T>
-	static ScalarNode * create(ScalarNode *a, ScalarNode *b);
+	static ScalarNodePtr  create(ScalarNodePtr a, ScalarNodePtr b);
 
 
 
@@ -83,7 +92,10 @@ struct ScalarNode {
 	  values_(nullptr)
 	{}
 
-	void add_input(ScalarNode * in)
+	virtual ~ScalarNode() {
+	}
+
+	void add_input(ScalarNodePtr  in)
 	{
 		BP_ASSERT(n_inputs_ < 3);
 		inputs_[n_inputs_] = in;
@@ -100,6 +112,8 @@ struct ScalarNode {
 		uint b = str.find_last_of('_');
 		op_name_ = str.substr(a, b-a);
 	}
+
+
 };
 
 
@@ -114,8 +128,12 @@ struct ConstantNode : public ScalarNode {
 		result_storage = constant;
 	}
 
+	~ConstantNode() override {
+	}
+
 	double value_;
 };
+
 
 
 struct ValueNode : public ScalarNode {
@@ -125,11 +143,15 @@ struct ValueNode : public ScalarNode {
 		values_ = ptr;
 		result_storage = value;
 	}
+
+	~ValueNode() override {
+	}
+
 };
 
 
 struct ResultNode : public ScalarNode {
-	ResultNode(ScalarNode *result_node, double *storage)
+	ResultNode(ScalarNodePtr result_node, double *storage)
 	{
 		op_name_ = "Result";
 		values_ = storage;
@@ -463,25 +485,28 @@ struct _ifelse_ : public ScalarNode {
  * Construction Nodes.
  */
 
+ScalarNodePtr ScalarNode::create_zero() {
+	static ScalarNodePtr zero = std::make_shared<ConstantNode>(0.0);
+	return zero;
+}
+
+ScalarNodePtr ScalarNode::create_one() {
+	static ScalarNodePtr one = std::make_shared<ConstantNode>(1.0);
+	return one;
+}
 
 
-inline ScalarNode * ScalarNode::create_const(double a) {
-	return new ConstantNode(a);
-//		nodes.push_back(node);
-//		n_constants += 1;
-//		return node;
+inline ScalarNodePtr ScalarNode::create_const(double a) {
+	return std::make_shared<ConstantNode>(a);
 }
 
 // create value node
-inline ScalarNode * ScalarNode::create_value(double *a)  {
-	return new ValueNode(a);
-//		nodes.push_back(node);
-//		n_values += 1;
-//		return node;
+inline ScalarNodePtr ScalarNode::create_value(double *a)  {
+	return std::make_shared<ValueNode>(a);
 }
 
 // create result node
-inline ScalarNode * ScalarNode::create_result(ScalarNode *result, double *a)  {
+inline ScalarNodePtr ScalarNode::create_result(ScalarNodePtr result, double *a)  {
 	BP_ASSERT(result->result_storage != none);
 	if (result->result_storage != temporary) {
 		result = ScalarNode::create<_copy_>(result);
@@ -492,8 +517,8 @@ inline ScalarNode * ScalarNode::create_result(ScalarNode *result, double *a)  {
 }
 
 template <class T>
-ScalarNode * ScalarNode::create(ScalarNode *a) {
-	T * node_ptr = new T();
+ScalarNodePtr ScalarNode::create(ScalarNodePtr a) {
+	std::shared_ptr<T> node_ptr = std::make_shared<T>();
 	node_ptr->op_code_ = T::op_code;
 	node_ptr->set_name(typeid(T).name());
 	node_ptr->add_input(a);
@@ -505,13 +530,12 @@ ScalarNode * ScalarNode::create(ScalarNode *a) {
 		node_ptr->result_storage = temporary;
 	}
 
-//		nodes.push_back(node_ptr);
 	return node_ptr;
 }
 
 template <class T>
-ScalarNode * ScalarNode::create(ScalarNode *a, ScalarNode *b) {
-	T * node_ptr = new T();
+ScalarNodePtr ScalarNode::create(ScalarNodePtr a, ScalarNodePtr b) {
+	std::shared_ptr<T> node_ptr = std::make_shared<T>();
 	node_ptr->op_code_ = T::op_code;
 	node_ptr->set_name(typeid(T).name());
 	node_ptr->add_input(a);
@@ -524,12 +548,11 @@ ScalarNode * ScalarNode::create(ScalarNode *a, ScalarNode *b) {
 		node_ptr->result_storage = temporary;
 	}
 
-//		nodes.push_back(node_ptr);
 	return node_ptr;
 }
 
-inline ScalarNode * ScalarNode::create_ifelse(ScalarNode *a, ScalarNode *b, ScalarNode *c)  {
-	auto * node_ptr = new _ifelse_;
+inline ScalarNodePtr  ScalarNode::create_ifelse(ScalarNodePtr a, ScalarNodePtr b, ScalarNodePtr c)  {
+	std::shared_ptr<_ifelse_> node_ptr = std::make_shared<_ifelse_>();
 	node_ptr->op_code_ = _ifelse_::op_code;
 	node_ptr->set_name(typeid(_ifelse_).name());
 	node_ptr->add_input(a);
@@ -538,7 +561,6 @@ inline ScalarNode * ScalarNode::create_ifelse(ScalarNode *a, ScalarNode *b, Scal
 	BP_ASSERT(_ifelse_::n_eval_args == 4);
 	node_ptr->result_storage = temporary;
 
-//		nodes.push_back(node_ptr);
 	return node_ptr;
 }
 

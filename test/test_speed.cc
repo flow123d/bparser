@@ -284,7 +284,8 @@ void test_expr(std::string expr, uint block_size, uint i_expr) {
 			c_sum += v2;
 		}
 	}
-
+	arena_1.destroy();
+	arena_2.destroy();
 
 	std::cout << "=== Parsing of expression: '" << expr << "' ===\n";
 	std::cout << "Block size: " << block_size << "\n";
