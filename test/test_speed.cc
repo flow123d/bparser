@@ -94,6 +94,11 @@ struct ExprData2 {
 		arena_4.destroy();
 		arena_res.destroy();
 		arena_subs.destroy();
+		delete[] d1;
+		delete[] d2;
+		delete[] d3;
+		delete[] d4;
+		delete[] dres;
 	}
 
 	void copy_to_arena() {
@@ -320,7 +325,7 @@ void test_expr(std::string expr, uint block_size, uint i_expr) {
 void test_expression() {
 	std::vector<uint> block_sizes = {64, 256, 1024};
 	for (uint i=0; i<block_sizes.size(); ++i) {
-		test_expr("v1 + v2 + + v3 + v4", block_sizes[i], 1);
+		test_expr("v1 + v2 + v3 + v4", block_sizes[i], 1);
 		test_expr("3 * v1 + cs1 * v2 + v3 + 2.5 * v4", block_sizes[i], 2);
 		test_expr("sin(v1)", block_sizes[i], 3);
 		test_expr("minimum(v1, v2) + maximum(v3, v4)", block_sizes[i], 4);
