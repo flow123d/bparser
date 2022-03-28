@@ -614,6 +614,18 @@ public:
 	}
 
 
+	// Vector value array with given shape
+	static Array value_copy(double *v, uint array_max_size, Shape shape = {})
+	{
+		Array res(shape);
+		for(uint i_el=0; i_el < res.elements_.size(); ++i_el) {
+			res.elements_[i_el] = details::ScalarNode::create_val_copy(v);
+			v += array_max_size;
+		}
+		return res;
+	}
+
+
 	static Array stack_zero(const std::vector<Array> &list) {
 		return stack(list);
 	}

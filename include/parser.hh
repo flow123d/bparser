@@ -139,6 +139,17 @@ public:
     }
 
     /**
+     * Set given name to be a variable of given shape with values at
+     * given address 'variable_space'.
+     *
+     * Unused variables and constants are ignored.
+     *
+     */
+    void set_var_copy(std::string name, std::vector<uint> shape, double *variable_space) {
+    	symbols_[name] = Array::value_copy(variable_space, max_vec_size, shape);
+    }
+
+    /**
      * Set given name to be a constant of given shape with flatten values
      * given by the 'const_value' vector.
      *

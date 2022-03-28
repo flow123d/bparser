@@ -367,6 +367,9 @@ struct Processor {
 			case value:
 				vec_set(node->result_idx_, (double4 *)node->get_value(), workspace_.vec_subset);
 				break;
+			case value_copy:
+				//TODO complete
+				break;
 			case temporary:
 				*op = make_operation(node);
 				++op;
