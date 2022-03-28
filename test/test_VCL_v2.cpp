@@ -4,6 +4,11 @@
 #include "..//third_party/VCL_v2/vectorclass.h"
 #include "..//third_party/VCL_v2/instrset_detect.cpp"
 
+template <typename VecType>
+void eval(VecType &res, VecType a, VecType b) 
+{
+	res = a < b;
+}
 //#define MAX_VECTOR_SIZE 256
 int main() 
 {
@@ -13,18 +18,50 @@ int main()
         // Vec8d dsd(1.2, 2.4, 3.6, 4.8, 5.6, 4.2, 23.4, 234.6);
         // Vec8d res8dsd = dsd + dsd;
 
-         Vec4d dsd1(1.2, 2.4, 3.6, 4.8);
+        // Vec4d dsd1(1.2, 2.4, 3.6, 4.8);
         // Vec4d dsd2(5.6, 4.2, 23.4, 234.6);
-         Vec4d res4dsd1 = dsd1 + dsd1;
+        // Vec4d res4dsd1 = dsd1 + dsd1;
         // Vec4d res4dsd2 = dsd2 + dsd2;
     }
     
+    Vec4d aa(0.0, 1.0, 20.0, 30.0);
+    Vec4d bb(10.0, 20.0, 3.0, 4.0);
+    Vec4d rr;
+
+    Vec4d cc;
+    Vec4d &cc_ref = cc;
+    cc_ref = aa < bb;
+
+    eval<Vec4d>(rr, aa, bb);
+
+    printf("\nResult rr = ");
+    for(int i = 0; i < rr.size(); i++)
+    {
+        printf("%f ", rr[i]);
+    }
+    printf("\nResult cc_ref = ");
+    for(int i = 0; i < cc_ref.size(); i++)
+    {
+        printf("%f ", cc_ref[i]);
+    }
+
+    Vec4db dd = aa < bb;
+    cc_ref = dd;
+
+    printf("\nResult cc_ref = ");
+    for(int i = 0; i < cc_ref.size(); i++)
+    {
+        printf("%f ", cc_ref[i]);
+    }
+
+    return 0;
 
     auto end_time = std::chrono::high_resolution_clock::now();
 
 	double time  = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time).count();
     printf("%f \n", time);
 
+    return 0;
 
     typedef std::conditional<INSTRSET >= 7, Vec4d, Vec2d>::type tmp;
     typedef std::conditional<INSTRSET >= 9, Vec8d, tmp>::type VecType;
