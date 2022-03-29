@@ -130,6 +130,26 @@ void test_expression() {
 	 * cv4 - vector constant = [4,5,6]
 	 */
 	std::cout << "\n" << "** test expression" << "\n";
+
+	// Array creation and subscription
+	BP_ASSERT(test_expr("[1,2,3]", {1,2,3}, {3}));
+	BP_ASSERT(test_expr("[[1],[2],[3]]", {1,2,3}, {3,1}));
+	BP_ASSERT(test_expr("[[1,2,3]]", {1,2,3}, {1,3}));
+	BP_ASSERT(test_expr("cv4[0]", {4}, {}));
+	BP_ASSERT(test_expr("cv4[1:]", {5,6}, {2}));
+	BP_ASSERT(test_expr("cv4[-1:0:-1]", {6,5}, {2}));
+	BP_ASSERT(test_expr("cv4[::-1]", {6,5,4}, {3}));
+	BP_ASSERT(test_expr("cv4[:-1]", {4,5}, {2}));
+	BP_ASSERT(test_expr("cv4[-2]", {5}, {}));
+	BP_ASSERT(test_expr("cv4[[0,2]]", {4,6}, {2}));
+	BP_ASSERT(test_expr("cv4[None, :]", {4,5,6}, {1,3}));
+	BP_ASSERT(test_expr("cv4[:, None]", {4,5,6}, {3,1}));
+	BP_ASSERT(test_expr("a=[av2, cv4, 2*av2]; a[:,1]", {2,5,4}, {3}));
+	BP_ASSERT(test_expr("a=[av2, cv4, 2*av2]; b=[a, a-1]; b[:,1,:]", {4,5,6,3,4,5}, {2,3}));
+	BP_ASSERT(test_expr("a=[av2, cv4, 2*av2]; b=[a, a-1]; b[1,:,1]", {1, 4, 3}, {3}));
+	BP_ASSERT(test_expr("a=[av2, cv4, 2*av2]; b=[a, a-1]; b[1,:,1]", {1, 4, 3}, {3}));
+
+
 	BP_ASSERT(test_expr("cs3 * av2", {6,6,6}));
 	BP_ASSERT(test_expr("cv4 * av2", {8,10,12}));
 	BP_ASSERT(test_expr("as1 - cv4", {-3,-4,-5}));
@@ -166,9 +186,14 @@ void test_expression() {
 	BP_ASSERT(test_expr("3 if cs3 > 4.5 else 4", {4}));
 
 
-	BP_ASSERT(test_expr("[3, 4] @ [[1], [2]]", {11}));
-	BP_ASSERT(test_expr("[3, 4, 1] @ [[1], [2], [3]]", {14}));
-	BP_ASSERT(test_expr("[[1, 2], [2, 3], [3, 4]] @ [[1], [2]]", {5, 8, 11}));
+	BP_ASSERT(test_expr("[3, 4] @ [[1], [2]]", {11}, {1}));
+	BP_ASSERT(test_expr("[3, 4, 1] @ [[1], [2], [3]]", {14}, {1}));
+	ASSERT_THROW(test_expr("[[1], [2], [3]] @ [3, 4, 1]", {14}, {1}), "Matmult summing dimension mismatch");
+	BP_ASSERT(test_expr("[1, 2, 3] @ [1, 2, 3]", {14}, {}));
+	BP_ASSERT(test_expr("[[1, 2], [2, 3], [3, 4]] @ [[1], [2]]", {5, 8, 11}, {3,1}));
+	BP_ASSERT(test_expr("[[1, 2], [2, 3], [3, 4]] @ [1, 2]", {5, 8, 11}, {3}));
+	BP_ASSERT(test_expr("[[1],[2],[3]] @ [[1,2,3]]", {1, 2, 3, 2, 4, 6, 3, 6, 9}, {3,3}));
+	BP_ASSERT(test_expr("a=[1,2,3]; a[:, None] @ a[None,:]", {1, 2, 3, 2, 4, 6, 3, 6, 9}, {3,3}));
 	//BP_ASSERT(test_expr("0 if cv4 > 4.5 else 1", {1, 0, 0}));
 
 	BP_ASSERT(test_expr("minimum([1,2,3], [0,4,3])", {0,2,3}));
@@ -185,6 +210,7 @@ void test_expression() {
 	BP_ASSERT(test_expr("ones([2,3])", {1, 1, 1, 1, 1, 1}, {2,3}));
 	//BP_ASSERT(test_expr("full([2,3], 5)", {5, 5, 5, 5, 5, 5}, {2,3}));
 	//BP_ASSERT(test_expr("norm([2, 3])", {5}));
+
 }
 
 

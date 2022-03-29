@@ -76,11 +76,36 @@ inline std::string print_vec(double *ptr, uint size) {
 template< class T>
 std::string print_vector(std::vector<T> x) {
 	std::stringstream s;
-	s << "[";
-	for(uint i=0; i<x.size(); ++i)
-		s << x[i] << ", " << "\n";
-	s << "]";
+	if (x.size() == 0) {
+		s << "[]";
+	} else {
+		s << "[";
+		uint i=0;
+		for(; i<x.size() - 1; ++i)
+			s << x[i] << ", ";
+		s << x[i] << "]";
+	}
 	return s.str();
 }
+
+template< class T>
+bool vec_eq(std::vector<T> a, std::vector<T> b) {
+
+	TEST_EQ(a.size(), b.size());
+	uint size = a.size();
+	bool match = true;
+	for(uint i=0;i<size; i++)
+		if (a[i] != b[i]) {
+			match = false;
+			break;
+		}
+
+	if (!match) {
+		std::cout << "a: " << print_vector(a) << "\n"
+				<< "b: " << print_vector(b) << "\n";
+	}
+	return match;
+}
+
 
 #endif /* INCLUDE_TEST_TOOLS_HH_ */

@@ -265,21 +265,19 @@ struct make_array {
     	}
 
     	std::vector<Array> alist;
-    	for(ParserResult item : al)
-    		alist.push_back(get_array(item));
+    	for(ParserResult item : al) {
+    		Array a = get_array(item);
+    		//std::cout << "stack: " << print_vector(a.shape()) << "\n";
+    		alist.push_back(a);
+    	}
     	return Array::stack_zero(alist);
     }
 
 
     result_type operator()(assign_op x) const  {
     	result_type rhs = boost::apply_visitor(*this, x.rhs);
-    	if (Array* rhs_array = boost::get<Array>(&rhs)) {
-    		symbols[x.lhs] = *rhs_array;
-    		return rhs;
-    	}
-    	Throw() << "Internal error.\n"
-    		<< "Wrong type: " << "operand:" << rhs.which() << "\n"
-			<< "Expected: Array\n";
+   		symbols[x.lhs] = get_array(rhs);
+   		return rhs;
     }
 
 };
