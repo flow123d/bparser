@@ -294,9 +294,9 @@ struct subscribe_visitor {
 		if (idx == none_int) {
 			range_.sub_none();
 		} else {
-			if (range_.ranges_.size() == range_.full_shape_.size()) {
+			if (range_.ranges_.size() == range_.source_shape_.size()) {
 				Throw() << "Too many indices in subscription of array with shape "
-						<< print_vector(range_.full_shape_);
+						<< print_vector(range_.source_shape_);
 			}
 			range_.sub_index(idx);
 		}
@@ -304,18 +304,18 @@ struct subscribe_visitor {
 	}
 
 	result_type operator()(Slice slice_range) {
-		if (range_.ranges_.size() == range_.full_shape_.size()) {
+		if (range_.ranges_.size() == range_.source_shape_.size()) {
 			Throw() << "Too many indices in subscription of array with shape "
-					<< print_vector(range_.full_shape_);
+					<< print_vector(range_.source_shape_);
 		}
 		range_.sub_slice(slice_range);
 		return range_;
 	}
 
 	result_type operator()(ListInt index_range) {
-		if (range_.ranges_.size() == range_.full_shape_.size()) {
+		if (range_.ranges_.size() == range_.source_shape_.size()) {
 			Throw() << "Too many indices in subscription of array with shape "
-					<< print_vector(range_.full_shape_);
+					<< print_vector(range_.source_shape_);
 		}
 		range_.sub_range(index_range);
 		return range_;
@@ -357,7 +357,7 @@ inline Array subscribe(const Array &a, const ListRange &slice_list) {
 		auto visitor = subscribe_visitor(mir);
 		boost::apply_visitor(visitor, axis_range);
 	}
-	if (mir.ranges_.size() < mir.full_shape_.size()) {
+	if (mir.ranges_.size() < mir.source_shape_.size()) {
 		Throw() << "Missing index in subscription of array with shape " << print_vector(a.shape());
 	}
 	//std::cout << "sub shape:  " << print_vector(mir.sub_shape()) << "\n";
