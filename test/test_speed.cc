@@ -216,7 +216,7 @@ void test_expr(std::string expr, uint block_size, uint i_expr) {
 	// e.g. p.set_variable could return pointer to that pointer
 	// not so easy for vector and tensor variables, there are many pointers to set
 	// Rather modify the test to fill the
-	uint n_repeats = 1000000;
+	uint n_repeats = 10000;
 
 	ExprData  data1(vec_size);
 	ExprData2 data2(vec_size);
@@ -323,13 +323,14 @@ void test_expr(std::string expr, uint block_size, uint i_expr) {
 
 
 void test_expression() {
-	std::vector<uint> block_sizes = {64, 256, 1024};
+	//std::vector<uint> block_sizes = {64, 256, 1024};
+	std::vector<uint> block_sizes = {64};
 	for (uint i=0; i<block_sizes.size(); ++i) {
-		test_expr("v1 + v2 + v3 + v4", block_sizes[i], 1);
-		test_expr("3 * v1 + cs1 * v2 + v3 + 2.5 * v4", block_sizes[i], 2);
-		test_expr("sin(v1)", block_sizes[i], 3);
-		test_expr("minimum(v1, v2) + maximum(v3, v4)", block_sizes[i], 4);
-		//test_expr("[v2, v2, v2] @ v1 + v3", block_sizes[i], 4); // correct expression
+		//test_expr("v1 + v2 + v3 + v4", block_sizes[i], 1);
+		//test_expr("3 * v1 + cs1 * v2 + v3 + 2.5 * v4", block_sizes[i], 2);
+		//test_expr("sin(v1)", block_sizes[i], 3);
+		//test_expr("minimum(v1, v2) + maximum(v3, v4)", block_sizes[i], 4);
+		test_expr("[v2, v2, v2] @ v1 + v3", block_sizes[i], 4); // correct expression
 	}
 }
 

@@ -230,7 +230,7 @@ struct call_visitor {
     	BP_ASSERT(alist_.size() == 2);
     	//std::cout << "subscribe fn" << "\n";
     	return fn(
-    			get_type<Array>(alist_[0]),
+    			get_array(alist_[0]),
 				get_type<ListRange>(alist_[1]));
     }
 

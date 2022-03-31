@@ -28,8 +28,8 @@ bool match_linear(MultiIdxRange r, std::vector<uint> sub_linear) {
 	MultiIdx idx(r);
 	EXPECT_CONTINUE(TEST_EQ(shape_size(r.sub_shape()), sub_linear.size()));
 	for(uint n=0;n < sub_linear.size();n++) {
-		//std::cout << print_vector(idx.indices_) << "\n";
-		//std::cout << n << ", " << idx.linear_subidx() << ", " << sub_linear[n] <<  ", " << idx.linear_idx() << "\n";
+		std::cout << print_vector(idx.src_indices_) << "\n";
+		std::cout << n << ", " << idx.src_idx() << ", " << sub_linear[n] <<  ", " << idx.dest_idx() << "\n";
 		EXPECT_CONTINUE(TEST_EQ(n, idx.dest_idx()));
 		EXPECT_CONTINUE(TEST_EQ(sub_linear[n], idx.src_idx()));
 		if (! idx.inc_dest()) break;
@@ -71,12 +71,17 @@ void test_MultiIdxRange() {
 		EXPECT(match_linear(r, {0,1}));
 
 		// broadcasting and MultiIdx test
-		EXPECT(shape_eq(MultiIdxRange::broadcast_common_shape({3}, {2,1}), {2, 3}) );
+		EXPECT(shape_eq(MultiIdxRange::broadcast_common_shape({5,1,3}, {2,1}), {5, 2, 3}) );
 		MultiIdxRange bcast_r = r.broadcast(Shape({2,2,3}));
-		EXPECT(bcast_r.full_shape_ == Shape({2, 2, 3}));
-		EXPECT(match_linear(bcast_r, {0,0,0,3,3,3,0,0,0,3,3,3}));
+		EXPECT(shape_eq(bcast_r.full_shape_, {2, 1}));
+		EXPECT(shape_eq(bcast_r.sub_shape(), {2, 2, 3}));
+		EXPECT(shape_eq(bcast_r.ranges_[0], {0,0}));
+		EXPECT(shape_eq(bcast_r.ranges_[1], {0,1}));
+		EXPECT(shape_eq(bcast_r.ranges_[2], {0, 0, 0}));
+		EXPECT(shape_eq(bcast_r.sub_transpose_, {0, 1, 2}));
+		EXPECT(match_linear(bcast_r, {0,0,0,1,1,1,0,0,0,1,1,1}));
 		ASSERT_THROW(r.broadcast(Shape({4,3,3})),
-							"Broadcast from 2 to 3");
+							"Invalid broadcast from 2 to 3");
 	}
 	// test MIR modifications
 	{
@@ -114,6 +119,36 @@ void test_MultiIdxRange() {
 		EXPECT(match_linear(r, {10,6}));
 		EXPECT(shape_eq(r.sub_shape(), {1,2}))
 	}
+	{
+		// swap axis
+		auto r = MultiIdxRange(Shape({2,3,2}));
+		r.sub_range({1,0}); // axis 0
+		r.sub_slice({none_int, 2, none_int}); // axis 1
+		r.sub_none(); // dest axis 2
+		r.sub_index(1); //  src axis 2
+
+		r.swap_destination_axes(-1, -2);
+		EXPECT(shape_eq(r.full_shape_ , {2,3,2}));
+		EXPECT(shape_eq(r.sub_shape() , {2,1,2}));
+		EXPECT(vec_eq(r.ranges_[0],{1,0}));
+		EXPECT(vec_eq(r.ranges_[1],{0,1}));
+		EXPECT(vec_eq(r.ranges_[2],{1}));
+		EXPECT(vec_eq(r.sub_transpose_, {0, uint(none_int), 1}));
+
+	}
+	{
+		// swap axis
+		MultiIdxRange r = MultiIdxRange({2,1}).broadcast({3,2,1});
+		r.swap_destination_axes(-2, -1);
+		EXPECT(shape_eq(r.full_shape_, {2,1}));
+		EXPECT(shape_eq(r.sub_shape() , {3,1,2}));
+		EXPECT(vec_eq(r.ranges_[0],{0,0,0}));
+		EXPECT(vec_eq(r.ranges_[1],{0,1}));
+		EXPECT(vec_eq(r.ranges_[2],{0}));
+		EXPECT(vec_eq(r.sub_transpose_, {0,2,1}));
+		EXPECT(match_linear(r, {0,1,0,1,0,1}));
+
+	}
 
 
 }
@@ -138,13 +173,13 @@ void test_MultiIdx() {
 		EXPECT(vec_eq(idx.indices(), {0,1,0}));
 		EXPECT( idx.src_idx() == 9);
 		EXPECT( idx.dest_idx() == 1);
-		idx.inc_dest(0, 2);
+		idx.inc_dest(-1, 2);
 
 		std::cout << "MultiIdx 2\n";
 		EXPECT(vec_eq(idx.indices(), {1,1,0}));
 		EXPECT( idx.src_idx() == 3);
 		EXPECT( idx.dest_idx() == 3);
-		idx.inc_dest(2, -1);
+		idx.inc_dest(-3, -1);
 
 		std::cout << "MultiIdx 4\n";
 		EXPECT(vec_eq(idx.indices(), {0,1,0}));
@@ -164,7 +199,6 @@ void test_Array() {
 	Array s_const = Array::constant({3.14});
 	Array v_const = Array::constant({1.0, 2, 3}, {3});
 	Array t_const = Array::constant({1, 2, 3, 2, 4, 5, 3, 5, 6}, {3, 3});
-
 	double v[20][3][3];
 	// variable arrays, array of ValueNode
 	Array sa = Array::value((double *)v, 20); // double* ptr, shape
@@ -173,6 +207,7 @@ void test_Array() {
 
 	// TODO: implement and test equality function
 	// TODO: implement and test indexing and slicing
+
 
 	// constant - vector expressions (no difference)
 	Array res1 = s_const + sa;
@@ -204,11 +239,11 @@ void test_Array() {
 }
 
 int main() {
-/*
+
 	test_constructors();
 	test_absolute_idx();
 	test_MultiIdxRange();
 	test_MultiIdx();
-*/
+
 	test_Array();
 }

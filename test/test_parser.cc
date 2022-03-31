@@ -154,6 +154,7 @@ void test_expression() {
 	BP_ASSERT(test_expr("cv4 * av2", {8,10,12}));
 	BP_ASSERT(test_expr("as1 - cv4", {-3,-4,-5}));
 	BP_ASSERT(test_expr("[2,3,4] / av2", {1,1.5,2}));
+	BP_ASSERT(test_expr("[1,2][:, None] * [1,3][None,:]", {1,3,2,6}, {2,2}));
 
 
 	BP_ASSERT(test_expr("cv4[1] ** av2", {25, 25, 25}));

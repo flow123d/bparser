@@ -56,8 +56,11 @@ GCC 4.6, Clang 3.5
 	std::cout << print_vec(vres, 3*vec_size);
 ```
 
-## Grammar
+## Expression syntax
 BParser grammar tries to follow Python 3.6 [expression grammar](https://docs.python.org/3.6/reference/expressions.html). 
+
+
+
 In order to perform all array operations statically before compilation  
 we restrict indexing and slicing to int literals instead of general expressions.
 
