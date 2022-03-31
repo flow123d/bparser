@@ -59,6 +59,8 @@ GCC 4.6, Clang 3.5
 ## Expression syntax
 BParser grammar tries to follow Python 3.6 [expression grammar](https://docs.python.org/3.6/reference/expressions.html). 
 
+### Program
+
 Whole program consists of sequence of assignements separated by ';' finished with the result expression.
 
 ```
@@ -67,27 +69,33 @@ Whole program consists of sequence of assignements separated by ';' finished wit
     a + b + c
 ```
 
-White space doesn't metter. Input variables (as the `var`) are detected and must be provided through the 
-`set_variable` or `set_constant` methods (see 'Usage' section).
-New variables are defined by the assignment. Identifiers are formed from a-z,A-Z,_,0-9 
+White space doesn't matter. Input variables (as the `var`) are detected by the parser and must be provided through the 
+`set_variable` or `set_constant` methods (see 'Usage' section) before compilation.
+New variables are defined by the assignment. 
+
+Identifiers are formed from a-z,A-Z,_,0-9 
 charactes and must not start with a digit.
 
-Supported unary operators: 
-    - `not` : boolean inversion
-    - `+` : unary plus
-    - `-` : unary minus
-    
+
+### Operators
 Supported operators (sorted from the highest precedence):
-    - `**` : power
-    - unary `+`, unary `-`
-    - `*`, `/`, `//`, `%`, `@` : multiply, division, integer division, modulo, matrix multiplication
-    - `+`, `-`
-    - `<`, `>`, `<=`, `>=`, `==`, `!=`
-    - `not`
-    - `and`
-    - `or`
-    - `<true_expr> if <condition> else <false_expr>` : conditional expression
-    
+
+- `**` : power
+- `+` (unary), `-` (unary)
+- `*`, `/`, `//`, `%`, `@` 
+  
+  multiply, division, integer division, modulo, matrix multiplication
+
+- `+`, `-`
+- `<`, `>`, `<=`, `>=`, `==`, `!=`
+- `not`
+- `and`
+- `or`
+- `<true_expr> if <condition> else <false_expr>` 
+  
+  conditional expression
+
+  
 Chained comparison is suported, e. g.
 
 `a < b < c == d`
@@ -98,7 +106,9 @@ is evaluated as:
 
 Operands can be: numbers, variables, function calls, and array subscriptions.
 
-Supported functions:
+
+### Supported functions
+
    - `abs`, `ceil`,  `floor`, `sgn`
    - `rad2deg` (radians to degrees), `deg2rad` (degrees to radians),
    - `acos`, `asin`, `atan`, `atan2`, `cos`, `sin`, `tan`,
@@ -109,18 +119,23 @@ Supported functions:
    - `flatten`
    - `minimum`, `maximum`
    
-Arrays: vectors, matrices, tensors.
+### Arrays
+Arrays of arbitrery dimension are supported, i.e. vectors, matrices, tensors.
 
 Construction:
 `[1,2,3]` : vector, shape {3}
 `[[1,2], [3,4]]` : matrix, shape {2,3}
  
 Subscription, slices:
+
 `a[0, 1]` : element on row 0, column 1 of a matrix
+
 `a[[5, 0, 2]]` : subvector of elements at indices 5, 0, 2
+
 `a[-1]` : negative indices are treated as `axis_size +  index`
 
 `a[0:10:2]` : eleemnts at indices 0,2,4,6,8
+
 `a[-1:-2:-1]` : last two elements in reversed order
 
 `a[None, 1]` : vector of shape `{n}` broadcasted to a matrix of shape `{1,n}`
@@ -182,36 +197,48 @@ power:
     | primary
 
 primary:
-    | primary '.' NAME 
-    | primary genexp 
-    | primary '(' [arguments] ')' 
-    | primary '[' slices ']' 
+    | atom
+    | subscription
+
+atom:
+    | `True`
+    | `False` 
+    | DOUBLE 
+    | INT 
     | atom
 
-slices:
-    | slice !',' 
-    | ','.slice+ [',']
-    
-slice:
-    | [expression] ':' [expression] [':' [expression] ] 
-    | named_expression 
-    
-atom:
-    | NAME
-    | 'True' 
-    | 'False' 
-    | 'None' 
-    | NUMBER
+subscription: 
+    | subscriptable (`[` slicing  `]`)
+    | subscriptable
 
-strings: STRING+ 
-list:
-    | '[' [star_named_expressions] ']'
-Literals: 
-  - integer: e.g. 1
-  - float: exponential notation, e.g. 1.0; 1.0e-0
-  - bool: 'True' or 'False'
-  - variable name: any string formed from a-z,A-Z,_,0-9, not starting with a digit
-  
+subscriptable:
+    | array
+    | enclosure
+    | call
+    | IDENTIFIER
+
+array: `[` param_list `]`
+
+enclosure: `(` expression `)`
+
+call: FUNCTION `(` param_list `)`
+
+param_list: 
+    | 
+    | param (`,` param)+
+    
+slicing: slice_param (`,` slice_param)+
+
+slice_param:
+    | int_array
+    | slice
+    | INT
+    | `None` 
+    
+int_array: INT (`,` INT)+
+
+slice: (INT)? ':' (INT)? (':' INT)?
+
 
 In order to perform all array operations statically before compilation  
 we restrict indexing and slicing to int literals instead of general expressions.
