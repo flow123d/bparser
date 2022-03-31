@@ -494,7 +494,7 @@ struct _ifelse_ : public ScalarNode {
 	}
 };
 
-
+UNARY_FN(_log2_, 	52, log2);
 
 
 /***********************

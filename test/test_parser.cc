@@ -147,7 +147,6 @@ void test_expression() {
 	BP_ASSERT(test_expr("a=[av2, cv4, 2*av2]; a[:,1]", {2,5,4}, {3}));
 	BP_ASSERT(test_expr("a=[av2, cv4, 2*av2]; b=[a, a-1]; b[:,1,:]", {4,5,6,3,4,5}, {2,3}));
 	BP_ASSERT(test_expr("a=[av2, cv4, 2*av2]; b=[a, a-1]; b[1,:,1]", {1, 4, 3}, {3}));
-	BP_ASSERT(test_expr("a=[av2, cv4, 2*av2]; b=[a, a-1]; b[1,:,1]", {1, 4, 3}, {3}));
 
 
 	BP_ASSERT(test_expr("cs3 * av2", {6,6,6}));
@@ -197,10 +196,30 @@ void test_expression() {
 	BP_ASSERT(test_expr("a=[1,2,3]; a[:, None] @ a[None,:]", {1, 2, 3, 2, 4, 6, 3, 6, 9}, {3,3}));
 	//BP_ASSERT(test_expr("0 if cv4 > 4.5 else 1", {1, 0, 0}));
 
-	BP_ASSERT(test_expr("minimum([1,2,3], [0,4,3])", {0,2,3}));
-	BP_ASSERT(test_expr("maximum([1,2,3], [0,4,3])", {1,4,3}));
 
+	BP_ASSERT(test_expr("abs(-1)+abs(0)+abs(1)", {2}));
+	BP_ASSERT(test_expr("floor(-3.5)", {-4}, {}));
+	BP_ASSERT(test_expr("ceil(-3.5)", {-3}, {}));
+	BP_ASSERT(test_expr("-sgn(-2) + sgn(2) + sgn(0)", {2}, {}));
+	//BP_ASSERT(test_expr("rad2deg(pi)", {180}));
+	//BP_ASSERT(test_expr("deg2rad(90)", {M_PI/2}));
+
+	BP_ASSERT(test_expr("acos(0.5)", {M_PI/3}));
+	BP_ASSERT(test_expr("asin(0.5)", {M_PI/6}));
+	BP_ASSERT(test_expr("atan(1)", {M_PI/4}));
 	BP_ASSERT(test_expr("sin(pi*as1)", {0})); // sin(pi*1)
+	BP_ASSERT(test_expr("cos(pi*as1)", {-1}));
+	BP_ASSERT(test_expr("tan(pi*as1)", {0}));
+
+	BP_ASSERT(test_expr("log2(8)", {3}, {}));
+	BP_ASSERT(test_expr("exp(0)", {1}, {}));
+	BP_ASSERT(test_expr("log(1)", {0}, {}));
+	BP_ASSERT(test_expr("log10(10)", {1}, {}));
+	BP_ASSERT(test_expr("cosh(0)", {1}, {}));
+	BP_ASSERT(test_expr("sinh(1)", {(exp(1) - exp(-1))/2}));
+
+	BP_ASSERT(test_expr("power(3, 4)", {81}, {}));
+	BP_ASSERT(test_expr("sqrt(9)", {3}, {}));
 
 	BP_ASSERT(test_expr("flatten([[1,2],[3,4]])", {1, 2, 3, 4}, {4}));
 	BP_ASSERT(test_expr("eye(2)[0,0]", {1}));
@@ -211,6 +230,8 @@ void test_expression() {
 	BP_ASSERT(test_expr("ones([2,3])", {1, 1, 1, 1, 1, 1}, {2,3}));
 	//BP_ASSERT(test_expr("full([2,3], 5)", {5, 5, 5, 5, 5, 5}, {2,3}));
 	//BP_ASSERT(test_expr("norm([2, 3])", {5}));
+	BP_ASSERT(test_expr("minimum([1,2,3], [0,4,3])", {0,2,3}));
+	BP_ASSERT(test_expr("maximum([1,2,3], [0,4,3])", {1,4,3}));
 
 }
 

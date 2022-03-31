@@ -476,7 +476,7 @@ struct Processor {
 			CODE(_min_);
 			CODE(_copy_);
 			CODE(_ifelse_);
-//			CODE(__);
+			CODE(_log2_);
 //			CODE(__);
 //			CODE(__);
 //			CODE(__);
