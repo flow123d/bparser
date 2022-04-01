@@ -15,6 +15,7 @@
 #include <memory>
 #include "config.hh"
 #include "assert.hh"
+#include "arena_alloc.hh"
 
 
 
@@ -158,11 +159,17 @@ struct ValueCopyNode : public ScalarNode {
 		op_name_ = "ValueCopy";
 		values_ = ptr;
 		result_storage = value_copy;
+		arena_ = nullptr;
 	}
 
 	~ValueCopyNode() override {
 	}
 
+	void set_arena(std::shared_ptr<ArenaAlloc> arena) {
+		this->arena_ = arena;
+	}
+
+	std::shared_ptr<ArenaAlloc> arena_;
 };
 
 
