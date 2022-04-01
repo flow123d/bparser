@@ -134,7 +134,7 @@ struct ExprData2 {
 
 
 
-// C++ evaluation of expression "v1 + v2 + + v3 + v4"
+// C++ evaluation of expression "v1 + v2 + v3 + v4"
 void expr1(ExprData &data) {
 	for(uint i_comp=0; i_comp < 3*data.vec_size; i_comp += data.vec_size) {
 		for(uint i=0; i<data.vec_size/4; ++i) {
@@ -168,24 +168,24 @@ void expr2(ExprData &data) {
 }
 
 
-// C++ evaluation of expression "3 * v1 - cs1 * v2 + sin(0.5*PI) * v3 - cos(0.25*PI) * v4"
+// C++ evaluation of expression "sin(v1)"
 void expr3(ExprData &data) {
 	for(uint i_comp=0; i_comp < 3*data.vec_size; i_comp += data.vec_size) {
 		for(uint i=0; i<data.vec_size/4; ++i) {
 			uint j = i_comp + 4*data.subset[i];
 			for(uint k = 0; k<4; k++) {
 				double v1 = data.v1[j+k];
-				double v2 = data.v2[j+k];
-				double v3 = data.v3[j+k];
-				double v4 = data.v4[j+k];
-				data.vres[j+k] = 3 * v1  - data.cs1 * v2 + sin(0.5*M_PI) * v3 - cos(0.25*M_PI) * v4 ;
+				//double v2 = data.v2[j+k];
+				//double v3 = data.v3[j+k];
+				//double v4 = data.v4[j+k];
+				data.vres[j+k] = sin(v1);
 			}
 		}
 	}
 }
 
 
-// C++ evaluation of expression "[v1 @ v2, v2 @ v3, v3 @ v4]"
+// C++ evaluation of expression "[v2, v2, v2] @ v1 + v3"
 void expr4(ExprData &data) {
 	for(uint i_comp=0; i_comp < 3*data.vec_size; i_comp += data.vec_size) {
 		for(uint i=0; i<data.vec_size/4; ++i) {
@@ -216,7 +216,7 @@ void test_expr(std::string expr, uint block_size, uint i_expr) {
 	// e.g. p.set_variable could return pointer to that pointer
 	// not so easy for vector and tensor variables, there are many pointers to set
 	// Rather modify the test to fill the
-	uint n_repeats = 10000;
+	uint n_repeats = (1024 / block_size) * 100000;
 
 	ExprData  data1(vec_size);
 	ExprData2 data2(vec_size);
@@ -323,13 +323,11 @@ void test_expr(std::string expr, uint block_size, uint i_expr) {
 
 
 void test_expression() {
-	//std::vector<uint> block_sizes = {64, 256, 1024};
-	std::vector<uint> block_sizes = {64};
+	std::vector<uint> block_sizes = {64, 256, 1024};
 	for (uint i=0; i<block_sizes.size(); ++i) {
 		test_expr("v1 + v2 + v3 + v4", block_sizes[i], 1);
 		test_expr("3 * v1 + cs1 * v2 + v3 + 2.5 * v4", block_sizes[i], 2);
 		test_expr("sin(v1)", block_sizes[i], 3);
-		test_expr("minimum(v1, v2) + maximum(v3, v4)", block_sizes[i], 4);
 		test_expr("[v2, v2, v2] @ v1 + v3", block_sizes[i], 4); // correct expression
 	}
 }
