@@ -372,9 +372,12 @@ struct Processor {
 				break;
 			case value_copy:
 			{
-				vec_set(node->result_idx_, (double4 *)node->get_value(), workspace_.vec_subset);
 				auto val_copy_ptr = ( std::dynamic_pointer_cast<ValueCopyNode> (node) );
 				val_copy_ptr->set_arena(arena_);
+				if (val_copy_ptr->values_ == nullptr) {
+					val_copy_ptr->values_ = arena_->create_array<double>(vec_size);
+					vec_set(node->result_idx_, (double4 *)node->get_value(), workspace_.vec_subset);
+				}
 				val_copy_nodes_.push_back(val_copy_ptr);
 				break;
 			}
@@ -415,7 +418,10 @@ struct Processor {
 	}
 
 	~Processor() {
-		//arena_.destroy();
+		for (auto node : val_copy_nodes_) {
+			node->values_ = nullptr;
+		}
+		arena_->destroy();
 	}
 
 	Operation make_operation(ScalarNodePtr  node) {
@@ -436,6 +442,7 @@ struct Processor {
 	}
 
 	void run() {
+		this->copy_inputs();
 		for(Operation * op = program_;;++op) {
 //			std::cout << "op: " << (int)(op->code)
 //					<< " ia0: " << (int)(op->arg[0])
@@ -516,6 +523,14 @@ struct Processor {
 			workspace_.vec_subset[i] = subset[i];
 		}
 		// std::cout << "subset: " << workspace_.vec_subset << std::endl;
+	}
+
+	// Copy data of ValueCopyNode objects to arena_
+	void copy_inputs()
+	{
+		for (auto node : val_copy_nodes_) {
+			memcpy(node->values_, node->source_ptr_, workspace_.vector_size * sizeof *node->values_);
+		}
 	}
 
 	std::shared_ptr<ArenaAlloc> arena_;
