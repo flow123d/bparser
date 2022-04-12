@@ -300,7 +300,8 @@ struct Processor {
 				align_size(simd_bytes, sizeof(Processor)) +
 				align_size(simd_bytes, sizeof(uint) * vector_size) +
 				align_size(simd_bytes, se.temp_end * sizeof(Vec)) +
-				sizeof(double) * vector_size * (se.temp_end - se.values_end) +
+				sizeof(double) * vector_size * (se.temp_end - se.values_copy_end) +
+				sizeof(double4) * vector_size * (se.values_copy_end - se.values_end) +
 				align_size(simd_bytes, sizeof(double4) * se.constants_end ) +
 				align_size(simd_bytes, sizeof(Operation) * (sorted_nodes.size() + 64) )
 
