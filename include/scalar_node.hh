@@ -14,7 +14,7 @@
 #include <typeinfo>
 #include "config.hh"
 #include "assert.hh"
-#include "VCL_v2_include.h"
+#include "VCL_v2_include.hh"
 
 
 namespace bparser {
