@@ -126,9 +126,9 @@ void expr1(ExprData &data) {
 				double v1 = data.v1[j+k];
 				double v2 = data.v2[j+k];
 
-				data.vres[j+k] = v1 * v2;
+				// data.vres[j+k] = v1 * v2;
 				// data.vres[j+k] = v1 * v2 * v1;
-				// data.vres[j+k] = v1 * v2 * v1 * v2;
+				data.vres[j+k] = v1 * v2 * v1 * v2;
 
 				// double v3 = data.v3[j+k];
 				// data.vres[j+k] = v1 * v2 * v3;
@@ -211,7 +211,7 @@ void test_expr(std::string expr) {
 		}
 	}
 
-
+	std::cout << "In test_speed.cc" << std::endl;
 	std::cout << "Diff: " << diff << " parser: " << p_sum << " c++: " << c_sum << "\n";
 	std::cout << "parser time : " << parser_time << "\n";
 	std::cout << "c++ time    : " << cpp_time << "\n";
@@ -234,11 +234,11 @@ void test_expr(std::string expr) {
 
 
 void test_expression() {
-	//test_expr("3 * v1 + cs1 * v2 + cv1 * v3 + v4**2");
-	test_expr("v1 * v2");
-	//test_expr("v1 * v2 * v1");
-	//test_expr("v1 * v2 * v3");
-	//test_expr("v1 * v2 * v1 * v2");
+	// test_expr("3 * v1 + cs1 * v2 + cv1 * v3 + v4**2");
+	// test_expr("v1 * v2");
+	// test_expr("v1 * v2 * v1");
+	// test_expr("v1 * v2 * v3");
+	test_expr("v1 * v2 * v1 * v2");
 }
 
 

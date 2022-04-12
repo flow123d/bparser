@@ -360,7 +360,9 @@ struct Processor : ProcessorBase {
 		//std::cout << "&vec_subset: " << &(workspace_.vec_subset) << "\n";
 		//std::cout << "aloc vec_subset: " << workspace_.vec_subset << " size: " << vec_size << "\n";
 
-		std::cout << "\nIn porcessor.hh: \nvec_size: " << vec_size << "\nsimd_size: " << simd_size << "\nsOfDouble: " << sizeof(double) << "\nsOfMVec: " << sizeof(MVec) << "\nse.temp_end: " << se.temp_end << "\nse.values_end: " << se.values_end << "\nse.constants_end: " << se.constants_end << std::endl;
+		std::cout << "In porcessor.hh: " << std::endl;
+		std::cout << "vec_size: " << vec_size << "\nsimd_size: " << simd_size << "\nsOfMVec: " << sizeof(MVec) << "\nsOfDouble: " << sizeof(double) << std::endl;
+		std::cout << "se.temp_end: " << se.temp_end << "\nse.values_end: " << se.values_end << "\nse.constants_end: " << se.constants_end << std::endl;
 
 
 		workspace_.vector = (Vec<MVec> *) arena_.allocate(sizeof(Vec<MVec>) * se.temp_end);
