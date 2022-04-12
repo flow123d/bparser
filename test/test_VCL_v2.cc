@@ -27,7 +27,8 @@ template <typename VecType>
 void eval(VecType &res, VecType a, VecType b)
 {
 	// as_bool(res) = a < b;
-    res = as_double(a < b);
+    // res = as_double(a < b);
+    res = a - b * truncate(a / b);
 }
 
 template<typename bool_type> struct b_to_d;
@@ -47,29 +48,29 @@ struct b_to_d<Vec8db> {
     typedef Vec8d double_type;
 };
 
-template<typename bool_type> union MaskDouble;
+template<typename bool_type> union b_to_d_mask;
 
 template<>
-union MaskDouble<Vec2db> {
+union b_to_d_mask<Vec2db> {
 	Vec2db	mask;
 	Vec2d  value;
 };
 
 template<>
-union MaskDouble<Vec4db> {
+union b_to_d_mask<Vec4db> {
 	Vec4db	mask;
 	Vec4d  value;
 };
 
 template<>
-union MaskDouble<Vec8db> {
+union b_to_d_mask<Vec8db> {
 	Vec8db	mask;
 	Vec8d  value;
 };
 
 template<typename bool_type>
 inline typename b_to_d<bool_type>::double_type as_double(bool_type in) {
-    MaskDouble<bool_type> x = {in};
+    b_to_d_mask<bool_type> x = {in};
     return x.value;
 }
 
@@ -90,22 +91,22 @@ struct d_to_b<Vec8d> {
     typedef Vec8db bool_type;
 };
 
-template<typename double_type> union DoubleMask;
+template<typename double_type> union d_to_b_mask;
 
 template<>
-union DoubleMask<Vec2d> {
+union d_to_b_mask<Vec2d> {
 	Vec2d  value;
 	Vec2db	mask;
 };
 
 template<>
-union DoubleMask<Vec4d> {
+union d_to_b_mask<Vec4d> {
 	Vec4d  value;
 	Vec4db	mask;
 };
 
 template<>
-union DoubleMask<Vec8d> {
+union d_to_b_mask<Vec8d> {
 	Vec8d  value;
 	Vec8db	mask;
 };
@@ -113,7 +114,7 @@ union DoubleMask<Vec8d> {
 
 template<typename double_type>
 inline typename d_to_b<double_type>::bool_type as_bool(double_type in) {
-    DoubleMask<double_type> x = {in};
+    d_to_b_mask<double_type> x = {in};
     return x.mask;
 }
 
@@ -195,7 +196,7 @@ int main()
     printVector<Vec8d>(rrr, "rrr");
 
     auto start_time = std::chrono::high_resolution_clock::now();
-    for (int i = 1; i < 20000000; i++)
+    for (int i = 1; i < 1000000; i++)
     {
         eval<Vec2d>(r, a, b);
         eval<Vec4d>(rr, aa, bb);
