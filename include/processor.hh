@@ -422,7 +422,7 @@ struct Processor {
 		for (auto node : val_copy_nodes_) {
 			node->values_ = nullptr;
 		}
-		arena_->destroy();
+		//arena_->destroy();
 	}
 
 	Operation make_operation(ScalarNodePtr  node) {

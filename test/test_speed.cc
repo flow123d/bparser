@@ -229,10 +229,10 @@ void test_expr(std::string expr, uint block_size, uint i_expr) {
 		p.parse(expr);
 		p.set_constant("cs1", {}, 	{data1.cs1});
 		p.set_constant("cv1", {3}, 	std::vector<double>(data1.cv1, data1.cv1+3));
-		p.set_variable("v1", {3}, data1.v1);
-		p.set_variable("v2", {3}, data1.v2);
-		p.set_variable("v3", {3}, data1.v3);
-		p.set_variable("v4", {3}, data1.v4);
+		p.set_var_copy("v1", {3}, data1.v1);
+		p.set_var_copy("v2", {3}, data1.v2);
+		p.set_var_copy("v3", {3}, data1.v3);
+		p.set_var_copy("v4", {3}, data1.v4);
 		p.set_variable("_result_", {3}, data1.vres);
 		//std::cout << "vres: " << vres << ", " << vres + block_size << ", " << vres + 2*vec_size << "\n";
 		//std::cout << "Symbols: " << print_vector(p.symbols()) << "\n";
