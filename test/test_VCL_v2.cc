@@ -26,15 +26,15 @@ void printVector(const VecType & v, const char * prefix)
 template <typename VecType>
 void eval(VecType &res, VecType a, VecType b)
 {
-	as_bool(res) = a < b;
+	// as_bool(res) = a < b;
+    res = as_double(a < b);
 }
 
 template<typename bool_type> struct b_to_d;
-template<typename double_type> struct d_to_b;
 
 template<>
-struct b_to_d<Vec8db> {
-    typedef Vec8d double_type;
+struct b_to_d<Vec2db> {
+    typedef Vec2d double_type;
 };
 
 template<>
@@ -43,13 +43,41 @@ struct b_to_d<Vec4db> {
 };
 
 template<>
-struct b_to_d<Vec2db> {
-    typedef Vec2d double_type;
+struct b_to_d<Vec8db> {
+    typedef Vec8d double_type;
+};
+
+template<typename bool_type> union MaskDouble;
+
+template<>
+union MaskDouble<Vec2db> {
+	Vec2db	mask;
+	Vec2d  value;
 };
 
 template<>
-struct d_to_b<Vec8d> {
-    typedef Vec8db bool_type;
+union MaskDouble<Vec4db> {
+	Vec4db	mask;
+	Vec4d  value;
+};
+
+template<>
+union MaskDouble<Vec8db> {
+	Vec8db	mask;
+	Vec8d  value;
+};
+
+template<typename bool_type>
+inline typename b_to_d<bool_type>::double_type as_double(bool_type in) {
+    MaskDouble<bool_type> x = {in};
+    return x.value;
+}
+
+template<typename double_type> struct d_to_b;
+
+template<>
+struct d_to_b<Vec2d> {
+    typedef Vec2db bool_type;
 };
 
 template<>
@@ -58,37 +86,50 @@ struct d_to_b<Vec4d> {
 };
 
 template<>
-struct d_to_b<Vec2d> {
-    typedef Vec2db bool_type;
+struct d_to_b<Vec8d> {
+    typedef Vec8db bool_type;
 };
 
-template<typename bool_type>
-typename b_to_d<bool_type>::double_type as_double(bool_type &in) {
-    return *((typename b_to_d<bool_type>::double_type *)(&in));
-}
+template<typename double_type> union DoubleMask;
+
+template<>
+union DoubleMask<Vec2d> {
+	Vec2d  value;
+	Vec2db	mask;
+};
+
+template<>
+union DoubleMask<Vec4d> {
+	Vec4d  value;
+	Vec4db	mask;
+};
+
+template<>
+union DoubleMask<Vec8d> {
+	Vec8d  value;
+	Vec8db	mask;
+};
+
 
 template<typename double_type>
-typename d_to_b<double_type>::bool_type as_bool(double_type &in) {
-    return *((typename d_to_b<double_type>::bool_type *)(&in));
+inline typename d_to_b<double_type>::bool_type as_bool(double_type in) {
+    DoubleMask<double_type> x = {in};
+    return x.mask;
 }
 
+// template<typename bool_type>
+// typename b_to_d<bool_type>::double_type as_double(bool_type &in) {
+//     return *((typename b_to_d<bool_type>::double_type *)(&in));
+// }
 
+// template<typename double_type>
+// typename d_to_b<double_type>::bool_type as_bool(double_type &in) {
+//     return *((typename d_to_b<double_type>::bool_type *)(&in));
+// }
 
 //#define MAX_VECTOR_SIZE 256
 int main()
 {
-    auto start_time = std::chrono::high_resolution_clock::now();
-    // for (int i = 1; i < 1000000; i++)
-    // {
-        // Vec8d dsd(1.2, 2.4, 3.6, 4.8, 5.6, 4.2, 23.4, 234.6);
-        // Vec8d res8dsd = dsd + dsd;
-
-        // Vec4d dsd1(1.2, 2.4, 3.6, 4.8);
-        // Vec4d dsd2(5.6, 4.2, 23.4, 234.6);
-        // Vec4d res4dsd1 = dsd1 + dsd1;
-        // Vec4d res4dsd2 = dsd2 + dsd2;
-    // }
-
     Vec2d a(0.0, 5.0);
     Vec2d b(1.0, 4.0);
     Vec2d r;
@@ -144,13 +185,22 @@ int main()
 
     Vec8d ccc;
     Vec8d &ccc_ref = ccc;
-    as_bool(ccc_ref) = aaa < bbb;
+    ccc_ref = as_double(aaa < bbb);
 
+    printVector<Vec8d>(ccc_ref, "ccc_ref");
     printVector<Vec8db>(as_bool(ccc_ref), "ccc_ref");
 
     eval<Vec8d>(rrr, aaa, bbb);
 
     printVector<Vec8d>(rrr, "rrr");
+
+    auto start_time = std::chrono::high_resolution_clock::now();
+    for (int i = 1; i < 20000000; i++)
+    {
+        eval<Vec2d>(r, a, b);
+        eval<Vec4d>(rr, aa, bb);
+        eval<Vec8d>(rrr, aaa, bbb);   
+    }
 
     auto end_time = std::chrono::high_resolution_clock::now();
 
