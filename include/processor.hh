@@ -125,12 +125,9 @@ using namespace details;
 //};
 
 
-//const uint simd_size = MAX_VECTOR_SIZE / 64;
-// const uint simd_size = 4;	
-							//myTODO: nesmí být konstanta, ale je třeba nastavit..> v create detekci
-							//pote predat do areny jako parametr
+// const uint simd_size = 4;
 
-//  typedef double double4 __attribute__((__vector_size__(32)));
+// typedef double double4 __attribute__((__vector_size__(32)));
 
 template <typename VecType>
 struct Vec {
@@ -288,7 +285,6 @@ struct ProcessorBase {
 	virtual void set_subset(std::vector<uint> const &subset) = 0;
 
 	virtual ~ProcessorBase() {
-
 	}
 };
 
