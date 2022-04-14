@@ -112,6 +112,67 @@ bool fail_expr(std::string expr, std::string ref_msg) {
 	return false;
 }
 
+std::vector<double> eval_bool_expr_(std::string expr) {
+	std::cout << "parser test : " << expr << "\n";
+	using namespace bparser;
+
+	uint simd_size = 1;
+	uint simd_bytes = sizeof(double) * simd_size;
+	ArenaAlloc *arena = new ArenaAlloc(simd_bytes, 6 * vec_size * sizeof(double));
+
+	auto v1 = (*arena).create_array<double>(vec_size * 3);
+	fill_seq(v1, 88, 100 + 3 * vec_size * 2, 2.0);
+
+	auto v2 = (*arena).create_array<double>(vec_size * 3);
+	fill_seq(v2, 100, 100 + 3 * vec_size);
+
+	Parser p(vec_size);
+	p.parse(expr);
+	std::cout << "  AST: " << p.print_ast() << "\n";
+	p.set_variable("v1", {3}, v1);
+	p.set_variable("v2", {3}, v2);
+	// p.set_constant("cs3", {}, 	{3});
+	// p.set_constant("cv4", {3}, 	{4, 5, 6});
+	//p.set_variable("_result_", {result_size}, vres);
+//	std::cout << "vres: " << vres << ", " << vres + vec_size << ", " << vres + 2*vec_size << "\n";
+//	std::cout << "Symbols: " << print_vector(p.symbols()) << "\n";
+//	std::cout.flush();
+	p.compile();
+	double * vres = p.tmp_result_ptr();
+	uint result_size = shape_size(p.result_array().shape());
+	fill_const(vres, vec_size * result_size, -1e100); // undefined value
+	p.set_subset({0, 1});
+	p.run();
+
+	std::vector<double> res(result_size * vec_size);
+	for(uint i=0; i < res.size(); i++) res[i] = vres[i];
+	return res;
+}
+
+bool test_bool_expr(std::string expr, std::vector<double> ref_result) {
+	auto res = eval_bool_expr_(expr);
+
+	// check
+	bool success = true;
+	for(uint i=0; i < vec_size; i++) {
+		for(uint j=0; j < ref_result.size(); j++) {
+			if (fabs(res[j * vec_size + i] - ref_result[j]) > 1e-3 * fabs(ref_result[j]) ) {
+				success = false;
+				std::cout << "  " << i << "," << j <<
+				" ref: " << ref_result[j] <<
+				" res: " << res[i * ref_result.size() + j] << "\n";
+			}
+		}
+	}
+	std::cout.flush();
+	return success;
+}
+
+void test_bool_expression()
+{
+	std::cout << std::endl << "** test bool expression" << std::endl;
+	BP_ASSERT(test_expr("v1 < v2", {1,1,0}));
+}
 
 void test_expression() {
 	/**
@@ -165,8 +226,9 @@ void test_speed_cases() {
 
 int main()
 {
-	//test_free_variables();
+	// test_free_variables();
 	test_expression();
+	// test_bool_expression();
 #ifdef NDEBUG
 	test_speed_cases();
 #endif
