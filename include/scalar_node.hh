@@ -147,7 +147,7 @@ struct ResultNode : public ScalarNode {
 template<typename bool_type> struct b_to_d;
 
 template<>
-struct b_to_d<bool> {
+struct b_to_d<int64_t> {
     typedef double double_type;
 };
 
@@ -169,8 +169,8 @@ struct b_to_d<Vec8db> {
 template<typename bool_type> union b_to_d_mask;
 
 template<>
-union b_to_d_mask<bool> {
-	bool	mask;
+union b_to_d_mask<int64_t> {
+	int64_t	mask;
 	double  value;
 };
 
@@ -202,7 +202,7 @@ template<typename double_type> struct d_to_b;
 
 template<>
 struct d_to_b<double> {
-    typedef bool bool_type;
+    typedef int64_t bool_type;
 };
 
 template<>
@@ -225,7 +225,7 @@ template<typename double_type> union d_to_b_mask;
 template<>
 union d_to_b_mask<double> {
 	double  value;
-	bool	mask;
+	int64_t	mask;
 };
 
 template<>
@@ -255,33 +255,33 @@ inline typename d_to_b<double_type>::bool_type as_bool(double_type in) {
 
 // previous functions
 
-union MaskDouble {
-	int64_t	mask;
-	double  value;
-};
+// union MaskDouble {
+// 	int64_t	mask;
+// 	double  value;
+// };
 
-union DoubleMask {
-	double  value;
-	int64_t	mask;
-};
+// union DoubleMask {
+// 	double  value;
+// 	int64_t	mask;
+// };
 
-inline double mask_to_double(int64_t x) {
-	return reinterpret_cast<double &>(x);
-}
+// inline double mask_to_double(int64_t x) {
+// 	return reinterpret_cast<double &>(x);
+// }
 
-inline int64_t double_to_mask(double x) {
-	return reinterpret_cast<int64_t &>(x);
-}
+// inline int64_t double_to_mask(double x) {
+// 	return reinterpret_cast<int64_t &>(x);
+// }
 
-//inline constexpr double mask_to_double(int64_t x) {
-//	MaskDouble m = {x};
-//	return m.value;
-//}
-//
-//inline constexpr int64_t double_to_mask(double x) {
-//	DoubleMask m = {x};
-//	return m.mask;
-//}
+// inline constexpr double mask_to_double(int64_t x) {
+// 	MaskDouble m = {x};
+// 	return m.value;
+// }
+
+// inline constexpr int64_t double_to_mask(double x) {
+// 	DoubleMask m = {x};
+// 	return m.mask;
+// }
 
 inline int64_t bitmask_false() {
 	return 0x0000000000000000L;
@@ -292,13 +292,12 @@ inline int64_t bitmask_true() {
 }
 
 inline double double_false() {
-	return mask_to_double(bitmask_false());
+	return as_double(bitmask_false());
 }
 
 inline double double_true() {
-	return mask_to_double(bitmask_true());
+	return as_double(bitmask_true());
 }
-
 
 inline double double_bool(bool x) {
 	return x ? double_true() : double_false();
@@ -367,71 +366,98 @@ struct _mod_ : public ScalarNode {
 	static const char op_code = 6;
 	static const char n_eval_args = 3;
 	template <typename VecType>
-	inline static void eval(VecType &res, VecType a, VecType b) {
-		// TODO: vectorize
-		res = a - b * truncate(a / b);
-	}
+	inline static void eval(VecType &res, VecType a, VecType b);
 };
+template<typename VecType>
+inline void _mod_::eval(VecType &res, VecType a, VecType b) {
+	res = a - b * truncate(a / b);
+}
+template<>
+inline void _mod_::eval<double>(double &res, double a, double b) {
+	res = std::fmod(a, b);
+}
 
 struct _eq_ : public ScalarNode {
 	static const char op_code = 7;
 	static const char n_eval_args = 3;
 	template <typename VecType>
-	inline static void eval(VecType &res, VecType a, VecType b) {
-		// TODO: vectorize
-		res = as_double(a == b);
-	}
+	inline static void eval(VecType &res, VecType a, VecType b);
 };
+template<typename VecType>
+inline void _eq_::eval(VecType &res, VecType a, VecType b) {
+	res = as_double(a == b);
+}
+template<>
+inline void _eq_::eval<double>(double &res, double a, double b) {
+	res = double_bool(a == b);
+}
 
 struct _ne_ : public ScalarNode {
 	static const char op_code = 8;
 	static const char n_eval_args = 3;
 	template <typename VecType>
-	inline static void eval(VecType &res, VecType a, VecType b) {
-		// TODO: vectorize
-		res = as_double(a != b);
-	}
+	inline static void eval(VecType &res, VecType a, VecType b);
 };
-
+template<typename VecType>
+inline void _ne_::eval(VecType &res, VecType a, VecType b) {
+	res = as_double(a != b);
+}
+template<>
+inline void _ne_::eval<double>(double &res, double a, double b) {
+	res = double_bool(a != b);
+}
 
 struct _lt_ : public ScalarNode {
 	static const char op_code = 9;
 	static const char n_eval_args = 3;
 	template <typename VecType>
-	inline static void eval(VecType &res, VecType a, VecType b) {
-		// TODO: vectorize
-		res = as_double(a < b);
-	}
+	inline static void eval(VecType &res, VecType a, VecType b);
 };
+template<typename VecType>
+inline void _lt_::eval(VecType &res, VecType a, VecType b) {
+	res = as_double(a < b);
+}
+template<>
+inline void _lt_::eval<double>(double &res, double a, double b) {
+	res = double_bool(a < b);
+}
 
 struct _le_ : public ScalarNode {
 	static const char op_code = 10;
 	static const char n_eval_args = 3;
 	template <typename VecType>
-	inline static void eval(VecType &res, VecType a, VecType b) {
-		// TODO: vectorize
-		res = as_double(a <= b);
-	}
+	inline static void eval(VecType &res, VecType a, VecType b);
 };
+template<typename VecType>
+inline void _le_::eval(VecType &res, VecType a, VecType b) {
+	res = as_double(a <= b);
+}
+template<>
+inline void _le_::eval<double>(double &res, double a, double b) {
+	res = double_bool(a <= b);
+}
 
 struct _neg_ : public ScalarNode {
 	static const char op_code = 11;
 	static const char n_eval_args = 2;
 	template <typename VecType>
-	inline static void eval(VecType &res, VecType a) {
-		// TODO: vectorize
-		res = as_double(!a);		// we use bit masks for bool values
-	}
+	inline static void eval(VecType &res, VecType a);
 };
-
+template<typename VecType>
+inline void _neg_::eval(VecType &res, VecType a) {
+	res = as_double(!a);
+}
+template<>
+inline void _neg_::eval<double>(double &res, double a) {
+	res =  (a == double_true()) ? double_false() : double_true();	// we use bit masks for bool values
+}
 
 struct _or_ : public ScalarNode {
 	static const char op_code = 12;
 	static const char n_eval_args = 3;
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a, VecType b) {
-		// TODO: vectorize
-		res = a | b;	// we use bit masks for bool values
+		res = as_double(as_bool(a) | as_bool(b));	// we use bit masks for bool values
 	}
 };
 
@@ -440,8 +466,7 @@ struct _and_ : public ScalarNode {
 	static const char n_eval_args = 3;
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a, VecType b) {
-		// TODO: vectorize
-		res = a & b;	// we use bit masks for bool values
+		res = as_double(as_bool(a) & as_bool(b));	// we use bit masks for bool values
 	}
 };
 
@@ -469,31 +494,46 @@ struct _isnan_ : public ScalarNode {
 	static const char op_code = 36;
 	static const char n_eval_args = 2;
 	template <typename VecType>
-	inline static void eval(VecType &res, VecType a) {
-		// TODO: vectorize
-		res = as_double(is_nan(a));
-	}
+	inline static void eval(VecType &res, VecType a);
 };
+template<typename VecType>
+inline void _isnan_::eval(VecType &res, VecType a) {
+	res = as_double(is_nan(a));
+}
+template<>
+inline void _isnan_::eval<double>(double &res, double a) {
+	res = double_bool(std::isnan(a));
+}
 
 struct _isinf_ : public ScalarNode {
 	static const char op_code = 37;
 	static const char n_eval_args = 2;
 	template <typename VecType>
-	inline static void eval(VecType &res, VecType a) {
-		// TODO: vectorize
-		res = as_double(is_inf(a));
-	}
+	inline static void eval(VecType &res, VecType a);
 };
+template<typename VecType>
+inline void _isinf_::eval(VecType &res, VecType a) {
+	res = as_double(is_inf(a));
+}
+template<>
+inline void _isinf_::eval<double>(double &res, double a) {
+	res = double_bool(std::isinf(a));
+}
 
 struct _sgn_ : public ScalarNode {
 	static const char op_code = 38;
 	static const char n_eval_args = 2;
 	template <typename VecType>
-	inline static void eval(VecType &res, VecType a) {
-		// TODO: vectorize
-		res = as_double(sign_bit(a));
-	}
+	inline static void eval(VecType &res, VecType a);
 };
+template<typename VecType>
+inline void _sgn_::eval(VecType &res, VecType a) {
+	res = as_double(sign_bit(a));
+}
+template<>
+inline void _sgn_::eval<double>(double &res, double a) {
+	res =  a > 0 ? 1.0 : (a < 0 ? -1.0 : 0.0);
+}
 
 struct _atan2_ : public ScalarNode {
 	static const char op_code = 39;
@@ -519,23 +559,33 @@ struct _max_ : public ScalarNode {
 	static const char op_code = 41;
 	static const char n_eval_args = 3;
 	template <typename VecType>
-	inline static void eval(VecType &res, VecType a, VecType b) {
-		// TODO: vectorize
-		//std::cout << "max " << a << "," << b << "\n";
-		res = max(a, b);
-	}
+	inline static void eval(VecType &res, VecType a, VecType b);
 };
+template<typename VecType>
+inline void _max_::eval(VecType &res, VecType a, VecType b) {
+	res = max(a, b);
+}
+template<>
+inline void _max_::eval<double>(double &res, double a, double b) {
+	//std::cout << "max " << a << "," << b << "\n";
+	res = (a > b) ? a : b;
+}
 
 struct _min_ : public ScalarNode {
 	static const char op_code = 42;
 	static const char n_eval_args = 3;
 	template <typename VecType>
-	inline static void eval(VecType &res, VecType a, VecType b) {
-		// TODO: vectorize
-		//std::cout << "min " << a << "," << b << "\n";
-		res = min(a, b);
-	}
+	inline static void eval(VecType &res, VecType a, VecType b);
 };
+template<typename VecType>
+inline void _min_::eval(VecType &res, VecType a, VecType b) {
+	res = min(a, b);
+}
+template<>
+inline void _min_::eval<double>(double &res, double a, double b) {
+	//std::cout << "min " << a << "," << b << "\n";
+	res = (a > b) ? b : a;
+}
 
 //struct _iadd_ : public ScalarNode {
 //	static const char op_code = 2;
@@ -573,12 +623,16 @@ struct _ifelse_ : public ScalarNode {
 	static const char op_code = 51;
 	static const char n_eval_args = 4;
 	template <typename VecType>
-	inline static void eval(VecType &res, VecType a, VecType b, VecType c) {
-		// TODO: vectorize
-		res = select(as_bool(b), a, c);	// we use bit masks for bool values
-	}
+	inline static void eval(VecType &res, VecType a, VecType b, VecType c);
 };
-
+template<typename VecType>
+inline void _ifelse_::eval(VecType &res, VecType a, VecType b, VecType c) {
+	res = select(as_bool(b), a, c);	// we use bit masks for bool values
+}
+template<>
+inline void _ifelse_::eval<double>(double &res, double a, double b, double c) {
+	res = as_bool(b) ? a : c;		// we use bit masks for bool values
+}
 
 
 
