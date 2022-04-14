@@ -611,32 +611,18 @@ inline ProcessorBase *create_processor(ExpressionDAG &se, uint vector_size, uint
 		default:
 		{
 			uint memory_est =
-					align_size(simd_bytes, sizeof(Processor<Vec<Vec2d>>)) +	//88
+					align_size(simd_bytes, sizeof(Processor<Vec<double>>)) +
 					align_size(simd_bytes, sizeof(uint) * vector_size) +
-					align_size(simd_bytes, se.temp_end * sizeof(Vec<Vec2d>)) +
+					align_size(simd_bytes, se.temp_end * sizeof(Vec<double>)) +
 					sizeof(double) * vector_size * (se.temp_end - se.values_end) +
-					align_size(simd_bytes, sizeof(Vec2d) * se.constants_end ) +
+					align_size(simd_bytes, sizeof(double) * se.constants_end ) +
 					align_size(simd_bytes, sizeof(Operation) * (sorted_nodes.size() + 64) )
 
 					;
 			ArenaAlloc arena(simd_bytes, memory_est);
 
-			return arena.create<Processor<Vec<Vec2d>>>(arena, se, vec_size);
+			return arena.create<Processor<Vec<double>>>(arena, se, vec_size);
 		} break;
-		// {
-		// 	uint memory_est =
-		// 			align_size(simd_bytes, sizeof(Processor<Vec<double>>)) +
-		// 			align_size(simd_bytes, sizeof(uint) * vector_size) +
-		// 			align_size(simd_bytes, se.temp_end * sizeof(Vec<double>)) +
-		// 			sizeof(double) * vector_size * (se.temp_end - se.values_end) +
-		// 			align_size(simd_bytes, sizeof(double) * se.constants_end ) +
-		// 			align_size(simd_bytes, sizeof(Operation) * (sorted_nodes.size() + 64) )
-
-		// 			;
-		// 	ArenaAlloc arena(simd_bytes, memory_est);
-
-		// 	return arena.create<Processor<Vec<double>>>(arena, se, vec_size);
-		// } break;
 	}
 }
 
