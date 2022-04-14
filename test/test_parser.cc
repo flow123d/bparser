@@ -255,11 +255,7 @@ void test_speed_cases() {
 
 int main()
 {
-<<<<<<< HEAD
 	// test_free_variables();
-=======
-	test_free_variables();
->>>>>>> cc5ab6f61b15faf75b078519bd265b8bc758f58a
 	test_expression();
 	// test_bool_expression();
 #ifdef NDEBUG
