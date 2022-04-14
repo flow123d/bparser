@@ -38,13 +38,13 @@ void test_simple_expr() {
 
 
 
-	ScalarNode * c1 = ScalarNode::create_const(100);
-	ScalarNode * v1 = ScalarNode::create_value(v1_values);
-	ScalarNode * e1 = ScalarNode::create<_abs_>(v1);
-	ScalarNode * e2 = ScalarNode::create<_add_>(e1, c1);
+	ScalarNodePtr c1 = ScalarNode::create_const(100);
+	ScalarNodePtr v1 = ScalarNode::create_value(v1_values);
+	ScalarNodePtr e1 = ScalarNode::create<_abs_>(v1);
+	ScalarNodePtr e2 = ScalarNode::create<_add_>(e1, c1);
 
-	ScalarNode * r1 = ScalarNode::create_result(e1, v2_values);
-	ScalarNode * r2 = ScalarNode::create_result(e2, v3_values);
+	ScalarNodePtr r1 = ScalarNode::create_result(e1, v2_values);
+	ScalarNodePtr r2 = ScalarNode::create_result(e2, v3_values);
 
 	ExpressionDAG se({r1, r2});
 	ExpressionDAG::NodeVec &sorted = se.sort_nodes();
@@ -201,9 +201,9 @@ void test_un_op(std::vector<double> ref_res, std::vector<double> vv1 = v1_4()) {
 	for(uint i=0;i < vec_size; ++i)
 		res_values[i] = -100;
 
-	ScalarNode * v1 = ScalarNode::create_value(&(vv1[0]));
-	ScalarNode * e = ScalarNode::create<Op>(v1);
-	ScalarNode * r = ScalarNode::create_result(e, res_values);
+	ScalarNodePtr v1 = ScalarNode::create_value(&(vv1[0]));
+	ScalarNodePtr e = ScalarNode::create<Op>(v1);
+	ScalarNodePtr r = ScalarNode::create_result(e, res_values);
 
 	Processor * processor = Processor::create({r}, vec_size);
 	std::vector<uint> subset = {0};
@@ -231,10 +231,10 @@ void test_bin_op(std::vector<double> ref_res, std::vector<double> vv1 = v1_4(), 
 	for(uint i=0;i < vec_size; ++i)
 		res_values[i] = -100;
 
-	ScalarNode * v1 = ScalarNode::create_value(&(vv1[0]));
-	ScalarNode * v2 = ScalarNode::create_value(&(vv2[0]));
-	ScalarNode * e = ScalarNode::create<Op>(v1, v2);
-	ScalarNode * r = ScalarNode::create_result(e, res_values);
+	ScalarNodePtr v1 = ScalarNode::create_value(&(vv1[0]));
+	ScalarNodePtr v2 = ScalarNode::create_value(&(vv2[0]));
+	ScalarNodePtr e = ScalarNode::create<Op>(v1, v2);
+	ScalarNodePtr r = ScalarNode::create_result(e, res_values);
 
 	Processor * processor = Processor::create({r}, vec_size);
 	std::vector<uint> subset = {0};

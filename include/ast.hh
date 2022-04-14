@@ -3,6 +3,8 @@
 
 #include <list>
 #include <string>
+#include <algorithm>
+
 #include <boost/variant.hpp>
 #include <boost/phoenix/phoenix.hpp>
 #include <boost/spirit/home/support/attributes.hpp>
@@ -77,7 +79,7 @@ operand;
 
 /// a function: Array -> Array
 struct list {
-    operand head; // list; non-list type marks end of recursion
+    operand head; // list; any non-list type marks end of recursion; none-int is convention
     operand item; //
 };
 
@@ -94,20 +96,11 @@ struct assign_op {
     operand rhs;
 };
 
-/// TODO: eliminate call type, by allowing item to be a function
-/// This way we can further simplify visitors.
-
-//inline void assert_list(operand x) {
-//	//std::cout << x.which() << "\n";
-//	BP_ASSERT(boost::get<list>(&x) != nullptr);
-//}
 
 
 /**
  * operand visitors
  */
-
-
 struct print_vis : public boost::static_visitor<> {
 	/**
 	 * Print AST.
@@ -154,10 +147,9 @@ struct print_vis : public boost::static_visitor<> {
     }
 
     void operator()(list x) const {
-    	std::cout << "List without call. \n";
-    	ss << '(';
+    	ss << '[';
     	print_list(x);
-    	ss << ')';
+    	ss << ']';
     	//BP_ASSERT(false);
     }
 
@@ -237,7 +229,7 @@ struct make_array {
 
     result_type operator()(double x) const
     {
-    	return Array::constant({x});
+    	return x;
     }
 
     result_type operator()(int x) const
@@ -246,7 +238,8 @@ struct make_array {
 
     result_type operator()(std::string const &x) const  {
         auto it = symbols.find(x);
-        if (it != symbols.end()) {
+        BP_ASSERT(it != symbols.end());
+        if (! it->second.is_none()) {
         	return it->second;
         } else {
         	// We do not call visitor for the assign_op's 'lhs' so this must be error.
@@ -263,18 +256,18 @@ struct make_array {
     }
 
     result_type operator()(list x) const {
-    	std::cout << "List without call: \n";
-    	std::cout << print(x) << "\n";
-    	BP_ASSERT(false);
+    	ResultList al = make_list(x);
+    	if (std::all_of(al.begin(), al.end(), [](result_type x){return check_type<int>(x);})) {
+        	ListInt alist;
+        	for(ParserResult item : al)
+        		alist.push_back(get_type<int>(item));
+    		return alist;
+    	}
 
-//    	result_type alist;
-//    	if (boost::get<list>(&x.head)) {
-//    		 alist = boost::apply_visitor(*this, x.head);
-//    	}
-//    	result_type aitem = boost::apply_visitor(*this, x.item);
-//    	alist = boost::apply_visitor(append_visitor(alist), aitem);
-//    	return alist;
-    	return 0;
+    	std::vector<Array> alist;
+    	for(ParserResult item : al)
+    		alist.push_back(get_array(item));
+    	return Array::stack_zero(alist);
     }
 
 
@@ -343,10 +336,7 @@ struct get_variables {
     }
 
     result_type operator()(list x) const {
-    	std::cout << "List at wrong place: \n";
-    	std::cout << print(x) << "\n";
-    	BP_ASSERT(false);
-    	return {};
+    	return merge_list(x);
     }
 
     result_type operator()(assign_op const &x) const  {
@@ -362,56 +352,6 @@ private:
 };
 
 
-
-
-
-/**
- * Remove 'nil' nodes from AST. Should not be necessary.
- */
-//struct remove_nil {
-//    typedef operand result_type;
-//
-//
-//    explicit remove_nil()
-//    {}
-//
-//
-//    result_type operator()(nil) const {
-//        return nil();
-//    }
-//
-//    result_type operator()(double x) const
-//    { return x; }
-//
-//    result_type operator()(std::string const &x) const  {
-//        return x;
-//    }
-//
-//
-//    result_type operator()(unary_op const &x) const {
-//    	result_type first = boost::apply_visitor(*this, x.first);
-//    	if (first.type() != typeid(nil)) return x;
-//    	return first;
-//    }
-//
-//    result_type operator()(binary_op const &x) const {
-//    	result_type first = boost::apply_visitor(*this, x.first);
-//    	if (first.type() != typeid(nil)) return x;
-//    	result_type second = boost::apply_visitor(*this, x.second);
-//    	if (second.type() != typeid(nil)) return x;
-//    	return second;
-//    }
-//
-//    result_type operator()(assign_op const &x) const  {
-//    	BP_ASSERT(x.lhs.size() > 0);
-//    	result_type rhs = boost::apply_visitor(*this, x.rhs);
-//    	BP_ASSERT(rhs.type() != typeid(nil));
-//        return x;
-//    }
-//
-//
-//
-//};
 
 
 
@@ -475,13 +415,15 @@ BOOST_PHOENIX_ADAPT_CALLABLE(make_ternary, make_ternary_f, 4)
 
 
 
-//struct make_relational_f {
-//	binary_op operator()(binary_fn op, operand const& first, operand const& second, operand const& chained) const {
-//		std::cout << "make_binary: " << first.which() << ", " << second.which() << ", " << print(chained) << "\n";
-//		return {op, first, second};
-//	}
-//};
-//BOOST_PHOENIX_ADAPT_CALLABLE(make_relational, make_relational_f, 4)
+struct make_chained_comparison_f {
+	call operator()(NamedArrayFn op, operand const& head, operand const& other) const {
+		//std::cout << "make_binary: " << first.which() << ", " << second.which() << ", " << print(chained) << "\n";
+		list l1 = {0.0, head};
+		list l2 = {l1, other};
+		return {op, l2};
+	}
+};
+BOOST_PHOENIX_ADAPT_CALLABLE(make_chained_comparison, make_chained_comparison_f, 3)
 
 
 struct make_list_f {

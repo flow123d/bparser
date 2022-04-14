@@ -21,24 +21,27 @@ jobs:
         # Github Actions requires a single row to be added to the build matrix.
         # See https://help.github.com/en/articles/workflow-syntax-for-github-actions.
         name: [
-          ubuntu-18.04-gcc-4.8,
+          # ubuntu-18.04-gcc-4.8, # uncomplete support of C++14
           ubuntu-18.04-gcc-4.9,
           ubuntu-18.04-gcc-5,
           ubuntu-18.04-gcc-6,
           ubuntu-18.04-gcc-7,
           ubuntu-18.04-gcc-8,
           ubuntu-18.04-gcc-9,
-          ubuntu-18.04-clang-3.5,
-          ubuntu-18.04-clang-3.6,
-          ubuntu-18.04-clang-3.7,
-          ubuntu-18.04-clang-3.8,
-          ubuntu-18.04-clang-3.9,
-          ubuntu-18.04-clang-4.0,
-          ubuntu-18.04-clang-5.0,
-          ubuntu-18.04-clang-6.0,
-          ubuntu-18.04-clang-7,
-          ubuntu-18.04-clang-8,
-          ubuntu-18.04-clang-9,
+          
+          # CLang do not allow passing elements of SIMD vectors as non-const references, need to 
+          # wait until we implement SIMD operations via appropriate library.
+          #ubuntu-18.04-clang-3.5,
+          #ubuntu-18.04-clang-3.6,
+          #ubuntu-18.04-clang-3.7,
+          #ubuntu-18.04-clang-3.8,
+          ##ubuntu-18.04-clang-3.9,
+          #ubuntu-18.04-clang-4.0,
+          #ubuntu-18.04-clang-5.0,
+          #ubuntu-18.04-clang-6.0,
+          #ubuntu-18.04-clang-7,
+          #ubuntu-18.04-clang-8,
+          #ubuntu-18.04-clang-9,
           #windows-2016-cl,
           #windows-2016-clang-cl,
           #windows-2016-clang,
@@ -52,10 +55,10 @@ jobs:
         ]
 
         include:
-          - name: ubuntu-18.04-gcc-4.8
-            os: ubuntu-18.04
-            compiler: gcc
-            version: "4.8"
+          #- name: ubuntu-18.04-gcc-4.8
+            #os: ubuntu-18.04
+            #compiler: gcc
+            #version: "4.8"
 
           - name: ubuntu-18.04-gcc-4.9
             os: ubuntu-18.04
@@ -87,60 +90,60 @@ jobs:
             compiler: gcc
             version: "9"
 
-          - name: ubuntu-18.04-clang-3.5
-            os: ubuntu-18.04
-            compiler: clang
-            version: "3.5"
+          #- name: ubuntu-18.04-clang-3.5
+            #os: ubuntu-18.04
+            #compiler: clang
+            #version: "3.5"
 
-          - name: ubuntu-18.04-clang-3.6
-            os: ubuntu-18.04
-            compiler: clang
-            version: "3.6"
+          #- name: ubuntu-18.04-clang-3.6
+            #os: ubuntu-18.04
+            #compiler: clang
+            #version: "3.6"
 
-          - name: ubuntu-18.04-clang-3.7
-            os: ubuntu-18.04
-            compiler: clang
-            version: "3.7"
+          #- name: ubuntu-18.04-clang-3.7
+            #os: ubuntu-18.04
+            #compiler: clang
+            #version: "3.7"
 
-          - name: ubuntu-18.04-clang-3.8
-            os: ubuntu-18.04
-            compiler: clang
-            version: "3.8"
+          #- name: ubuntu-18.04-clang-3.8
+            #os: ubuntu-18.04
+            #compiler: clang
+            #version: "3.8"
 
-          - name: ubuntu-18.04-clang-3.9
-            os: ubuntu-18.04
-            compiler: clang
-            version: "3.9"
+          #- name: ubuntu-18.04-clang-3.9
+            #os: ubuntu-18.04
+            #compiler: clang
+            #version: "3.9"
 
-          - name: ubuntu-18.04-clang-4.0
-            os: ubuntu-18.04
-            compiler: clang
-            version: "4.0"
+          #- name: ubuntu-18.04-clang-4.0
+            #os: ubuntu-18.04
+            #compiler: clang
+            #version: "4.0"
 
-          - name: ubuntu-18.04-clang-5.0
-            os: ubuntu-18.04
-            compiler: clang
-            version: "5.0"
+          #- name: ubuntu-18.04-clang-5.0
+            #os: ubuntu-18.04
+            #compiler: clang
+            #version: "5.0"
 
-          - name: ubuntu-18.04-clang-6.0
-            os: ubuntu-18.04
-            compiler: clang
-            version: "6.0"
+          #- name: ubuntu-18.04-clang-6.0
+            #os: ubuntu-18.04
+            #compiler: clang
+            #version: "6.0"
 
-          - name: ubuntu-18.04-clang-7
-            os: ubuntu-18.04
-            compiler: clang
-            version: "7"
+          #- name: ubuntu-18.04-clang-7
+            #os: ubuntu-18.04
+            #compiler: clang
+            #version: "7"
 
-          - name: ubuntu-18.04-clang-8
-            os: ubuntu-18.04
-            compiler: clang
-            version: "8"
+          #- name: ubuntu-18.04-clang-8
+            #os: ubuntu-18.04
+            #compiler: clang
+            #version: "8"
 
-          - name: ubuntu-18.04-clang-9
-            os: ubuntu-18.04
-            compiler: clang
-            version: "9"
+          #- name: ubuntu-18.04-clang-9
+            #os: ubuntu-18.04
+            #compiler: clang
+            #version: "9"
 
           #- name: windows-2016-cl
             #os: windows-2016
@@ -213,20 +216,23 @@ jobs:
             sudo add-apt-repository "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-9 main"
           fi
 
-          sudo apt-get update
+          
 
           # libc6-dbg:i386 is required for running valgrind on x86.
           #sudo apt-get install -y ninja-build valgrind libc6-dbg:i386
 
           
           if [ "${{ matrix.compiler }}" = "gcc" ]; then
-            sudo apt-get install -y g++-${{ matrix.version }} g++-${{ matrix.version }}-multilib
-            echo "::set-env name=CC::gcc-${{ matrix.version }}"
-            echo "::set-env name=CXX::g++-${{ matrix.version }}"
+            sudo apt-get update
+            sudo apt-get install -y g++-${{ matrix.version }} g++-${{ matrix.version }}-multilib           
+            echo "CC=gcc-${{ matrix.version }}" >> $GITHUB_ENV
+            echo "CXX=g++-${{ matrix.version }}" >> $GITHUB_ENV
           else
+            wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add -
+            sudo apt-get update
             sudo apt-get install -y clang-${{ matrix.version }} g++-multilib
-            echo "::set-env name=CC::clang-${{ matrix.version }}"
-            echo "::set-env name=CXX::clang++-${{ matrix.version }}"
+            echo "CC=clang-${{ matrix.version }}" >> $GITHUB_ENV
+            echo "CXX=clang++-${{ matrix.version }}" >> $GITHUB_ENV
           fi
 
 
@@ -495,7 +501,7 @@ jobs:
           path: build/CMakeFiles/CMakeOutput.log
     
       - name: make test_grammar_dbg
-        run: make test_grammar
+        run: cd build && make VERBOSE=1 test_grammar
 
       - name: make test_array_dbg
         run: make test_array

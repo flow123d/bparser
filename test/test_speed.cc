@@ -210,7 +210,8 @@ void test_expr(std::string expr) {
 			c_sum += v2;
 		}
 	}
-
+	arena_1.destroy();
+	arena_2.destroy();
 	std::cout << "In test_speed.cc" << std::endl;
 	std::cout << "Diff: " << diff << " parser: " << p_sum << " c++: " << c_sum << "\n";
 	std::cout << "parser time : " << parser_time << "\n";
