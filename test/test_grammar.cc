@@ -86,6 +86,8 @@ void test_primary() {
 	EXPECT(match("sin(1.0)", "sin(1)"));
 	EXPECT(fail("sin (2)", "Expected \"(\" at \" (2)\""));
 	EXPECT(match("atan2(1, 2)", "atan2(1,2)"));
+	EXPECT(match("zeros([1, 2, 3])", "zeros([1,2,3])"));
+	EXPECT(match("full([1, 2, 3], 4.5)", "full([1,2,3],4.5)"));
 
 	// identifier
 	EXPECT(match("e", "`e`"));
@@ -105,9 +107,9 @@ void test_primary() {
 
 void test_arrays() {
 	std::cout << "\ntest_arrays" << "\n";
-	EXPECT(match("[1, 2, 3]", "array(1,2,3)"));
-	EXPECT(match("[[1+1, 2*1], [3/1, 4%2]]", "array(array(+(1,1),*(2,1)),array(/(3,1),%(4,2)))"));
-	EXPECT(match("[[1+1, 2*1], [3/1]]", "array(array(+(1,1),*(2,1)),array(/(3,1)))")); // should fail later in conversion of AST to Arrays
+	EXPECT(match("[1, 2, 3]", "[1,2,3]"));
+	EXPECT(match("[[1+1, 2*1], [3/1, 4%2]]", "[[+(1,1),*(2,1)],[/(3,1),%(4,2)]]"));
+	EXPECT(match("[[1+1, 2*1], [3/1]]", "[[+(1,1),*(2,1)],[/(3,1)]]")); // should fail later in conversion of AST to Arrays
 	//EXPECT(match("[1, 2, 3] + sin([xyz])", ""));
 	EXPECT(fail("[(]]", ""));
 	//EXPECT(fail("(1)[1]", ""));
@@ -144,8 +146,8 @@ void test_subscription() {
 	EXPECT(match("a[:, None]", "[](`a`,list(slice(none_idx,none_idx,none_idx),index(none_idx)))"));
 
 	//array index
-	EXPECT(match("a[[1,3]]", "[](`a`,list(idxarray(1,3)))"));
-	EXPECT(match("a[[1,3], :3:-1]", "[](`a`,list(idxarray(1,3),slice(none_idx,3,-1)))"));
+	EXPECT(match("a[[1,3]]", "[](`a`,list([1,3]))"));
+	EXPECT(match("a[[1,3], :3:-1]", "[](`a`,list([1,3],slice(none_idx,3,-1)))"));
 
 	EXPECT(match("cv4[2] ** av2", "**([](`cv4`,list(index(2))),`av2`)"));
 }
@@ -167,18 +169,21 @@ void test_operators() {
 	EXPECT(match("2 * -5", "*(2,-(5))")); // should possibly fail
 	//ASSERT(! match("-1.23e-2 * -5.3"));
 	//ASSERT(! match("+ -1.23e-2"));
-	EXPECT(match("[3, 4] @ [[1], [2]]", "@(array(3,4),array(array(1),array(2)))"));
+	EXPECT(match("[3, 4] @ [[1], [2]]", "@([3,4],[[1],[2]])"));
 	EXPECT(match("+ + -1.23e-2", "+(+(-(0.0123)))"));
 
 	// relational operators
-	EXPECT(match("2 > 1", ">(2,1)"));
-	EXPECT(match("2 == 1", "==(2,1)"));
-	EXPECT(match("2 <= 1", "<=(2,1)"));
+	EXPECT(match("2 > 1", "close_chain(>(2,1))"));
+	EXPECT(match("2 == 1", "close_chain(==(2,1))"));
+	EXPECT(match("2 <= 1", "close_chain(<=(2,1))"));
+	// TODO: fix these: do not produce close_chain
+	EXPECT(match("0 < 1 < 2", "close_chain(<(<(0,1),2))"));
+	EXPECT(match("(3 > 2) > 1", "close_chain(>(close_chain(>(3,2)),1))"));
 
 	// boolean
-	EXPECT(match("not 2 <= 1", "not(<=(2,1))"));
-	EXPECT(match("not 2 <= 1 or False", "or(not(<=(2,1)),False(0))"));
-	EXPECT(match("not 2 <= 1 or False and 1", "or(not(<=(2,1)),and(False(0),1))"));
+	EXPECT(match("not 2 <= 1", "not(close_chain(<=(2,1)))"));
+	EXPECT(match("not 2 <= 1 or False", "or(not(close_chain(<=(2,1))),False(0))"));
+	EXPECT(match("not 2 <= 1 or False and 1", "or(not(close_chain(<=(2,1))),and(False(0),1))"));
 	EXPECT(match("10 if True else 20", "ifelse(10,True(0),20)"));
 }
 
@@ -191,6 +196,8 @@ int main()
 	test_subscription();
 	test_operators();
 	BP_ASSERT( !failed_expect(false) );
+	std::cout << "\n\n";
+
 }
 
 

@@ -44,13 +44,14 @@ class Parser {
 	ast::operand ast;
 	uint max_vec_size;
 	std::map<std::string, Array> symbols_;
-	std::vector<std::string> free_variables;
 	Array result_array_;
 	ProcessorBase * processor;
 	double * tmp_result;
 
 public:
-    /// @brief Constructor
+    /** @brief Constructor
+     * max_vec_size - size of single array component in doubles
+     */
     Parser(uint max_vec_size)
 	: max_vec_size(max_vec_size), processor(nullptr), tmp_result(nullptr)
 	{}
@@ -61,8 +62,9 @@ public:
     }
 
     void destroy_processor() {
-    	if (tmp_result) delete [] tmp_result;
+    	if (tmp_result != nullptr) delete [] tmp_result;
     	if (processor != nullptr) processor->~ProcessorBase();
+    	processor = nullptr;
     }
     /// @brief Parse the mathematical expression into an abstract syntax tree
     ///
@@ -74,9 +76,16 @@ public:
         //std::cout << ast::print(ast) << "\n";
 
         //ASSERT(ast.type() != typeid(ast::nil));
-        free_variables  = boost::apply_visitor(ast::get_variables(), ast);
 
-        // dafault constants
+    	std::vector<std::string> free_variables;
+    	free_variables = boost::apply_visitor(ast::get_variables(), ast);
+    	for(std::string &s: free_variables) {
+        	symbols_[s] = Array(); // none array
+
+        }
+
+
+        // default constants
         set_constant("e", {}, {boost::math::constants::e<double>()});
         set_constant("pi", {}, {boost::math::constants::pi<double>()});
         //set_constant("phi", {}, {boost::math::constants::phi<double>()});
@@ -109,8 +118,12 @@ public:
     /**
      * @brief Return names (undefined) variables in the expression.
      */
-    std::vector<std::string> const &variables() {
-    	return free_variables;
+    std::vector<std::string> free_symbols() {
+    	std::vector<std::string> keys;
+    	for(auto s : symbols_) {
+    		if (s.second.is_none())	keys.push_back(s.first);
+    	}
+    	return keys;
     }
 
     /**
@@ -142,20 +155,17 @@ public:
 
         ParserResult res_array = boost::apply_visitor(ast::make_array(symbols_), ast);
 
-        if (Array *a_ptr = boost::get<Array>(&res_array)) {
-        	Shape result_shape = a_ptr->shape();
-        	auto res_it = symbols_.find("_result_");
-        	if (res_it == symbols_.end()) {
-        		// TODO: replace be storing result in the temporary variable of the processor
-        		tmp_result = new double[shape_size(result_shape) * max_vec_size];
-        		result_array_ = Array::value(tmp_result, max_vec_size, result_shape);
-        		result_array_ = a_ptr->make_result(result_array_);
-        	} else {
-        		result_array_ = a_ptr->make_result(res_it->second);
-        	}
-        } else {
-        	BP_ASSERT(false);
-        }
+        Array array = get_array(res_array);
+		Shape result_shape = array.shape();
+		auto res_it = symbols_.find("_result_");
+		if (res_it == symbols_.end()) {
+			// TODO: replace by storing result in the temporary variable of the processor
+			tmp_result = new double[shape_size(result_shape) * max_vec_size];
+			result_array_ = Array::value(tmp_result, max_vec_size, result_shape);
+			result_array_ = array.make_result(result_array_);
+		} else {
+			result_array_ = array.make_result(res_it->second);
+		}
 
 		ExpressionDAG se(result_array_.elements());
         return se;

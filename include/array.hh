@@ -12,6 +12,7 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
+#include <memory>
 #include <boost/math/constants/constants.hpp>
 #include "config.hh"
 #include "scalar_node.hh"
@@ -89,6 +90,9 @@ inline uint absolute_idx(int i, int size) {
  * Shape of the source array is given by full_shape_. The values of the ranges_ must be compatible:
  *
  *       ranges_[i][:] < full_shape_[i]
+ *
+ * TODO: Better documentation, with introduction of transpose
+ *
  */
 struct MultiIdxRange {
 	//typedef std::vector<std::vector<int>> GeneralRanges;
@@ -368,17 +372,21 @@ struct MultiIdx {
 	 * Set range, set multiindex to element zero.
 	 */
 	MultiIdx(MultiIdxRange range)
-	: range_(range), indices_(range.ranges_.size(), 0)
+	: range_(range), indices_(range.ranges_.size(), 0), valid_(true)
 	{
 	}
 
+	bool valid() {
+		return valid_;
+	}
 	/**
 	 * Increment the multiindex. Last index runs fastest.
 	 * Returns true if the increment was sucessfull, return false for the end of the range.
 	 * this->indices_ are set to zeros after the end of the iteration range.
 	 */
-	bool inc() {
-		for(uint dest_axis = range_.sub_transpose_.size(); dest_axis > 0 ; )
+	bool inc(uint negative_axis=0) {
+		valid_=false;
+		for(uint dest_axis = range_.sub_transpose_.size() - negative_axis; dest_axis > 0 ; )
 		{
 			--dest_axis;
 			if (range_.sub_transpose_[dest_axis] == none_int) continue;
@@ -388,10 +396,11 @@ struct MultiIdx {
 				indices_[src_axis] = 0;
 				continue;
 			} else {
-				return true;
+				valid_ = true;
+				break;
 			}
 		}
-		return false; // all indeces_ set to zeros
+		return valid_; // false == all indeces_ set to zeros
 	}
 
 	/**
@@ -422,6 +431,9 @@ struct MultiIdx {
 		return lin_idx;
 	}
 
+	const VecUint &indices() const {
+		return indices_;
+	}
 
 
 	// List of indices for every axis.
@@ -429,8 +441,14 @@ struct MultiIdx {
 	// Indirect multiindex index into range_.
 	// Last index runs fastest.
 	VecUint indices_;
+	bool valid_;
 };
 
+
+/**
+ *
+ */
+typedef std::vector<int> IList;
 
 
 
@@ -449,8 +467,7 @@ struct MultiIdx {
  */
 struct Array {
 public:
-
-	typedef details::ScalarNode * ScalarNodePtr;
+	typedef details::ScalarNodePtr ScalarNodePtr;
 
 	inline static constexpr double none_value() {
 		return std::numeric_limits<double>::signaling_NaN();
@@ -462,16 +479,16 @@ public:
 
 
 	static Array deg_to_rad_factor() {
-		static details::ConstantNode f( boost::math::constants::pi<double>() / 180 );
+		static ScalarNodePtr angle = details::ScalarNode::create_const( boost::math::constants::pi<double>() / 180 );
 		Array a;
-		a.elements_[0] = &f;
+		a.elements_[0] = angle;
 		return a;
 	}
 
 	static Array rad_to_deg_factor() {
-		static details::ConstantNode f(  180 / boost::math::constants::pi<double>() );
+		static ScalarNodePtr angle = details::ScalarNode::create_const( boost::math::constants::pi<double>() / 180 );
 		Array a;
-		a.elements_[0] = &f;
+		a.elements_[0] = angle;
 		return a;
 	}
 
@@ -788,6 +805,56 @@ public:
 
 	}
 
+	static Array flatten(const Array &tensor) {
+		uint n_elements = shape_size(tensor.shape());
+		Shape res_shape(1, n_elements);
+		Array result(res_shape);
+		for(uint i = 0; i<n_elements; ++i) {
+			result.elements_[i] = tensor.elements_[i];
+		}
+		return result;
+	}
+
+	static Array eye(int size) {
+		if (size < 1)
+				Throw() << "eye works only for positive sizes.";
+		Shape shape(2, size);
+		Array result = Array(shape);
+		MultiIdxRange result_range = MultiIdxRange(shape).full();
+		MultiIdx result_idx(result_range);
+		for(MultiIdx result_idx(result_range); result_idx.valid(); result_idx.inc()) {
+			if (result_idx.indices()[0]  == result_idx.indices()[1]) {
+				result.elements_[result_idx.src_idx()] = details::ScalarNode::create_one();
+			} else {
+				result.elements_[result_idx.src_idx()] = details::ScalarNode::create_zero();
+			}
+		}
+		return result;
+	}
+
+
+	static Array zeros(const Shape &shape) {
+		return full_(shape, details::ScalarNode::create_zero());
+	}
+
+	static Array ones(const Shape &shape) {
+		return full_(shape, details::ScalarNode::create_one());
+	}
+
+	static Array full(const Shape &shape, double val) {
+		return full_(shape, details::ScalarNode::create_const(val));
+	}
+
+	static Array full_(const Shape &shape, details::ScalarNodePtr  val) {
+		Array result = (shape);
+		MultiIdxRange result_range = MultiIdxRange(shape).full();
+		MultiIdx result_idx(result_range);
+		for(MultiIdx result_idx(result_range); result_idx.valid(); result_idx.inc()) {
+					result.elements_[result_idx.src_idx()] = val;
+		}
+		return result;
+	}
+
 
 //	static Array slice(const Array &a, const Array &b, const Array&c) {
 //		Array res = concatenate({a,b,c});
@@ -804,21 +871,23 @@ public:
 	 */
 
 	Array()
+	: shape_(), elements_()
 	{}
 
 	Array(const Array &other)
-	: Array(other, other.range())
+	: shape_(other.shape_),
+	  elements_(other.elements_)
 	{}
 
 	/**
 	 * Empty array of given shape.
 	 */
 	Array(const Shape &shape)
-	: shape_(shape)
+	: shape_(shape), elements_({nullptr})
 	{
 		uint shape_prod = 1;
 		for(uint dim : shape) shape_prod *= dim;
-		elements_.resize(shape_prod);
+		elements_.resize(shape_prod, nullptr);
 	}
 
 	/**
@@ -829,6 +898,9 @@ public:
 	: Array(range.sub_shape())
 	{
 		from_subset(source, range);
+	}
+
+	~Array() {
 	}
 
 	Array operator=(const Array & other)
@@ -887,18 +959,12 @@ public:
 		return res;
 	}
 
-
-
-
 	Shape minimal_shape(Shape other) {
 		Shape result;
 		for(uint e : other)
 			if (e > 1) result.push_back(e);
 		return result;
 	}
-
-
-
 
 
 	void _set_shape(Shape shape) {
@@ -933,6 +999,7 @@ public:
 
 
 	bool is_none() const {
+		// shape == {} means a scalar
 		return shape_.size() == 0 && elements_.size() == 0;
 	}
 
@@ -1021,6 +1088,7 @@ private:
 	 * Fill all elements of *this to the subset of 'other' given by the 'range'.
 	 */
 	void from_subset(const Array &other, const MultiIdxRange &range) {
+		if (other.elements_.size() == 0) return; // none value
 		MultiIdx idx(range);
 		for(;;) {
 			elements_[idx.dest_idx()] = other.elements_[idx.src_idx()];
@@ -1029,8 +1097,8 @@ private:
 	}
 
 
-	std::vector<ScalarNodePtr> elements_;
 	Shape shape_;
+	std::vector<ScalarNodePtr> elements_;
 
 };
 
@@ -1077,6 +1145,39 @@ inline Array operator*(const Array &a,  const Array &b) {
 	return Array::binary_op<details::_mul_>(a, b);
 }
 
+/*
+% Given a real symmetric 3x3 matrix A, compute the eigenvalues
+% Note that acos and cos operate on angles in radians
+
+p1 = A(1,2)^2 + A(1,3)^2 + A(2,3)^2
+if (p1 == 0)
+   % A is diagonal.
+   eig1 = A(1,1)
+   eig2 = A(2,2)
+   eig3 = A(3,3)
+else
+   q = trace(A)/3               % trace(A) is the sum of all diagonal values
+   p2 = (A(1,1) - q)^2 + (A(2,2) - q)^2 + (A(3,3) - q)^2 + 2 * p1
+   p = sqrt(p2 / 6)
+   B = (1 / p) * (A - q * I)    % I is the identity matrix
+   r = det(B) / 2
+
+   % In exact arithmetic for a symmetric matrix  -1 <= r <= 1
+   % but computation error can leave it slightly outside this range.
+   if (r <= -1)
+      phi = pi / 3
+   elseif (r >= 1)
+      phi = 0
+   else
+      phi = acos(r) / 3
+   end
+
+   % the eigenvalues satisfy eig3 <= eig2 <= eig1
+   eig1 = q + 2 * p * cos(phi)
+   eig3 = q + 2 * p * cos(phi + (2*pi/3))
+   eig2 = 3 * q - eig1 - eig3     % since trace(A) = eig1 + eig2 + eig3
+end
+ */
 
 } // bparser
 
