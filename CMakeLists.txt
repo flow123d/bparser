@@ -9,10 +9,10 @@ cmake_minimum_required(VERSION 3.5.1)
 
 message(STATUS "CMakeLists.txt - BParser")
 
-set(CMAKE_CXX_FLAGS     "-std=c++17 -finline-hint-functions -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION")
+set(CMAKE_CXX_FLAGS     "-std=c++17 -finline-functions -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native")
 #set(CMAKE_CXX_FLAGS_RELEASE "-O3 -mavx2")
-set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG") #-rdynamic -lSegFault -fsanitize=address -static-libasan -fno-omit-frame-pointer")  #
+set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG -rdynamic -lSegFault -fsanitize=address -static-libasan -fno-omit-frame-pointer")  #
 #set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG -fsanitize=address -static-libasan -fno-omit-frame-pointer")  #
 
 #ASAN_OPT         := -g -fsanitize=address -static-libasan -fno-omit-frame-pointer
