@@ -160,7 +160,7 @@ void test_expr(std::string expr) {
 	ExprData data2(vec_size, simd_size);
 
 
-	Parser p(block_size);
+	Parser p(block_size, simd_size);
 	p.parse(expr);
 	p.set_constant("cs1", {}, {data1.cs1});
 	p.set_constant("cv1", {3}, std::vector<double>(data1.cv1, data1.cv1+3));
@@ -173,10 +173,11 @@ void test_expr(std::string expr) {
 	//std::cout << "vres: " << vres << ", " << vres + block_size << ", " << vres + 2*vec_size << "\n";
 	//std::cout << "Symbols: " << print_vector(p.symbols()) << "\n";
 	//std::cout.flush();
-	ExpressionDAG se = p.compile();
 
-	ProcessorBase * processor = create_processor(se, vec_size, simd_size);
-	p.set_processor(processor);
+	p.compile();
+	// ExpressionDAG se = p.compile();
+	// ProcessorBase * processor = create_processor(se, vec_size, simd_size);
+	// p.set_processor(processor);
 
 	std::vector<uint> ss = std::vector<uint>(data1.subset, data1.subset + vec_size / simd_size); //bylo lomeno 4
 	p.set_subset(ss);
@@ -210,8 +211,10 @@ void test_expr(std::string expr) {
 			c_sum += v2;
 		}
 	}
-	arena_1.destroy();
-	arena_2.destroy();
+	
+	data1.arena->destroy();
+	data2.arena->destroy();
+
 	std::cout << "In test_speed.cc" << std::endl;
 	std::cout << "Diff: " << diff << " parser: " << p_sum << " c++: " << c_sum << "\n";
 	std::cout << "parser time : " << parser_time << "\n";

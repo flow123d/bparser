@@ -43,6 +43,7 @@ class Parser {
 
 	ast::operand ast;
 	uint max_vec_size;
+    uint simd_size;
 	std::map<std::string, Array> symbols_;
 	Array result_array_;
 	ProcessorBase * processor;
@@ -52,8 +53,8 @@ public:
     /** @brief Constructor
      * max_vec_size - size of single array component in doubles
      */
-    Parser(uint max_vec_size)
-	: max_vec_size(max_vec_size), processor(nullptr), tmp_result(nullptr)
+    Parser(uint max_vec_size, uint simd_size)
+	: max_vec_size(max_vec_size), simd_size(simd_size), processor(nullptr), tmp_result(nullptr)
 	{}
 
     /// @brief Destructor
@@ -150,7 +151,8 @@ public:
     ///
     /// All variable names have to be set before this call.
     /// TODO: set result variable
-    ExpressionDAG compile() {
+    // ExpressionDAG compile() {
+    void compile() {
     	destroy_processor();
 
         ParserResult res_array = boost::apply_visitor(ast::make_array(symbols_), ast);
@@ -168,9 +170,9 @@ public:
 		}
 
 		ExpressionDAG se(result_array_.elements());
-        return se;
+        // return se;
 		//se.print_in_dot();
-		//processor = Processor::create_processor_(se, max_vec_size);
+		processor = create_processor(se, max_vec_size, simd_size);
     }
 
     Array result_array() {
