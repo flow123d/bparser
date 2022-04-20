@@ -11,11 +11,35 @@
 #include "assert.hh"
 #include "parser.hh"
 
+uint get_simd_size()
+{
+	if (__builtin_cpu_supports("avx512f"))
+	{
+		return 8;
+	}
+	if (__builtin_cpu_supports("avx2"))
+	{
+		return 4;
+	}
+	if (__builtin_cpu_supports("avx"))
+	{
+		return 4;
+	}
+	if (__builtin_cpu_supports("sse"))
+	{
+		return 2;
+	}
+	else
+	{
+		return 1;
+	}
+}
 
+uint simd_size = get_simd_size();
 
 bool test_fv(std::string expr, std::vector<std::string> ref_vars) {
 	using namespace bparser;
-	Parser p(4);
+	Parser p(4, simd_size);
 	p.parse(expr);
 	auto vars = p.free_symbols();
 
@@ -51,7 +75,7 @@ std::vector<double> eval_expr_(std::string expr, bparser::Shape ref_shape = {}) 
 	std::vector<double> as1(vec_size, 1);
 	std::vector<double> av2(3*vec_size, 2);
 
-	Parser p(vec_size);
+	Parser p(vec_size, simd_size);
 	p.parse(expr);
 	std::cout << "  AST: " << p.print_ast() << "\n";
 	p.set_variable("as1", {}, &(as1[0]));
@@ -134,7 +158,8 @@ std::vector<double> eval_bool_expr_(std::string expr) {
 	auto v2 = (*arena).create_array<double>(vec_size * 3);
 	fill_seq(v2, 100, 100 + 3 * vec_size);
 
-	Parser p(vec_size);
+
+	Parser p(vec_size, simd_size);
 	p.parse(expr);
 	std::cout << "  AST: " << p.print_ast() << "\n";
 	p.set_variable("v1", {3}, v1);
@@ -151,6 +176,8 @@ std::vector<double> eval_bool_expr_(std::string expr) {
 	fill_const(vres, vec_size * result_size, -1e100); // undefined value
 	p.set_subset({0, 1});
 	p.run();
+
+	arena->destroy();
 
 	std::vector<double> res(result_size * vec_size);
 	for(uint i=0; i < res.size(); i++) res[i] = vres[i];
@@ -172,14 +199,14 @@ bool test_bool_expr(std::string expr, std::vector<double> ref_result) {
 			}
 		}
 	}
-	std::cout.flush();
+	// std::cout.flush();
 	return success;
 }
 
 void test_bool_expression()
 {
 	std::cout << std::endl << "** test bool expression" << std::endl;
-	BP_ASSERT(test_expr("v1 < v2", {1,1,0}));
+	BP_ASSERT(test_bool_expr("v1 < v2", {0,0,0}));
 }
 
 void test_expression() {
