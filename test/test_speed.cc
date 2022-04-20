@@ -214,8 +214,10 @@ void test_expr(std::string expr) {
 	
 	data1.arena->destroy();
 	data2.arena->destroy();
+	// data1.~ExprData();
+	// data2.~ExprData();
 
-	std::cout << "In test_speed.cc" << std::endl;
+	std::cout << std::endl << "In test_speed.cc" << std::endl;
 	std::cout << "Diff: " << diff << " parser: " << p_sum << " c++: " << c_sum << "\n";
 	std::cout << "parser time : " << parser_time << "\n";
 	std::cout << "c++ time    : " << cpp_time << "\n";
