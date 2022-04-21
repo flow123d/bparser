@@ -305,11 +305,11 @@ inline typename d_to_b<double_type>::bool_type as_bool(double_type in) {
 // }
 
 inline int64_t bitmask_false() {
-	return 0x0000000000000000L;
+	return 0x0000000000000000LL;
 }
 
 inline int64_t bitmask_true() {
-	return 0x1111111111111111L;
+	return -1LL;	// -1
 }
 
 inline double double_false() {
