@@ -67,9 +67,12 @@ public:
     }
 
     void destroy_processor() {
-        // arena_.destroy();
-    	// if (tmp_result != nullptr) delete [] tmp_result;
-    	if (processor != nullptr) processor->~ProcessorBase();
+    	// if (tmp_result != nullptr) delete [] tmp_result; // Now it is a vector
+
+    	if (processor != nullptr) {
+            // processor->arena_->destroy();
+            processor->~ProcessorBase();
+        }
     	processor = nullptr;
     }
     /// @brief Parse the mathematical expression into an abstract syntax tree
