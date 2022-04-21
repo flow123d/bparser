@@ -501,7 +501,7 @@ public:
 	}
 
 	static Array true_array(const Array &UNUSED(a)) {
-		return constant({1});
+		return constant({-1});
 	}
 
 	static Array false_array(const Array &UNUSED(a)) {
