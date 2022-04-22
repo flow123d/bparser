@@ -291,7 +291,7 @@ struct Processor {
 	}
 
 
-	static Processor *create_processor_(ExpressionDAG &se, uint vector_size) {
+	static Processor *create_processor_(ExpressionDAG &se, uint vector_size, std::shared_ptr<ArenaAlloc> arena = nullptr) {
 		vector_size = (vector_size / simd_size) * simd_size;
 		uint simd_bytes = sizeof(double) * simd_size;
 		ExpressionDAG::NodeVec & sorted_nodes = se.sort_nodes();
@@ -307,7 +307,10 @@ struct Processor {
 
 
 				;
-		std::shared_ptr<ArenaAlloc> arena = std::make_shared<ArenaAlloc>(simd_bytes, memory_est);
+		if (arena == nullptr)
+			arena = std::make_shared<ArenaAlloc>(simd_bytes, memory_est);
+		else
+			BP_ASSERT(arena->size_ >= memory_est);
 		return arena->create<Processor>(arena, se, vector_size / simd_size);
 	}
 
