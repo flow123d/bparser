@@ -27,29 +27,30 @@
 // Optimized structure, holds data in common arena
 struct ExprData {
 	ExprData(uint vec_size)
-	: arena(32, 256 * 1012), vec_size(vec_size)
+	: vec_size(vec_size)
 	{
-		v1 = arena.create_array<double>(vec_size * 3);
+		arena = std::make_shared<bparser::ArenaAlloc>(32, 256 * 1012);
+		v1 = arena->create_array<double>(vec_size * 3);
 		fill_seq(v1, 100, 100 + 3 * vec_size);
-		v2 = arena.create_array<double>(vec_size * 3);
+		v2 = arena->create_array<double>(vec_size * 3);
 		fill_seq(v2, 200, 200 + 3 * vec_size);
-		v3 = arena.create_array<double>(vec_size * 3);
+		v3 = arena->create_array<double>(vec_size * 3);
 		fill_seq(v3, 300, 300 + 3 * vec_size);
-		v4 = arena.create_array<double>(vec_size * 3);
+		v4 = arena->create_array<double>(vec_size * 3);
 		fill_seq(v4, 400, 400 + 3 * vec_size);
-		vres = arena.create_array<double>(vec_size * 3);
+		vres = arena->create_array<double>(vec_size * 3);
 		fill_const(vres, 3 * vec_size, -100);
-		subset = arena.create_array<uint>(vec_size);
+		subset = arena->create_array<uint>(vec_size);
 		for(uint i=0; i<vec_size/4; i++) subset[i] = i;
 		cs1 = 4;
 	}
 
 	~ExprData()
 	{
-		arena.destroy();
+		arena->destroy();
 	}
 
-	bparser::ArenaAlloc arena;
+	std::shared_ptr<bparser::ArenaAlloc> arena;
 	uint vec_size;
 	double *v1, *v2, *v3, *v4, *vres;
 	double cs1;
@@ -222,9 +223,59 @@ void test_expr(std::string expr, uint block_size, uint i_expr) {
 	ExprData2 data2(vec_size);
 	ExprData  data3(vec_size);
 
-	double parser_time_optim, parser_time_noopt, cpp_time;
+	double parser_time_optim, parser_time_shared_arena, parser_time_copy, parser_time_noopt, cpp_time;
 
 	{ // one allocation in common arena
+		Parser p(block_size);
+		p.parse(expr);
+		p.set_constant("cs1", {}, 	{data1.cs1});
+		p.set_constant("cv1", {3}, 	std::vector<double>(data1.cv1, data1.cv1+3));
+		p.set_variable("v1", {3}, data1.v1);
+		p.set_variable("v2", {3}, data1.v2);
+		p.set_variable("v3", {3}, data1.v3);
+		p.set_variable("v4", {3}, data1.v4);
+		p.set_variable("_result_", {3}, data1.vres);
+		//std::cout << "vres: " << vres << ", " << vres + block_size << ", " << vres + 2*vec_size << "\n";
+		//std::cout << "Symbols: " << print_vector(p.symbols()) << "\n";
+		//std::cout.flush();
+		p.compile();
+
+		std::vector<uint> ss = std::vector<uint>(data1.subset, data1.subset+vec_size/4);
+		p.set_subset(ss);
+		auto start_time = std::chrono::high_resolution_clock::now();
+		for(uint i_rep=0; i_rep < n_repeats; i_rep++) {
+			p.run();
+		}
+		auto end_time = std::chrono::high_resolution_clock::now();
+		parser_time_optim = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time).count();
+	}
+
+	{ // one allocation in common arena, set this arena to processor
+		Parser p(block_size);
+		p.parse(expr);
+		p.set_constant("cs1", {}, 	{data1.cs1});
+		p.set_constant("cv1", {3}, 	std::vector<double>(data1.cv1, data1.cv1+3));
+		p.set_variable("v1", {3}, data1.v1);
+		p.set_variable("v2", {3}, data1.v2);
+		p.set_variable("v3", {3}, data1.v3);
+		p.set_variable("v4", {3}, data1.v4);
+		p.set_variable("_result_", {3}, data1.vres);
+		//std::cout << "vres: " << vres << ", " << vres + block_size << ", " << vres + 2*vec_size << "\n";
+		//std::cout << "Symbols: " << print_vector(p.symbols()) << "\n";
+		//std::cout.flush();
+		p.compile(data1.arena);
+
+		std::vector<uint> ss = std::vector<uint>(data1.subset, data1.subset+vec_size/4);
+		p.set_subset(ss);
+		auto start_time = std::chrono::high_resolution_clock::now();
+		for(uint i_rep=0; i_rep < n_repeats; i_rep++) {
+			p.run();
+		}
+		auto end_time = std::chrono::high_resolution_clock::now();
+		parser_time_shared_arena = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time).count();
+	}
+
+	{ // one allocation in common arena, use set_var_copy
 		Parser p(block_size);
 		p.parse(expr);
 		p.set_constant("cs1", {}, 	{data1.cs1});
@@ -246,7 +297,7 @@ void test_expr(std::string expr, uint block_size, uint i_expr) {
 			p.run();
 		}
 		auto end_time = std::chrono::high_resolution_clock::now();
-		parser_time_optim = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time).count();
+		parser_time_copy = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time).count();
 	}
 
 	{ // unoptimized allocation in separated arenas
@@ -308,9 +359,11 @@ void test_expr(std::string expr, uint block_size, uint i_expr) {
 	std::cout << "=== Parsing of expression: '" << expr << "' ===\n";
 	std::cout << "Block size: " << block_size << "\n";
 	std::cout << "Diff: " << diff << " parser: " << p_sum << " c++: " << c_sum << "\n";
-	std::cout << "parser time optim : " << parser_time_optim << "\n";
-	std::cout << "parser time noopt : " << parser_time_noopt << "\n";
-	std::cout << "c++ time          : " << cpp_time << "\n";
+	std::cout << "parser time optim   : " << parser_time_optim << "\n";
+	std::cout << "parser shared arena : " << parser_time_shared_arena << "\n";
+	std::cout << "parser time copy    : " << parser_time_copy << "\n";
+	std::cout << "parser time noopt   : " << parser_time_noopt << "\n";
+	std::cout << "c++ time            : " << cpp_time << "\n";
 	std::cout << "fraction: " << parser_time_optim/cpp_time << "\n";
 	double n_flop = n_repeats * vec_size * 9;
 	std::cout << "parser FLOPS: " << n_flop / parser_time_optim << "\n";
