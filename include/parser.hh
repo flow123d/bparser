@@ -70,7 +70,7 @@ public:
     	// if (tmp_result != nullptr) delete [] tmp_result; // Now it is a vector
 
     	if (processor != nullptr) {
-            // processor->arena_->destroy();
+            processor->arena_.destroy();
             processor->~ProcessorBase();
         }
     	processor = nullptr;
