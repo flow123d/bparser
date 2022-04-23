@@ -284,8 +284,15 @@ struct ProcessorBase {
 	virtual void run() = 0;
 	virtual void set_subset(std::vector<uint> const &subset) = 0;
 
+	ProcessorBase(ArenaAlloc arena)
+	: arena_(arena) {
+		
+	}
+
 	virtual ~ProcessorBase() {
 	}
+
+	ArenaAlloc arena_;
 };
 
 /**
@@ -293,7 +300,7 @@ struct ProcessorBase {
  */
 
 template <typename VecType>
-struct Processor : ProcessorBase {
+struct Processor : public ProcessorBase {
 	/**
 	 *hh
 	 * vector_size: maximum vector size in doubles
@@ -349,7 +356,7 @@ struct Processor : ProcessorBase {
 	 */
 
 	Processor(ArenaAlloc arena, ExpressionDAG &se, uint vec_size)
-	: arena_(arena)
+	: ProcessorBase(arena)
 	{
 		workspace_.vector_size = vec_size;
 		workspace_.subset_size = 0;
@@ -550,7 +557,7 @@ struct Processor : ProcessorBase {
 	}
 	
 
-	ArenaAlloc arena_;
+	// ArenaAlloc arena_;
 	Workspace<MVec> workspace_;
 	Operation * program_;
 };
