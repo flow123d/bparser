@@ -159,18 +159,12 @@ struct ValueCopyNode : public ScalarNode {
 		op_name_ = "ValueCopy";
 		source_ptr_ = ptr;
 		result_storage = value_copy;
-		arena_ = nullptr;
 		values_ = nullptr;
 	}
 
 	~ValueCopyNode() override {
 	}
 
-	void set_arena(std::shared_ptr<ArenaAlloc> arena) {
-		this->arena_ = arena;
-	}
-
-	std::shared_ptr<ArenaAlloc> arena_; ///< Arena shared with Processor object
 	double * source_ptr_;               ///< Pointer to data passed in constructor
 };
 

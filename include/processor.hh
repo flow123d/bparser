@@ -377,7 +377,6 @@ struct Processor {
 			case value_copy:
 			{
 				auto val_copy_ptr = ( std::dynamic_pointer_cast<ValueCopyNode> (node) );
-				val_copy_ptr->set_arena(arena_);
 				if (val_copy_ptr->values_ == nullptr) {
 					val_copy_ptr->values_ = arena_->create_array<double>(vec_size);
 					vec_set(node->result_idx_, (double4 *)node->get_value(), workspace_.vec_subset);

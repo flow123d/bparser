@@ -209,7 +209,7 @@ void expr4(ExprData &data) {
  * @param block_size Number of floats
  * @param i_expr     Specifies C++ expression function
  */
-void test_expr(std::string expr, uint block_size, uint i_expr) {
+void test_expr(std::string expr, uint block_size, void (* func)(ExprData&)) {
 	using namespace bparser;
 	uint vec_size = 1*block_size;
 
@@ -329,14 +329,7 @@ void test_expr(std::string expr, uint block_size, uint i_expr) {
 
 	{ // C++ expression
 		auto start_time = std::chrono::high_resolution_clock::now();
-		if (i_expr == 1)
-		    for(uint i_rep=0; i_rep < n_repeats; i_rep++) expr1(data3);
-		else if (i_expr == 2)
-			for(uint i_rep=0; i_rep < n_repeats; i_rep++) expr2(data3);
-		else if (i_expr == 3)
-			for(uint i_rep=0; i_rep < n_repeats; i_rep++) expr3(data3);
-		else
-			for(uint i_rep=0; i_rep < n_repeats; i_rep++) expr4(data3);
+		for(uint i_rep=0; i_rep < n_repeats; i_rep++) func(data3);
 		auto end_time = std::chrono::high_resolution_clock::now();
 		cpp_time = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time).count();
 	}
@@ -378,10 +371,10 @@ void test_expr(std::string expr, uint block_size, uint i_expr) {
 void test_expression() {
 	std::vector<uint> block_sizes = {64, 256, 1024};
 	for (uint i=0; i<block_sizes.size(); ++i) {
-		test_expr("v1 + v2 + v3 + v4", block_sizes[i], 1);
-		test_expr("3 * v1 + cs1 * v2 + v3 + 2.5 * v4", block_sizes[i], 2);
-		test_expr("sin(v1)", block_sizes[i], 3);
-		test_expr("[v2, v2, v2] @ v1 + v3", block_sizes[i], 4); // correct expression
+		test_expr("v1 + v2 + v3 + v4", block_sizes[i], &expr1);
+		test_expr("3 * v1 + cs1 * v2 + v3 + 2.5 * v4", block_sizes[i], &expr2);
+		test_expr("sin(v1)", block_sizes[i], &expr3);
+		test_expr("[v2, v2, v2] @ v1 + v3", block_sizes[i], &expr4); // correct expression
 	}
 }
 
