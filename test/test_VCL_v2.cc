@@ -136,10 +136,13 @@ int main()
     Vec2d r;
     Vec2db x;
     
-    x = a < b;
+    x = a > b;
     r = as_double(x);
 
     printVector<Vec2db>(x, "x");
+    printVector<Vec2d>(r, "r");
+
+    r = select(x, a, b);
     printVector<Vec2d>(r, "r");
 
 ///////////////////////////////////////////////////////////////
@@ -165,6 +168,9 @@ int main()
     cc_ref = as_double(xx);
 
     printVector<Vec4d>(cc_ref, "cc_ref");
+
+    rr = select(xx, aa, bb);
+    printVector<Vec4d>(rr, "rr");
 
 ////////////////////////////////////////////////////////////////////////
     Vec8d aaa(0.0, 1.0, 20.0, 30.0, 0.0, 1.0, 20.0, 30.0);
@@ -193,6 +199,9 @@ int main()
 
     eval<Vec8d>(rrr, aaa, bbb);
 
+    printVector<Vec8d>(rrr, "rrr");
+
+    rrr = select(xxx, aaa, bbb);
     printVector<Vec8d>(rrr, "rrr");
 
     auto start_time = std::chrono::high_resolution_clock::now();
