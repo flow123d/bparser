@@ -11,7 +11,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 -mavx2")
 #set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG -rdynamic -lSegFault -fsanitize=address -static-libasan -fno-omit-frame-pointer")  #
 
 # valgrind setting
-set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG  -fno-omit-frame-pointer")  #
+set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG  -fsanitize=address -static-libasan -fno-omit-frame-pointer")  #
 
 #ASAN_OPT         := -g -fsanitize=address -static-libasan -fno-omit-frame-pointer
 #MSAN_OPT         := -g -fsanitize=memory    -fno-omit-frame-pointer
