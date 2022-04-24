@@ -33,6 +33,9 @@ enum ResultStorage {
 struct ScalarNode;
 typedef std::shared_ptr<ScalarNode> ScalarNodePtr;
 
+const int64_t true_value = -1LL;
+const int64_t false_value = 0x0000000000000000LL;
+
 
 /**
  * ScalarNodes describes DAG of elementary operations. From this
@@ -305,11 +308,11 @@ inline typename d_to_b<double_type>::bool_type as_bool(double_type in) {
 // }
 
 inline int64_t bitmask_false() {
-	return 0x0000000000000000LL;
+	return false_value;
 }
 
 inline int64_t bitmask_true() {
-	return -1LL;	// -1
+	return true_value;
 }
 
 inline double double_false() {

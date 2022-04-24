@@ -501,11 +501,11 @@ public:
 	}
 
 	static Array true_array(const Array &UNUSED(a)) {
-		return constant({-1});
+		return constant({bparser::details::true_value});
 	}
 
 	static Array false_array(const Array &UNUSED(a)) {
-		return constant({0});
+		return constant({bparser::details::false_value});
 	}
 
 	template <class T>
