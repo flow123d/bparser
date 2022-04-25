@@ -74,9 +74,8 @@ inline uint absolute_idx(int i, int size) {
 
 /**
  * Defines extraction from an Array or broadcasting of smaller Array to the larger shape.
- * The source shape size must be smaller or equal to the shape of the destination.
  *
- * Consider MultiIdxRange as a mapping from multiindices of an SOURCE array
+ * Consider MultiIdxRange as a mapping from multiindices of a SOURCE array
  * to the multiindices of the DESTINATION array, i.e.
  *
  * 		destination[i, j, k, ... ] = source[MIR[ i, j, k, ...]]
@@ -84,54 +83,67 @@ inline uint absolute_idx(int i, int size) {
  * MIR mapping is given as a tensor product of single axis mappings:
  * MIR[i, j, k, ... ] =  (ranges_[T[0], i], ranges_[T[1], j], ranges_[T[2], k], ...)
  *
- * T[:] - transpose mapping, can have values 'none_int'
- * range_[m] where m is not in T[:] must have size 1 with fixed index to the source array
- * Shape of destination array is given by  [ranges_[T[0]].size(), ranges_[T[1]].size(), ...]
- * Shape of the source array is given by full_shape_. The values of the ranges_ must be compatible:
+ * T[1:K] - transpose mapping, contains values (0, .., source.shape.size()) every axis at most once.
+ * It can contain only subset of the source axes.
+ * Can contain value 'none_int', marking broadcasting axis with the size 1.
+ *
+ * range_[m] where m is not contained in T[:] must have size 1. This provides a slice index to the source
+ * array in the axis 'm'.
+ * Shape of the source array is given by the full_shape_. The values of the ranges_ must be compatible:
  *
  *       ranges_[i][:] < full_shape_[i]
  *
- * TODO: Better documentation, with introduction of transpose
+ * However to support broadcasting, we allow to have ranges_.size() > full_shape_.size(), having
+ * added ranges at the beginning and containing only zeros.
+ *
+ * Shape of the destination array is given by  [n_0, ... ,n_K], where
+ * n_i is 1 if T[i] is none_int
+ * or n_i is ranges_[T[i]].size() if T[i] is int
+ *
+ * There are two main use cases:
+ * 1. Subscription of the array.
+ * This is done iteratively by processing the subscription list and calling on of:
+ * sub_index, sub_range, sub_slice for every item. This process starts with an empty MultiIdxRange(shape)
+ * where 'shape' provides the shape of the source array. Then axes are iteratively added.
+ * The 'sub_index' method adds axis only to the source shape and to ranges_, sub_transpose is untouched.
+ * The other two methods add axis to both source and destination shape.
+ *
+ * MRI maps indices to the destination array to the indices of the source array.
+ *
+ * 2. Broadcasting consists of:
+ * - First, the source shape is padded from the left by axies of dimension 1.
+ * - Second, axes of dimension 1 can be repeated to match corresponding axes of the target shape.
+ *
+ * Mapping from the original to the broadcasted array is stored in MIR as follows:
+ * - source_shape_ - contains the shape or the original array
+ * - ranges_ is padded from the left
+ * - the padded ranges as well as the ranges of size one and containing {0} are filled with
+ *   number of zeros corresponding to the target shape
+ * - target_transpose is kept identical.
+ *
+ * MultiIdx takes this into account in implementaion of idx_src and idx_trg.
  *
  */
 struct MultiIdxRange {
-	//typedef std::vector<std::vector<int>> GeneralRanges;
-	/**
-	 * AST interface ============================================
-	 */
-//	MultiIdxRange(Shape full_shape, GeneralRanges ranges)
-//	: full_shape_(full_shape) {
-//
-//		for(uint axis=0; axis < full_shape_.size(); ++axis) {
-//			if (axis < ranges.size()) {
-//
-//			} else {
-//				std::vector<uint> full(full_shape_[axis]);
-//				for(uint i=0; i < full_shape_[axis]; ++i) full[i] = i;
-//			ranges_.push_back(full);
-//		}
-//	}
-//
-
-
-	// ===================================================
 
 	/**
 	 * Identical MIR mapping for given shape.
 	 */
 	MultiIdxRange(Shape shape)
-	: full_shape_(shape),
-	  sub_transpose_(shape.size())
-	{
-		for(uint axis=0; axis<full_shape_.size();axis++)
-			sub_transpose_[axis] = axis;
-	}
+	: source_shape_(shape),
+	  ranges_(),
+	  target_transpose_()
+	{}
 
 	MultiIdxRange full() const {
-		MultiIdxRange res(full_shape_);
-		for(uint axis=0; axis < full_shape_.size(); ++axis) {
-			std::vector<uint> full(full_shape_[axis]);
-			for(uint i=0; i < full_shape_[axis]; ++i) full[i] = i;
+		MultiIdxRange res(source_shape_);
+		res.target_transpose_.resize(source_shape_.size());
+		for(uint axis=0; axis<source_shape_.size();axis++)
+			res.target_transpose_[axis] = axis;
+
+		for(uint axis=0; axis < source_shape_.size(); ++axis) {
+			std::vector<uint> full(source_shape_[axis]);
+			for(uint i=0; i < source_shape_[axis]; ++i) full[i] = i;
 			res.ranges_.push_back(full);
 		}
 		return res;
@@ -139,41 +151,43 @@ struct MultiIdxRange {
 
 
 
-//	MultiIdxRange(Shape shape)
-//	: full_shape_(shape) {
-
-//		void subset(const std::vector<IndexSubset> &range_spec) {
-//			ASSERT(range_spec.size() == full_shape_.size());
-//			for(IndexSubset subset : range_spec)
-//				ranges_.push_back(subset.idx_list(full_shape_));
-//		}
 
 
 	/**
-	 * Broadcast the full range to the given shape.
-	 * 1. pad full shape from left by ones
+	 * Broadcast from this->full_shape_ to the given other shape.
+	 * other shape must be larger then this and
+	 * 1. pad sub_shape from left by ones
 	 * 2. extend dimensions equal to one to the given shape
 	 * 3. other dimensions must match given shape
 	 * TODO: make all methods either pure or inplace
 	 */
-	MultiIdxRange broadcast(Shape other) const {
-		int n_pad = other.size() - full_shape_.size();
+	MultiIdxRange broadcast(Shape broad) const {
+		auto result = MultiIdxRange(source_shape_);
+
+		int n_pad = broad.size() - source_shape_.size();
 		if ( n_pad < 0) {
-			Throw() << "Broadcast from longer shape " << full_shape_.size()
-				<< " to shorter shape " << other.size() << ".\n";
+			Throw() << "Impossible to broadcast from longer shape " << source_shape_.size()
+				<< " to shorter shape " << broad.size() << ".\n";
 		}
-		Shape res_shape(n_pad, 1);
-		res_shape.insert(res_shape.end(), full_shape_.begin(), full_shape_.end());
 
-		auto result = MultiIdxRange(other).full();
-		for(uint ax=0; ax < res_shape.size(); ++ax) {
-			if (res_shape[ax] == 1)
-				result.ranges_[ax] = std::vector<uint>(other[ax], 0);
-			else if (res_shape[ax] != other[ax]) {
-				Throw() << "Broadcast from " << res_shape[ax] << " to "
-					<< other[ax] << " in axis " << ax;
+		uint ax=0;
+		for(; ax < uint(n_pad); ++ax) {
+			// add axis
+			result.ranges_.push_back(std::vector<uint>(broad[ax],0));
+			result.target_transpose_.push_back(ax);
+		}
+		for(;ax < broad.size(); ++ax) {
+			if (source_shape_[ax-n_pad] == 1) {
+				result.ranges_.push_back(std::vector<uint>(broad[ax], 0));
+			} else if (source_shape_[ax-n_pad] == broad[ax]) {
+				std::vector<uint> full(broad[ax]);
+				for(uint i=0; i < full.size(); ++i) full[i] = i;
+				result.ranges_.push_back(full);
+			} else {
+				Throw() << "Invalid broadcast from " << source_shape_[ax-n_pad] << " to "
+					<< broad[ax] << " in axis " << ax;
 			}
-
+			result.target_transpose_.push_back(ax);
 		}
 		return result;
 	}
@@ -206,6 +220,18 @@ struct MultiIdxRange {
 	}
 
 	/**
+	 * Swap given axes 'i' and 'j' in of the source array.
+	 * Effetively swap appropriate ranges_ and full_shape_.
+	 * Change appropriately values of the 'target_transpose_'.
+	 */
+	void target_transpose(int ii, int jj) {
+		uint i = absolute_idx(ii, target_transpose_.size());
+		uint j = absolute_idx(jj, target_transpose_.size());
+		std::swap(target_transpose_[i], target_transpose_[j]);
+
+	}
+
+	/**
 	 * Insert 'axis' with continuous sequence from 0 till 'dimension' into the source.
 	 * Set
 	 * E.g. for axis=1, dimension=2:
@@ -214,40 +240,45 @@ struct MultiIdxRange {
 	 * TODO: return copy
 	 */
 	void insert_axis(uint dest_axis, uint src_axis, uint dimension=1) {
-		BP_ASSERT(src_axis <= full_shape_.size());
-		BP_ASSERT(dest_axis <= sub_transpose_.size()); // TODO: check size of sub_transpose_
-		full_shape_.insert(full_shape_.begin() + src_axis, dimension);
+		BP_ASSERT(src_axis <= source_shape_.size());
+		BP_ASSERT(dest_axis <= target_transpose_.size()); // TODO: check size of target_transpose_
+		source_shape_.insert(source_shape_.begin() + src_axis, dimension);
 		ranges_.insert(ranges_.begin() + src_axis, std::vector<uint>());
 		for(uint i=0; i<dimension; ++i)
 			ranges_[src_axis].push_back(i);
-		for(uint axis=0; axis<sub_transpose_.size();axis++)
-			if (sub_transpose_[axis] >= src_axis)
-				sub_transpose_[axis]++;
+		for(uint axis=0; axis<target_transpose_.size();axis++)
+			if (target_transpose_[axis] >= src_axis)
+				target_transpose_[axis]++;
 
-		sub_transpose_.insert(sub_transpose_.begin() + dest_axis, src_axis);
+		target_transpose_.insert(target_transpose_.begin() + dest_axis, src_axis);
 	}
 
+	void remove_target_axis(uint dest_axis) {
+		BP_ASSERT(ranges_[target_transpose_[dest_axis]].size() == 1);
+		target_transpose_.erase(target_transpose_.begin() + dest_axis);
+	}
+
+
+	void sub_none() {
+		target_transpose_.push_back(none_int);
+	}
 
 	/**
 	 * AST subscription interface.
 	 * Subscribe given axis by the index. Reduce the axis.
+	 *
+	 * TODO: Need to iteratively expand the sub_transpose.
+	 * 'sub_index' must only set ranges_[axis] = {index}
+	 * but should not append to the transpose.
+	 *
 	 */
-	void sub_index(uint dest_axis, int index) {
+	void sub_index(int index) {
 		//std::cout << "sub_index: " << axis << index << "\n";
-		if (index == none_int) {
-			BP_ASSERT(dest_axis <= sub_transpose_.size());
-			sub_transpose_.insert(sub_transpose_.begin() + dest_axis, none_int);
-		} else {
-			if (dest_axis >= sub_transpose_.size()) {
-				Throw() << "Too many indices (" << dest_axis << ") of array.";
-			}
-			uint src_axis = sub_transpose_[dest_axis];
-			BP_ASSERT(src_axis < full_shape_.size());
-			uint range_size = full_shape_[src_axis];
-			uint i_index = absolute_idx(index, range_size);
-			ranges_[src_axis] = std::vector<uint>({i_index});
-			sub_transpose_[dest_axis] = src_axis;
-		}
+		uint src_axis = ranges_.size();
+		BP_ASSERT(src_axis < source_shape_.size());
+		uint range_size = source_shape_[src_axis];
+		uint i_index = absolute_idx(index, range_size);
+		ranges_.push_back( std::vector<uint>({i_index}));
 	}
 
 
@@ -255,34 +286,28 @@ struct MultiIdxRange {
 	 * AST subscription interface.
 	 * Subscribe given axis by the range given by the list of generalized indices.
 	 */
-	void sub_range(uint dest_axis, std::vector<int> index_list) {
+	void sub_range(std::vector<int> index_list) {
 		//std::cout << "sub_range: " << axis << index_list[0] << "\n";
-		if (dest_axis >= sub_transpose_.size()) {
-			Throw() << "Too many indices (" << dest_axis << ") of array.";
-		}
-		uint src_axis = sub_transpose_[dest_axis];
-		BP_ASSERT(src_axis < full_shape_.size());
-		uint range_size = full_shape_[src_axis];
+		uint src_axis = ranges_.size();
+		BP_ASSERT(src_axis < source_shape_.size());
+		uint range_size = source_shape_[src_axis];
 		std::vector<uint> range;
 		for(int idx : index_list) {
 			range.push_back(absolute_idx(idx, range_size));
 		}
-		ranges_[src_axis] = range;
-		sub_transpose_[dest_axis] = src_axis;
+		ranges_.push_back(range);
+		target_transpose_.push_back(src_axis);
 	}
 
 	/**
 	 * AST subscription interface.
 	 * Subscribe given axis by the range given by a slice.
 	 */
-	void sub_slice(uint dest_axis, Slice s) {
+	void sub_slice(Slice s) {
 		//std::cout << "sub_slice: " << axis << s[0] << s[1] << s[2] << "\n";
-		if (dest_axis >= sub_transpose_.size()) {
-			Throw() << "Too many indices (" << dest_axis << ") of array.";
-		}
-		uint src_axis = sub_transpose_[dest_axis];
-		BP_ASSERT(src_axis < full_shape_.size());
-		uint range_size = full_shape_[src_axis];
+		uint src_axis = ranges_.size();
+		BP_ASSERT(src_axis < source_shape_.size());
+		uint range_size = source_shape_[src_axis];
 		std::vector<uint> range;
 		int start=s[0], end=s[1], step=s[2];
 		if (step == 0) {
@@ -307,8 +332,8 @@ struct MultiIdxRange {
 		for(int idx = i_start; (i_end - idx) * step > 0; idx += step) {
 			range.push_back(idx);
 		}
-		ranges_[src_axis] = range;
-		sub_transpose_[dest_axis] = src_axis;
+		ranges_.push_back(range);
+		target_transpose_.push_back(src_axis);
 	}
 
 	/**
@@ -320,20 +345,12 @@ struct MultiIdxRange {
 	}
 
 	/**
-	 * repeat last element in 'axis' range
-	 */
-//		void pad(uint n_items, uint axis) {
-//			ranges_[axis].insert(ranges_[axis].end(), n_items, ranges_[axis].back());
-//		}
-
-
-	/**
 	 * Produce shape of the destination array.
 	 */
-	Shape sub_shape() const {
+	Shape target_shape() const {
 		Shape shape;
 		uint size;
-		for(auto t : sub_transpose_) {
+		for(auto t : target_transpose_) {
 			if (t == none_int) {
 				size = 1;
 			} else {
@@ -344,24 +361,24 @@ struct MultiIdxRange {
 		return shape;
 	}
 
+	/// Shape of the source Array of the range.
+	Shape source_shape_;
 	/// For every source axes, indices extracted from the source Array.
 	std::vector<std::vector<uint>> ranges_;
-	/// Shape of the source Array of the range.
-	Shape full_shape_;
 	/// Transpose maps destination axis to the source axis.
 	/// none_int values are allowed indicating lifting e.g. from a vector to 1xN matrix.
 	/// Size is equal to the number of destination axes.
-	std::vector<uint> sub_transpose_;
+	std::vector<uint> target_transpose_;
 
 };
 
 
 /**
- * Multiindex
- *
- * - keeps range
- * - supports iteration over the destination shape of the range
- * - provides linear index to the source and destination array
+ * Multiindex - iterating over the MultiIdxRange
+ * - internally stores multiindex to the ranges
+ * - can iterate over the source array, method inc_src
+ * - can iterate over the destination array, method inc_trg
+ * - provides linear index to both source (idx_src) and destination array (idx_trg)
  */
 struct MultiIdx {
 
@@ -372,47 +389,122 @@ struct MultiIdx {
 	 * Set range, set multiindex to element zero.
 	 */
 	MultiIdx(MultiIdxRange range)
-	: range_(range), indices_(range.ranges_.size(), 0), valid_(true)
+	: range_(range), src_indices_(range.ranges_.size(), 0), valid_(true)
 	{
 	}
 
 	bool valid() {
 		return valid_;
 	}
+
+	void reset_indices(const MultiIdx &other) {
+		src_indices_ = other.src_indices_;
+		valid_ = other.valid_;
+	}
 	/**
-	 * Increment the multiindex. Last index runs fastest.
+	 * Increment the destination multiindex translated to the source multiindex. Last index runs fastest.
 	 * Returns true if the increment was sucessfull, return false for the end of the range.
-	 * this->indices_ are set to zeros after the end of the iteration range.
+	 *
+	 * Parameters:
+	 * axis - axis to which account the increment, accepts negative indices
+	 * inc - increment step, can be negative
+	 * carry - true ... carry to higher order axis
+	 *       - false .. do not carry switch to the invalid state
 	 */
-	bool inc(uint negative_axis=0) {
+	bool inc_trg(int i_axis=-1, int inc=1, bool carry=true) {
+		//std::cout << print_vector(src_indices_) << "\n";
+
+		BP_ASSERT(valid_);
 		valid_=false;
-		for(uint dest_axis = range_.sub_transpose_.size() - negative_axis; dest_axis > 0 ; )
+		if (range_.target_transpose_.size() == 0) {
+			return valid_;
+		}
+		uint axis = absolute_idx(i_axis, range_.target_transpose_.size());
+		for(uint dest_axis = axis + 1; dest_axis > 0 ; )
 		{
 			--dest_axis;
-			if (range_.sub_transpose_[dest_axis] == none_int) continue;
-			uint src_axis = range_.sub_transpose_[dest_axis];
-			indices_[src_axis] += 1;
-			if (indices_[src_axis] == range_.ranges_[src_axis].size()) {
-				indices_[src_axis] = 0;
-				continue;
-			} else {
+			if (range_.target_transpose_[dest_axis] == none_int) continue;
+			uint src_axis = range_.target_transpose_[dest_axis];
+			//std::cout << "dest axis: " << dest_axis << " src axis" << src_axis << "\n";
+			int new_idx = src_indices_[src_axis] + inc;
+			int bound = range_.ranges_[src_axis].size();
+			if (0 <= new_idx  && new_idx < bound) {
+				src_indices_[src_axis] = new_idx;
 				valid_ = true;
 				break;
+			} else {
+				if (carry) {
+					int reminder = (new_idx % bound + bound) % bound;
+					src_indices_[src_axis] = reminder;
+					inc = (new_idx - reminder) / bound;
+				} else {
+					src_indices_[src_axis] = new_idx;
+					break;
+				}
 			}
 		}
-		return valid_; // false == all indeces_ set to zeros
+		return valid_;
+	}
+
+
+	/**
+	 * Increment the source multiindex. Last index runs fastest.
+	 * Returns true if the increment was sucessfull, return false for the end of the range.
+	 * Iterate over source subset defined by ranges, but over all source axis and in the source tranposition.
+	 *
+	 * Parameters:
+	 * axis - axis (of the source shape) to which account the increment, 0 - means the last axis
+	 * inc - increment step, can be negative
+	 * carry - true ... carry to higher order axis
+	 *       - false .. do not carry switch to the invalid state
+	 */
+	bool inc_src(int i_axis=-1, int inc=1, bool carry=true) {
+		//std::cout << print_vector(src_indices_) << "\n";
+		BP_ASSERT(valid_);
+		valid_=false;
+		if (range_.source_shape_.size() == 0) {
+			return valid_;
+		}
+		uint axis = absolute_idx(i_axis, range_.source_shape_.size());
+		for(uint src_axis = axis + 1; src_axis > 0 ; )
+		{
+			--src_axis;
+
+			int new_idx = src_indices_[src_axis] + inc;
+			int bound = range_.ranges_[src_axis].size();
+//			std::cout << i_axis << " src axis" << src_axis << " : "
+//					<< new_idx << " < " << bound << "\n";
+			if (0 <= new_idx  && new_idx < bound) {
+				src_indices_[src_axis] = new_idx;
+				valid_ = true;
+				break;
+			} else {
+				if (carry) {
+					int reminder = (new_idx % bound + bound) % bound;
+					src_indices_[src_axis] = reminder;
+					inc = (new_idx - reminder) / bound;
+				} else {
+					src_indices_[src_axis] = new_idx;
+					break;
+				}
+			}
+		}
+		return valid_;
 	}
 
 	/**
 	 * Linear index into source array of the range.
 	 * Last index runs fastest.
 	 */
-	uint src_idx() {
+	uint idx_src() {
+		BP_ASSERT(src_indices_.size() == range_.ranges_.size());
 		uint lin_idx = 0;
-		for(uint axis = 0; axis < indices_.size(); ++axis) {
-			lin_idx *= range_.full_shape_[axis];
-			lin_idx += range_.ranges_[axis][indices_[axis]];
-		}
+		uint axis = range_.ranges_.size() - range_.source_shape_.size();
+		for(uint i=0; axis < src_indices_.size(); ++axis,++i) {
+			lin_idx *= range_.source_shape_[i];
+			lin_idx += range_.ranges_[axis][src_indices_[axis]];
+			//std::cout << "   src idx: " << lin_idx << "\n";
+ 		}
 		return lin_idx;
 	}
 
@@ -420,27 +512,33 @@ struct MultiIdx {
 	 * Linear index into destination array of the range.
 	 * Last index runs fastest.
 	 */
-	uint dest_idx() {
+	uint idx_trg() {
 		uint lin_idx = 0;
-		for(uint dest_axis = 0; dest_axis < range_.sub_transpose_.size(); ++dest_axis) {
-			uint src_axis = range_.sub_transpose_[dest_axis];
+		for(uint dest_axis = 0; dest_axis < range_.target_transpose_.size(); ++dest_axis) {
+			uint src_axis = range_.target_transpose_[dest_axis];
 			if (src_axis == none_int) continue;
 			lin_idx *= range_.ranges_[src_axis].size();
-			lin_idx += indices_[src_axis];
+			lin_idx += src_indices_[src_axis];
 		}
 		return lin_idx;
 	}
 
+	/// Just for test purposes.
+	/// If necessary, we must implement indices_src and indeces_dest consistend with *_idx methods.
 	const VecUint &indices() const {
-		return indices_;
+		return src_indices_;
 	}
 
 
 	// List of indices for every axis.
 	MultiIdxRange range_;
-	// Indirect multiindex index into range_.
-	// Last index runs fastest.
-	VecUint indices_;
+	/**
+	 * Indirectindex into range_.
+	 * Last index runs fastest.
+	 */
+	VecUint src_indices_;
+
+	// indicates result of the last inc operation.
 	bool valid_;
 };
 
@@ -514,7 +612,7 @@ public:
 		MultiIdx idx(a.range());
 		for(;;) {
 			result[idx] = details::ScalarNode::create<T>(a[idx]);
-			if (! idx.inc()) break;
+			if (! idx.inc_trg()) break;
 		}
 		return result;
 	}
@@ -530,13 +628,25 @@ public:
 		MultiIdx a_idx(a_range);
 		MultiIdx b_idx(b_range);
 		Array result(res_shape);
+
+
+		// std::cout << print_vector(a.shape());
+		// std::cout << print_vector(b.shape());
+		// std::cout << print_vector(result.shape());
+
 		for(;;) {
-			BP_ASSERT(a_idx.dest_idx() == b_idx.dest_idx());
-			result.elements_[a_idx.dest_idx()] =
+
+		//	std::cout << "a_di: " << a_idx.dest_idx() << " a_si:" << a_idx.src_idx()
+		//			<< " b_di: " << b_idx.dest_idx() << " b_si: " << b_idx.dest_idx() << "\n";
+
+			BP_ASSERT(a_idx.idx_trg() == b_idx.idx_trg());
+			result.elements_[a_idx.idx_trg()] =
 					details::ScalarNode::create<T>(
-							a.elements_[a_idx.src_idx()],
-							b.elements_[b_idx.src_idx()]);
-			if (!a_idx.inc() || !b_idx.inc()) break;
+							a.elements_[a_idx.idx_src()],
+							b.elements_[b_idx.idx_src()]);
+			a_idx.inc_trg();
+			b_idx.inc_trg();
+			if (!a_idx.valid()) break;
 		}
 		return result;
 	}
@@ -554,14 +664,14 @@ public:
 		MultiIdx c_idx(c_range);
 		Array result(res_shape);
 		for(;;) {
-			BP_ASSERT(a_idx.dest_idx() == b_idx.dest_idx());
-			BP_ASSERT(a_idx.dest_idx() == c_idx.dest_idx());
-			result.elements_[a_idx.dest_idx()] =
+			BP_ASSERT(a_idx.idx_trg() == b_idx.idx_trg());
+			BP_ASSERT(a_idx.idx_trg() == c_idx.idx_trg());
+			result.elements_[a_idx.idx_trg()] =
 					details::ScalarNode::create_ifelse(
-							a.elements_[a_idx.src_idx()],
-							b.elements_[b_idx.src_idx()],
-							c.elements_[c_idx.src_idx()]);
-			if (!a_idx.inc() || !b_idx.inc() || !c_idx.inc()) break;
+							a.elements_[a_idx.idx_src()],
+							b.elements_[b_idx.idx_src()],
+							c.elements_[c_idx.idx_src()]);
+			if (!a_idx.inc_trg() || !b_idx.inc_trg() || !c_idx.inc_trg()) break;
 		}
 		return result;
 
@@ -614,8 +724,24 @@ public:
 	}
 
 
+	// Vector value array with given shape
+	static Array value_copy(double *v, uint array_max_size, Shape shape = {})
+	{
+		Array res(shape);
+		for(uint i_el=0; i_el < res.elements_.size(); ++i_el) {
+			res.elements_[i_el] = details::ScalarNode::create_val_copy(v);
+			v += array_max_size;
+		}
+		return res;
+	}
+
+
 	static Array stack_zero(const std::vector<Array> &list) {
-		return stack(list);
+		if (list.size() == 1) {
+			return list[0].promote_in_axis(0);
+		} else {
+			return stack(list, 0);
+		}
 	}
 
 	static Array stack(const std::vector<Array> &list, int axis=0) {
@@ -711,11 +837,12 @@ public:
 		// 3. broadcast arrays and concatenate
 		Array result = Array(res_shape);
 		for(uint ia=1; ia < list.size(); ++ia) {
-			Shape s = list_range[0].sub_shape();
+			Shape s = list_range[0].target_shape();
 			s[axis] = list[0].shape_[axis];
 			MultiIdxRange r = list_range[0].broadcast(s);
 			r.shift_axis(axis, 0);
-			result.set_subset(r, list[0]);
+			result.set_subset(r, list[0]); // TODO: possible bug, should be list[ia] ??
+			// problem is that only first element of list is used in this code
 		}
 		return result;
 	}
@@ -729,12 +856,15 @@ public:
 	 * result 	has shape (..., i,j, k,m)
 	 */
 	static Array mat_mult(const Array &a,  const Array &b) {
+		//std::cout << "mat mult: " << print_vector(a.shape()) << " @ " << print_vector(b.shape()) << "\n";
+
 		if (a.shape().size() == 0)
 			Throw() << "Matmult can not multiply by scalar a." << "\n";
 		if (b.shape().size() == 0)
 			Throw() << "Matmult can not multiply by scalar b." << "\n";
 
 		auto a_broadcast = MultiIdxRange(a.shape()).full();
+
 		if (a.shape().size() == 1) {
 			a_broadcast.insert_axis(0, 0, 1);
 		}
@@ -742,13 +872,13 @@ public:
 		if (b.shape().size() == 1) {
 			b_broadcast.insert_axis(1, 1, 1);
 		}
-		Shape a_shape = a_broadcast.full_shape_;
+		Shape a_shape = a_broadcast.source_shape_;
 		//uint a_only_dim = *(a_shape.end() - 2);
 		uint a_common_dim = *(a_shape.end() - 1);
 		a_shape.insert(a_shape.end(), 1);
 		// a_shape : (...,i,j,k,l,1)
 
-		Shape b_shape = b_broadcast.full_shape_;
+		Shape b_shape = b_broadcast.source_shape_;
 		//uint b_only_dim = *(b_shape.end() - 1);
 		uint b_common_dim = *(b_shape.end() - 2);
 		b_shape.insert(b_shape.end() - 2, 1);
@@ -762,46 +892,86 @@ public:
 		// result_shape : (...,i,j,k,1,m)
 
 		MultiIdxRange a_range = MultiIdxRange(a_shape).full().broadcast(common_shape);
+		a_range.target_transpose(-2, -1);
 		MultiIdxRange b_range = MultiIdxRange(b_shape).full().broadcast(common_shape);
+		b_range.target_transpose(-2, -1);
 		MultiIdxRange result_range = MultiIdxRange(result_shape).full();
-		// transpose a_range and b_range in  order to have common_dim the last one
+		result_range.target_transpose(-2, -1);
+		// transpose a_range and b_range in  order to have common_dim the last one:
+		// a_shape : (....i,j, k,l,1)
 		// b_shape : (...,i,j,1,m,l)
-		*(b_range.sub_transpose_.end() - 1) = b_range.sub_transpose_.size() - 2;
-		*(b_range.sub_transpose_.end() - 2) = b_range.sub_transpose_.size() - 1;
+		*(b_range.target_transpose_.end() - 1) = b_range.target_transpose_.size() - 2;
+		*(b_range.target_transpose_.end() - 2) = b_range.target_transpose_.size() - 1;
 
 
 		MultiIdx a_idx(a_range);
-		MultiIdx b_idx(b_range);
+		MultiIdx b_idx(b_range); // allocated
 		MultiIdx result_idx(result_range);
-		ScalarNodePtr sum = nullptr;
-		Array result(result_shape);
-		for(;;) {
-			a_idx.indices_ = result_idx.indices_;
-			*(a_idx.indices_.end() - 1) = 0;
-			b_idx.indices_ = result_idx.indices_;
-			*(b_idx.indices_.end() - 3) = 0;
-			*(b_idx.indices_.end() - 2) = *(b_idx.indices_.end() - 1);
-			*(b_idx.indices_.end() - 1) = 0;
+/*
+		std::cout << "a_idx, shp: " << print_vector(a_idx.range_.full_shape_) << "\n";
+		std::cout << "b_idx, shp: " << print_vector(b_idx.range_.full_shape_) << "\n";
+		std::cout << "r_idx, shp: " << print_vector(result_idx.range_.full_shape_) << "\n";
+*/
 
+		ScalarNodePtr sum;
+		Array result(result_shape);
+		for(;result_idx.valid();) {
 			sum = nullptr;
-			for(uint l = 0; l < a_common_dim; l++) {
+			a_idx.reset_indices(result_idx);
+			b_idx.reset_indices(result_idx);
+			for(;a_idx.valid();) {
+/*
+				std::cout << "a_idx: " << print_vector(a_idx.indices()) << " didx: "
+						<< a_idx.src_idx() << "\n";
+				std::cout << "b_idx: " << print_vector(b_idx.indices()) << " didx: "
+						<< b_idx.src_idx() << "\n";
+*/
 				ScalarNodePtr mult = details::ScalarNode::create<details::_mul_>(
-						a.elements_[a_idx.src_idx()],
-						b.elements_[b_idx.src_idx()]);
+						a.elements_[a_idx.idx_src()],
+						b.elements_[b_idx.idx_src()]);
 				if (sum == nullptr) {
 					sum = mult;
 				} else {
 					// TODO: how to use inplace operations correctly ??
 					sum = details::ScalarNode::create<details::_add_>(sum, mult);
 				}
-				a_idx.inc();
-				b_idx.inc();
+				//std::cout << "aidx ";
+				a_idx.inc_trg(-1,1, false);
+				//std::cout << "bidx ";
+				b_idx.inc_trg(-1,1, false);
+				BP_ASSERT(a_idx.valid() == b_idx.valid());
 			}
-			result.elements_[result_idx.src_idx()] = sum;
-			if (!result_idx.inc())
-				return result;
+/*
+			std::cout << "r_idx: " << print_vector(result_idx.indices()) << " didx: "
+									<< result_idx.src_idx() << "\n";
+*/
+
+			result.elements_[result_idx.idx_src()] = sum;
+
+			result_idx.inc_trg(-2);
 
 		}
+
+
+		auto final_range = MultiIdxRange(result.shape()).full();
+
+		//std::cout << "  raw res: "<< print_vector(result_shape);
+		if (b.shape().size() == 1 && *(result_shape.end() - 1) == 1 ) {
+		    // cut -1 axis
+			//std::cout << "  b cut: "<< result_shape.size()-1 << "\n";
+			final_range.remove_target_axis(result_shape.size()-1);
+		}
+		BP_ASSERT( *(result_shape.end() - 2) == 1);
+		//std::cout << "  r cut: "<< result_shape.size()-2 << "\n";
+		final_range.remove_target_axis(result_shape.size()-2);
+		    // cut -2 axis always
+		if (a.shape().size() == 1 && *(result_shape.end() - 3) == 1 ) {
+			// cut -3 axis
+			// std::cout << "  a cut: "<< result_shape.size()-3 << "\n";
+			final_range.remove_target_axis(result_shape.size()-3);
+		}
+		// std::cout << "  final res: " << print_vector(final_range.sub_shape()) << "\n";
+		return Array(result, final_range);
 
 	}
 
@@ -822,11 +992,11 @@ public:
 		Array result = Array(shape);
 		MultiIdxRange result_range = MultiIdxRange(shape).full();
 		MultiIdx result_idx(result_range);
-		for(MultiIdx result_idx(result_range); result_idx.valid(); result_idx.inc()) {
+		for(MultiIdx result_idx(result_range); result_idx.valid(); result_idx.inc_trg()) {
 			if (result_idx.indices()[0]  == result_idx.indices()[1]) {
-				result.elements_[result_idx.src_idx()] = details::ScalarNode::create_one();
+				result.elements_[result_idx.idx_src()] = details::ScalarNode::create_one();
 			} else {
-				result.elements_[result_idx.src_idx()] = details::ScalarNode::create_zero();
+				result.elements_[result_idx.idx_src()] = details::ScalarNode::create_zero();
 			}
 		}
 		return result;
@@ -849,8 +1019,8 @@ public:
 		Array result = (shape);
 		MultiIdxRange result_range = MultiIdxRange(shape).full();
 		MultiIdx result_idx(result_range);
-		for(MultiIdx result_idx(result_range); result_idx.valid(); result_idx.inc()) {
-					result.elements_[result_idx.src_idx()] = val;
+		for(MultiIdx result_idx(result_range); result_idx.valid(); result_idx.inc_trg()) {
+					result.elements_[result_idx.idx_src()] = val;
 		}
 		return result;
 	}
@@ -895,7 +1065,7 @@ public:
 	 * and the multiindex mapping.
 	 */
 	Array(const Array &source, const MultiIdxRange &range)
-	: Array(range.sub_shape())
+	: Array(range.target_shape())
 	{
 		from_subset(source, range);
 	}
@@ -917,11 +1087,11 @@ public:
 	}
 
 	ScalarNodePtr &operator[](MultiIdx idx) {
-		return elements_[idx.src_idx()];
+		return elements_[idx.idx_src()];
 	}
 
 	ScalarNodePtr operator[](MultiIdx idx) const {
-		return elements_[idx.src_idx()];
+		return elements_[idx.idx_src()];
 	}
 
 	const std::vector<ScalarNodePtr> &elements() const {
@@ -1065,22 +1235,21 @@ private:
 
 
 	/**
-	 * Assign the 'other' array to the subset of *this given by the multiindex mapping 'range'.
+	 * Set subset 'range' of *this to values provided by 'other'.
 	 *
-	 * Set subset of *this given by the range to values given by 'other'.
-	 * The shape of range have length same as 'shape_' but non 1 dimensions have to match
-	 * shape of other.
+	 * The range must have source shape same as  'shape_' and
+	 * axis with size > 1 have to match shape of other.
 	 */
 	void set_subset(const MultiIdxRange &range, const Array &other) {
-		Shape sub_shp = range.sub_shape();
+		Shape sub_shp = range.target_shape();
 		Shape min_shape_a = minimal_shape(sub_shp);
 		Shape min_shape_b = minimal_shape(other.shape_);
 		//std::cout << "a: " << print_vector(min_shape_a) << "b: " << print_vector(min_shape_b) << "\n";
 		BP_ASSERT(min_shape_a == min_shape_b);
 		MultiIdx idx(range);
 		for(;;) {
-			elements_[idx.src_idx()] = other.elements_[idx.dest_idx()];
-			if (! idx.inc()) break;
+			elements_[idx.idx_src()] = other.elements_[idx.idx_trg()];
+			if (! idx.inc_trg()) break;
 		}
 	}
 
@@ -1091,8 +1260,8 @@ private:
 		if (other.elements_.size() == 0) return; // none value
 		MultiIdx idx(range);
 		for(;;) {
-			elements_[idx.dest_idx()] = other.elements_[idx.src_idx()];
-			if (! idx.inc()) break;
+			elements_[idx.idx_trg()] = other.elements_[idx.idx_src()];
+			if (! idx.inc_trg()) break;
 		}
 	}
 

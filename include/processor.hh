@@ -10,6 +10,7 @@
 
 #include <stdint.h>
 #include <malloc.h>
+#include <string.h>
 #include <vector>
 #include "config.hh"
 #include "assert.hh"
@@ -291,7 +292,7 @@ struct Processor {
 	}
 
 
-	static Processor *create_processor_(ExpressionDAG &se, uint vector_size) {
+	static Processor *create_processor_(ExpressionDAG &se, uint vector_size, std::shared_ptr<ArenaAlloc> arena = nullptr) {
 		vector_size = (vector_size / simd_size) * simd_size;
 		uint simd_bytes = sizeof(double) * simd_size;
 		ExpressionDAG::NodeVec & sorted_nodes = se.sort_nodes();
@@ -300,14 +301,18 @@ struct Processor {
 				align_size(simd_bytes, sizeof(Processor)) +
 				align_size(simd_bytes, sizeof(uint) * vector_size) +
 				align_size(simd_bytes, se.temp_end * sizeof(Vec)) +
-				sizeof(double) * vector_size * (se.temp_end - se.values_end) +
+				sizeof(double) * vector_size * (se.temp_end - se.values_copy_end) +
+				sizeof(double4) * vector_size * (se.values_copy_end - se.values_end) +
 				align_size(simd_bytes, sizeof(double4) * se.constants_end ) +
 				align_size(simd_bytes, sizeof(Operation) * (sorted_nodes.size() + 64) )
 
 
 				;
-		ArenaAlloc arena(simd_bytes, memory_est);
-		return arena.create<Processor>(arena, se, vector_size / simd_size);
+		if (arena == nullptr)
+			arena = std::make_shared<ArenaAlloc>(simd_bytes, memory_est);
+		else
+			BP_ASSERT(arena->size_ >= memory_est);
+		return arena->create<Processor>(arena, se, vector_size / simd_size);
 	}
 
 	/**
@@ -315,27 +320,30 @@ struct Processor {
 	 *
 	 * vec_size : number of simd blocks (double4).
 	 */
-	Processor(ArenaAlloc arena, ExpressionDAG &se, uint vec_size)
+	Processor(std::shared_ptr<ArenaAlloc> arena, ExpressionDAG &se, uint vec_size)
 	: arena_(arena)
 	{
 		workspace_.vector_size = vec_size;
 		workspace_.subset_size = 0;
-		workspace_.const_subset = arena_.create_array<uint>(vec_size);
+		workspace_.const_subset = arena_->create_array<uint>(vec_size);
 		for(uint i=0; i<vec_size;++i) workspace_.const_subset[i] = 0;
-		workspace_.vec_subset = (uint *) arena_.allocate(sizeof(uint) * vec_size);
+		workspace_.vec_subset = (uint *) arena_->allocate(sizeof(uint) * vec_size);
 		//std::cout << "&vec_subset: " << &(workspace_.vec_subset) << "\n";
 		//std::cout << "aloc vec_subset: " << workspace_.vec_subset << " size: " << vec_size << "\n";
 
-		workspace_.vector = (Vec *) arena_.allocate(sizeof(Vec) * se.temp_end);
-		double4 * temp_base = (double4 *) arena_.allocate(
+		workspace_.vector = (Vec *) arena_->allocate(sizeof(Vec) * se.temp_end);
+		double4 * temp_base = (double4 *) arena_->allocate(
 				sizeof(double) * vec_size * simd_size * (se.temp_end - se.values_end));
-		double4 * const_base = (double4 *) arena_.allocate(
+		double4 * const_base = (double4 *) arena_->allocate(
 				sizeof(double4) * se.constants_end);
 		for(uint i=0; i< se.constants_end; ++i)
 			vec_set(i, const_base + i, workspace_.const_subset);
 
 		uint i_tmp = 0;
-		for(uint i=se.values_end; i< se.temp_end; ++i, ++i_tmp)
+		for(uint i=se.values_end; i< se.values_copy_end; ++i, ++i_tmp)
+			vec_set(i, temp_base + i_tmp*vec_size, workspace_.vec_subset);
+
+		for(uint i=se.values_copy_end; i< se.temp_end; ++i, ++i_tmp)
 			vec_set(i, temp_base + i_tmp*vec_size, workspace_.vec_subset);
 
 		// value vectors ... setup when processing the nodes, every value node processed exactly once
@@ -347,7 +355,7 @@ struct Processor {
 		// need a mean to visualize 'se' graph.
 	    auto sorted_nodes = se.sort_nodes();
 		uint n_operations = sorted_nodes.size();
-		program_ = (Operation *) arena_.allocate(sizeof(Operation) * n_operations);
+		program_ = (Operation *) arena_->allocate(sizeof(Operation) * n_operations);
 
 		/**
 		 * TODO separate setup of workspace - no dependence on the order
@@ -367,6 +375,16 @@ struct Processor {
 			case value:
 				vec_set(node->result_idx_, (double4 *)node->get_value(), workspace_.vec_subset);
 				break;
+			case value_copy:
+			{
+				auto val_copy_ptr = ( std::dynamic_pointer_cast<ValueCopyNode> (node) );
+				if (val_copy_ptr->values_ == nullptr) {
+					val_copy_ptr->values_ = arena_->create_array<double>(vec_size);
+					vec_set(node->result_idx_, (double4 *)node->get_value(), workspace_.vec_subset);
+				}
+				val_copy_nodes_.push_back(val_copy_ptr);
+				break;
+			}
 			case temporary:
 				*op = make_operation(node);
 				++op;
@@ -404,7 +422,10 @@ struct Processor {
 	}
 
 	~Processor() {
-		arena_.destroy();
+		for (auto node : val_copy_nodes_) {
+			node->values_ = nullptr;
+		}
+		//arena_->destroy();
 	}
 
 	Operation make_operation(ScalarNodePtr  node) {
@@ -425,6 +446,7 @@ struct Processor {
 	}
 
 	void run() {
+		this->copy_inputs();
 		for(Operation * op = program_;;++op) {
 //			std::cout << "op: " << (int)(op->code)
 //					<< " ia0: " << (int)(op->arg[0])
@@ -473,7 +495,7 @@ struct Processor {
 			CODE(_min_);
 			CODE(_copy_);
 			CODE(_ifelse_);
-//			CODE(__);
+			CODE(_log2_);
 //			CODE(__);
 //			CODE(__);
 //			CODE(__);
@@ -507,9 +529,18 @@ struct Processor {
 		// std::cout << "subset: " << workspace_.vec_subset << std::endl;
 	}
 
-	ArenaAlloc arena_;
+	// Copy data of ValueCopyNode objects to arena_
+	void copy_inputs()
+	{
+		for (auto node : val_copy_nodes_) {
+			memcpy(node->values_, node->source_ptr_, workspace_.vector_size * sizeof *node->values_);
+		}
+	}
+
+	std::shared_ptr<ArenaAlloc> arena_;
 	Workspace workspace_;
 	Operation * program_;
+	std::vector< std::shared_ptr<ValueCopyNode> > val_copy_nodes_;
 };
 
 

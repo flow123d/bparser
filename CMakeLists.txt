@@ -8,7 +8,10 @@ message(STATUS "CMakeLists.txt - BParser")
 #set(CMAKE_CXX_FLAGS     "-std=c++14 -finline-hint-functions -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION")
 set(CMAKE_CXX_FLAGS     "-std=c++14 -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -mavx2")
-set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG -fsanitize=address -static-libasan -fno-omit-frame-pointer")  #
+#set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG -rdynamic -lSegFault -fsanitize=address -static-libasan -fno-omit-frame-pointer")  #
+
+# valgrind setting
+set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG  -fsanitize=address -static-libasan -fno-omit-frame-pointer")  #
 
 #ASAN_OPT         := -g -fsanitize=address -static-libasan -fno-omit-frame-pointer
 #MSAN_OPT         := -g -fsanitize=memory    -fno-omit-frame-pointer
@@ -28,7 +31,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
       STRING "Choose the type of build." FORCE)
   # Set the possible values of build type for cmake-gui
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
-    "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+    "Debug" "Release" "MinSizeRel" "RelWithDebInfo" "Sanitizer")
 endif()
 
 # TODO: modify makefile to call cmake

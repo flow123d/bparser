@@ -29,6 +29,10 @@ struct ArenaAlloc {
 		ptr_ = base_;
 		//std::cout << "arena begin: " << (void *)base_ << " end: " << end() << std::endl;
 	}
+	
+	~ArenaAlloc() {
+        destroy();
+    }
 
 	void destroy() {
 		free(base_);

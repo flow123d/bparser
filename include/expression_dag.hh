@@ -58,6 +58,8 @@ public:
 	uint constants_end;
 	/// End index of the values and result vectors in the storage.
 	uint values_end;
+	/// End index of the copied values and result vectors in the storage.
+	uint values_copy_end;
 	/// End index of the temporary vectors in storage.
 	uint temp_end;
 
@@ -67,6 +69,7 @@ public:
 		results(res.begin(), res.end()),
 		constants_end(0),
 		values_end(0),
+		values_copy_end(0),
 		temp_end(0)
 	{
 		sort_nodes();
@@ -176,6 +179,11 @@ private:
 			if (node->result_storage == value || node->result_storage == expr_result)
 				node->result_idx_ = i_storage++;
 		values_end = i_storage;
+		// set result_idx_ of value/result nodes
+		for(ScalarNodePtr  node : nodes)
+			if (node->result_storage == value_copy)
+				node->result_idx_ = i_storage++;
+		values_copy_end = i_storage;
 		temp_end = i_storage; // still empty
 	}
 
