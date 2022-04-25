@@ -10,6 +10,7 @@
 
 #include <stdint.h>
 #include <malloc.h>
+#include <string.h>
 #include <vector>
 #include "config.hh"
 #include "assert.hh"
