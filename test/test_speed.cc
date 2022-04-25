@@ -46,9 +46,7 @@ struct ExprData {
 	}
 
 	~ExprData()
-	{
-		arena->destroy();
-	}
+	{}
 
 	std::shared_ptr<bparser::ArenaAlloc> arena;
 	uint vec_size;
@@ -89,12 +87,6 @@ struct ExprData2 {
 
 	~ExprData2()
 	{
-		arena_1.destroy();
-		arena_2.destroy();
-		arena_3.destroy();
-		arena_4.destroy();
-		arena_res.destroy();
-		arena_subs.destroy();
 		delete[] d1;
 		delete[] d2;
 		delete[] d3;
