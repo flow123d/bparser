@@ -55,14 +55,6 @@ Array error_reserved(const Array & UNUSED(x)) {
 	Throw() << "Reserved identifier.";
 }
 
-//ast::binary_fn::function_type append_to() {
-//	return static_cast<ast::binary_fn::function_type>(&(Array::append_to));
-//}
-//
-//ast::binary_fn::function_type none_const() {
-//	return static_cast<ast::binary_fn::function_type>(&(Array::append_to));
-//}
-
 
 struct expectation_handler {
     template <typename>
@@ -162,14 +154,15 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 			FN("ceil" , unary_array<_ceil_>())
             FN("cos"  , unary_array<_cos_>())
             FN("cosh" , unary_array<_cosh_>())
-            FN("deg"  , &deg_fn)
+            FN("rad2deg"  , &deg_fn)
             FN("exp"  , unary_array<_exp_>())
             FN("floor", unary_array<_floor_>())
-            FN("isinf", unary_array<_isinf_>())
-            FN("isnan", unary_array<_isnan_>())
+            FN("isinf", unary_array<_isinf_>())	// possibly replaced by inf constant
+            FN("isnan", unary_array<_isnan_>()) // possibly replaced by nan constant
             FN("log"  , unary_array<_log_>())
             FN("log10", unary_array<_log10_>())
-            FN("rad"  , &rad_fn)
+            FN("log2", unary_array<_log2_>())
+            FN("deg2rad"  , &rad_fn)
             FN("sgn"  , unary_array<_sgn_>())
             FN("sin"  , unary_array<_sin_>())
             FN("sinh" , unary_array<_sinh_>())
@@ -182,7 +175,7 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 			FN("ones"  , &Array::ones)
 			FN("full"  , &Array::full)
             FN("atan2", binary_array<_atan2_>())
-            FN("pow"  , binary_array<_pow_>())
+            FN("power"  , binary_array<_pow_>())
 			FN("minimum", binary_array<_min_>())
 			FN("maximum", binary_array<_max_>())
             ;

@@ -56,8 +56,190 @@ GCC 4.6, Clang 3.5
 	std::cout << print_vec(vres, 3*vec_size);
 ```
 
-## Grammar
+## Expression syntax
 BParser grammar tries to follow Python 3.6 [expression grammar](https://docs.python.org/3.6/reference/expressions.html). 
+
+### Program
+
+Whole program consists of sequence of assignements separated by ';' finished with the result expression.
+
+```
+    a = var + 1;
+    b = a + var; c=2*a + b;
+    a + b + c
+```
+
+White space doesn't matter. Input variables (as the `var`) are detected by the parser and must be provided through the 
+`set_variable` or `set_constant` methods (see 'Usage' section) before compilation.
+New variables are defined by the assignment. 
+
+Identifiers are formed from a-z,A-Z,_,0-9 
+charactes and must not start with a digit.
+
+
+### Operators
+Supported operators (sorted from the highest precedence):
+
+- `**` : power
+- `+` (unary), `-` (unary)
+- `*`, `/`, `//`, `%`, `@` 
+  
+  multiply, division, integer division, modulo, matrix multiplication
+
+- `+`, `-`
+- `<`, `>`, `<=`, `>=`, `==`, `!=`
+- `not`
+- `and`
+- `or`
+- `<true_expr> if <condition> else <false_expr>` 
+  
+  conditional expression
+
+  
+Chained comparison is suported, e. g.
+
+`a < b < c == d`
+
+is evaluated as:
+
+`a<b and b<c and c==d`
+
+Operands can be: numbers, variables, function calls, and array subscriptions.
+
+
+### Supported functions
+
+   - `abs`, `ceil`,  `floor`, `sgn`
+   - `rad2deg` (radians to degrees), `deg2rad` (degrees to radians),
+   - `acos`, `asin`, `atan`, `atan2`, `cos`, `sin`, `tan`,
+   - `isinf` (equal to `+/-inf`, `isnan` (equal to `+/- Nan),
+   - `log`, `log10`, `log2`, `exp`, `cosh`, `sinh`
+   - `sqrt`, `power`
+   - `eye`, `zeros`, `ones`, `full` : array construction
+   - `flatten`
+   - `minimum`, `maximum`
+   
+### Arrays
+Arrays of arbitrery dimension are supported, i.e. vectors, matrices, tensors.
+
+Construction:
+`[1,2,3]` : vector, shape {3}
+`[[1,2], [3,4]]` : matrix, shape {2,3}
+ 
+Subscription, slices:
+
+`a[0, 1]` : element on row 0, column 1 of a matrix
+
+`a[[5, 0, 2]]` : subvector of elements at indices 5, 0, 2
+
+`a[-1]` : negative indices are treated as `axis_size +  index`
+
+`a[0:10:2]` : eleemnts at indices 0,2,4,6,8
+
+`a[-1:-2:-1]` : last two elements in reversed order
+
+`a[None, 1]` : vector of shape `{n}` broadcasted to a matrix of shape `{1,n}`
+
+
+## Syntax grammar
+program:
+    (assignment)+ expression 
+
+assignment:
+    identifier '=' expression ';'
+
+expression:
+    | disjunction 'if' disjunction 'else' expression
+    | disjunction
+
+disjunction:
+    | conjunction ('or' conjunction)+
+    | conjunction
+
+conjunction:
+    | inversion ('and' inversion)+
+    | inversion
+    
+inversion:
+    | 'not' inversion 
+    | comparison
+
+comparison:
+    | bitwise_or compare_op_bitwise_or_pair+ 
+    | bitwise_or
+
+compare_op_bitwise_or_pair:
+    cmp_op sum
+
+cmp_op:
+    {'==', '!=', '<', '<=', '>', '>='}
+
+sum:
+    | sum '+' term 
+    | sum '-' term 
+    | term
+    
+term:
+    | term '*' factor 
+    | term '/' factor 
+    | term '//' factor 
+    | term '%' factor 
+    | term '@' factor 
+    | factor
+    
+factor:
+    | '+' factor 
+    | '-' factor 
+    | power
+    
+power:
+    | primary '**' factor 
+    | primary
+
+primary:
+    | atom
+    | subscription
+
+atom:
+    | `True`
+    | `False` 
+    | DOUBLE 
+    | INT 
+    | atom
+
+subscription: 
+    | subscriptable (`[` slicing  `]`)
+    | subscriptable
+
+subscriptable:
+    | array
+    | enclosure
+    | call
+    | IDENTIFIER
+
+array: `[` param_list `]`
+
+enclosure: `(` expression `)`
+
+call: FUNCTION `(` param_list `)`
+
+param_list: 
+    | 
+    | param (`,` param)+
+    
+slicing: slice_param (`,` slice_param)+
+
+slice_param:
+    | int_array
+    | slice
+    | INT
+    | `None` 
+    
+int_array: INT (`,` INT)+
+
+slice: (INT)? ':' (INT)? (':' INT)?
+
+
 In order to perform all array operations statically before compilation  
 we restrict indexing and slicing to int literals instead of general expressions.
 
@@ -80,7 +262,7 @@ the data available in the cache. TODO: experiments with various size of vectors.
 
 ## Acknowledgements
 
-- Grammar based on [Henri Menke: boost_matheval](https://github.com/hmenke/boost_matheval)
+- Boost spirit grammar based on [Henri Menke: boost_matheval](https://github.com/hmenke/boost_matheval)
 - Other essential pieces taken from 
 [a commented expression parser](https://stackoverflow.com/questions/47354226/how-to-provider-user-with-autocomplete-suggestions-for-given-boostspirit-gramm/47383910#47383910)
 

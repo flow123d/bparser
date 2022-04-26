@@ -16,6 +16,7 @@
 #include "config.hh"
 #include "assert.hh"
 #include "VCL_v2_include.hh"
+#include "arena_alloc.hh"
 
 
 namespace bparser {
@@ -27,7 +28,8 @@ enum ResultStorage {
 	constant = 1,
 	value = 2,
 	temporary = 3,
-	expr_result = 4
+	expr_result = 4,
+	value_copy = 5
 };
 
 struct ScalarNode;
@@ -70,6 +72,7 @@ struct ScalarNode {
 	inline static ScalarNodePtr create_one();
 	inline static ScalarNodePtr create_const(double a);
 	inline static ScalarNodePtr create_value(double *a);
+	inline static ScalarNodePtr create_val_copy(double *a);
 	inline static ScalarNodePtr create_result(ScalarNodePtr result, double *a);
 	inline static ScalarNodePtr create_ifelse(ScalarNodePtr a, ScalarNodePtr b, ScalarNodePtr c);
 
@@ -150,6 +153,22 @@ struct ValueNode : public ScalarNode {
 	~ValueNode() override {
 	}
 
+};
+
+
+struct ValueCopyNode : public ScalarNode {
+	ValueCopyNode(double *ptr)
+	{
+		op_name_ = "ValueCopy";
+		source_ptr_ = ptr;
+		result_storage = value_copy;
+		values_ = nullptr; // Is set automatically by Processor.
+	}
+
+	~ValueCopyNode() override {
+	}
+
+	double * source_ptr_;               ///< Pointer to data passed in constructor
 };
 
 
@@ -663,8 +682,7 @@ template<>
 inline void _ifelse_::eval<double>(double &res, double a, double b, double c) {
 	res = as_bool(b) ? a : c;		// we use bit masks for bool values
 }
-
-
+UNARY_FN(_log2_, 	52, log2);
 
 /***********************
  * Construction Nodes.
@@ -688,6 +706,11 @@ inline ScalarNodePtr ScalarNode::create_const(double a) {
 // create value node
 inline ScalarNodePtr ScalarNode::create_value(double *a)  {
 	return std::make_shared<ValueNode>(a);
+}
+
+// create value node
+inline ScalarNodePtr ScalarNode::create_val_copy(double *a)  {
+	return std::make_shared<ValueCopyNode>(a);
 }
 
 // create result node

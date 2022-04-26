@@ -70,7 +70,6 @@ public:
     	// if (tmp_result != nullptr) delete [] tmp_result; // Now it is a vector
 
     	if (processor != nullptr) {
-            processor->arena_.destroy();
             processor->~ProcessorBase();
         }
     	processor = nullptr;
@@ -147,6 +146,17 @@ public:
     }
 
     /**
+     * Set given name to be a variable of given shape with values at
+     * given address 'variable_space'.
+     *
+     * Unused variables and constants are ignored.
+     *
+     */
+    void set_var_copy(std::string name, std::vector<uint> shape, double *variable_space) {
+    	symbols_[name] = Array::value_copy(variable_space, max_vec_size, shape);
+    }
+
+    /**
      * Set given name to be a constant of given shape with flatten values
      * given by the 'const_value' vector.
      *
@@ -159,8 +169,7 @@ public:
     ///
     /// All variable names have to be set before this call.
     /// TODO: set result variable
-    // ExpressionDAG compile() {
-    void compile() {
+    void compile(std::shared_ptr<ArenaAlloc> arena = nullptr) {
     	destroy_processor();
 
         ParserResult res_array = boost::apply_visitor(ast::make_array(symbols_), ast);
@@ -181,7 +190,7 @@ public:
 		ExpressionDAG se(result_array_.elements());
         // return se;
 		//se.print_in_dot();
-		processor = create_processor(se, max_vec_size, simd_size);
+		processor = ProcessorBase::create_processor(se, max_vec_size, simd_size, arena);
     }
 
     Array result_array() {
@@ -201,11 +210,6 @@ public:
 
     void run() {
     	processor->run();
-    }
-
-    void set_processor(ProcessorBase *p)
-    {
-        processor = p;
     }
 
 

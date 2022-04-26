@@ -10,6 +10,7 @@
 
 #include <stdint.h>
 #include <malloc.h>
+#include <string.h>
 #include <vector>
 #include "config.hh"
 #include "assert.hh"
@@ -128,6 +129,8 @@ using namespace details;
 // const uint simd_size = 4;
 
 // typedef double double4 __attribute__((__vector_size__(32)));
+
+typedef std::shared_ptr<ArenaAlloc> ArenaAllocPtr;
 
 template <typename VecType>
 struct Vec {
@@ -284,16 +287,20 @@ struct ProcessorBase {
 	virtual void run() = 0;
 	virtual void set_subset(std::vector<uint> const &subset) = 0;
 
-	ProcessorBase(ArenaAlloc arena)
+	ProcessorBase(ArenaAllocPtr arena)
 	: arena_(arena) {
 		
 	}
 
 	virtual ~ProcessorBase() {
 	}
+	
+	inline static ProcessorBase *create_processor(ExpressionDAG &se, uint vector_size, uint simd_size = 1, ArenaAllocPtr arena = nullptr);
 
-	ArenaAlloc arena_;
+	ArenaAllocPtr arena_;
 };
+
+
 
 /**
  * Store and execute generated "bytecode".
@@ -318,35 +325,14 @@ struct Processor : public ProcessorBase {
 	typedef typename VecType::MyVec MVec;
 	static const uint simd_size = sizeof(MVec) / sizeof(double);
 
+    
 
-	static Processor *create(std::vector<ScalarNodePtr > results, uint vector_size) {
-		ExpressionDAG se(results);
-			
-		return create_processor_(se, vector_size);
-	}
+// 	static Processor *create(std::vector<ScalarNodePtr > results, uint vector_size) {
+// 		ExpressionDAG se(results);
+// 			
+// 		return create_processor_(se, vector_size);
+// 	}
 
-	
-	static Processor *create_processor_(ExpressionDAG &se, uint vector_size) 
-	{
-
-		uint simd_bytes = sizeof(double) * simd_size;
-		ExpressionDAG::NodeVec & sorted_nodes = se.sort_nodes();
-		//std::cout << "n_nodes: " << sorted_nodes.size() << " n_vec: " << se.n_vectors() << "\n";
-		uint memory_est =
-				align_size(simd_bytes, sizeof(Processor)) +
-				align_size(simd_bytes, sizeof(uint) * vector_size) +
-				align_size(simd_bytes, se.temp_end * sizeof(Vec<MVec>)) +
-				sizeof(double) * vector_size * (se.temp_end - se.values_end) +
-				align_size(simd_bytes, sizeof(MVec) * se.constants_end ) +
-				align_size(simd_bytes, sizeof(Operation) * (sorted_nodes.size() + 64) )
-
-
-				;
-		ArenaAlloc arena(simd_bytes, memory_est);
-
-		uint vec_size = (vector_size / simd_size);
-		return arena.create<Processor<MVec>>(arena, se, vec_size);
-	}
 	
 
 	/**
@@ -354,15 +340,14 @@ struct Processor : public ProcessorBase {
 	 *
 	 * vec_size : number of simd blocks (double4).
 	 */
-
-	Processor(ArenaAlloc arena, ExpressionDAG &se, uint vec_size)
+	Processor(ArenaAllocPtr arena, ExpressionDAG &se, uint vec_size)
 	: ProcessorBase(arena)
 	{
 		workspace_.vector_size = vec_size;
 		workspace_.subset_size = 0;
-		workspace_.const_subset = arena_.create_array<uint>(vec_size);
+		workspace_.const_subset = arena_->create_array<uint>(vec_size);
 		for(uint i=0; i<vec_size;++i) workspace_.const_subset[i] = 0;
-		workspace_.vec_subset = (uint *) arena_.allocate(sizeof(uint) * vec_size);
+		workspace_.vec_subset = (uint *) arena_->allocate(sizeof(uint) * vec_size);
 		//std::cout << "&vec_subset: " << &(workspace_.vec_subset) << "\n";
 		//std::cout << "aloc vec_subset: " << workspace_.vec_subset << " size: " << vec_size << "\n";
 
@@ -371,16 +356,19 @@ struct Processor : public ProcessorBase {
 		// std::cout << "se.temp_end: " << se.temp_end << "\nse.values_end: " << se.values_end << "\nse.constants_end: " << se.constants_end << std::endl;
 
 
-		workspace_.vector = (Vec<MVec> *) arena_.allocate(sizeof(Vec<MVec>) * se.temp_end);
-		MVec * temp_base = (MVec *) arena_.allocate(
+		workspace_.vector = (Vec<MVec> *) arena_->allocate(sizeof(Vec<MVec>) * se.temp_end);
+		MVec * temp_base = (MVec *) arena_->allocate(
 				sizeof(double) * vec_size * simd_size * (se.temp_end - se.values_end));
-		MVec * const_base = (MVec *) arena_.allocate(
+		MVec * const_base = (MVec *) arena_->allocate(
 				sizeof(MVec) * se.constants_end);
 		for(uint i=0; i< se.constants_end; ++i)
 			vec_set(i, const_base + i, workspace_.const_subset);
 
 		uint i_tmp = 0;
-		for(uint i=se.values_end; i< se.temp_end; ++i, ++i_tmp)
+		for(uint i=se.values_end; i< se.values_copy_end; ++i, ++i_tmp)
+			vec_set(i, temp_base + i_tmp*vec_size, workspace_.vec_subset);
+
+		for(uint i=se.values_copy_end; i< se.temp_end; ++i, ++i_tmp)
 			vec_set(i, temp_base + i_tmp*vec_size, workspace_.vec_subset);
 
 		// value vectors ... setup when processing the nodes, every value node processed exactly once
@@ -392,7 +380,7 @@ struct Processor : public ProcessorBase {
 		// need a mean to visualize 'se' graph.
 	    auto sorted_nodes = se.sort_nodes();
 		uint n_operations = sorted_nodes.size();
-		program_ = (Operation *) arena_.allocate(sizeof(Operation) * n_operations);
+		program_ = (Operation *) arena_->allocate(sizeof(Operation) * n_operations);
 
 		/**
 		 * TODO separate setup of workspace - no dependence on the order
@@ -416,6 +404,16 @@ struct Processor : public ProcessorBase {
 			case value:
 				vec_set(node->result_idx_, (MVec *)node->get_value(), workspace_.vec_subset);
 				break;
+			case value_copy:
+			{
+				auto val_copy_ptr = ( std::dynamic_pointer_cast<ValueCopyNode> (node) );
+				if (val_copy_ptr->values_ == nullptr) {
+					val_copy_ptr->values_ = arena_->create_array<double>(vec_size);
+					vec_set(node->result_idx_, (MVec *)node->get_value(), workspace_.vec_subset);
+				}
+				val_copy_nodes_.push_back(val_copy_ptr);
+				break;
+			}
 			case temporary:
 				*op = make_operation(node);
 				++op;
@@ -453,7 +451,10 @@ struct Processor : public ProcessorBase {
 	}
 
 	~Processor() {
-		// arena_.destroy();
+		for (auto node : val_copy_nodes_) {
+			node->values_ = nullptr;
+		}
+		//arena_->destroy();
 	}
 
 	Operation make_operation(ScalarNodePtr  node) {
@@ -474,6 +475,7 @@ struct Processor : public ProcessorBase {
 	}
 
 	void run() {
+		this->copy_inputs();
 		for(Operation * op = program_;;++op) {
 //			std::cout << "op: " << (int)(op->code)
 //					<< " ia0: " << (int)(op->arg[0])
@@ -522,7 +524,7 @@ struct Processor : public ProcessorBase {
 			CODE(_min_);
 			CODE(_copy_);
 			CODE(_ifelse_);
-//			CODE(__);
+			CODE(_log2_);
 //			CODE(__);
 //			CODE(__);
 //			CODE(__);
@@ -556,84 +558,75 @@ struct Processor : public ProcessorBase {
 		// std::cout << "subset: " << workspace_.vec_subset << std::endl;
 	}
 	
+	// Copy data of ValueCopyNode objects to arena_
+	void copy_inputs()
+	{
+
+		for (auto node : val_copy_nodes_) {
+			memcpy(node->values_, node->source_ptr_, workspace_.vector_size * sizeof *node->values_);
+		}
+	}
 
 	// ArenaAlloc arena_;
 	Workspace<MVec> workspace_;
 	Operation * program_;
+	std::vector< std::shared_ptr<ValueCopyNode> > val_copy_nodes_;
 };
 
-inline ProcessorBase *create_processor(ExpressionDAG &se, uint vector_size, uint simd_size) {
-	uint simd_bytes = sizeof(double) * simd_size;
-	ExpressionDAG::NodeVec & sorted_nodes = se.sort_nodes();
+
+template <class VCLVec> 
+ProcessorBase * create_processor_(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena) {
+    uint simd_bytes = sizeof(double) * simd_size;
+    ExpressionDAG::NodeVec & sorted_nodes = se.sort_nodes();
+    uint simd_bytes1 = sizeof(VCLVec);
+    std::cout << simd_bytes1 << "!=" << simd_bytes << "\n";
+    BP_ASSERT(simd_bytes1 == simd_bytes);
+    uint vec_size = (vector_size / simd_size);
+    uint est = 
+            align_size(simd_bytes, sizeof(Processor<Vec<VCLVec>>)) +	//88
+            align_size(simd_bytes, sizeof(uint) * vector_size) +
+            align_size(simd_bytes, se.temp_end * sizeof(Vec<VCLVec>)) +    // temporaries
+            align_size(simd_bytes, sizeof(VCLVec) * vec_size * (se.temp_end - se.values_copy_end)) +  // vec_copy, same as temporaroes
+            align_size(simd_bytes, sizeof(VCLVec) * vec_size * (se.values_copy_end - se.values_end)) + // vector values (probably not neccessary to allocate)
+            align_size(simd_bytes, sizeof(VCLVec) * se.constants_end ) +
+            align_size(simd_bytes, sizeof(Operation) * (sorted_nodes.size() + 64) );
+
+    if (arena == nullptr)
+        arena = std::make_shared<ArenaAlloc>(simd_bytes, est);
+    else
+        BP_ASSERT(arena->size_ >= est);
+    return arena->create<Processor<Vec<VCLVec>>>(arena, se, vec_size);
+}
+
+
+inline ProcessorBase * ProcessorBase::create_processor(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena) {
+	
+
 	//std::cout << "n_nodes: " << sorted_nodes.size() << " n_vec: " << se.n_vectors() << "\n";
-	uint vec_size = (vector_size / simd_size);
 
 	switch (simd_size) {
 		case 2:
 		{
-			uint memory_est =
-					align_size(simd_bytes, sizeof(Processor<Vec<Vec2d>>)) +	//88
-					align_size(simd_bytes, sizeof(uint) * vector_size) +
-					align_size(simd_bytes, se.temp_end * sizeof(Vec<Vec2d>)) +
-					sizeof(double) * vector_size * (se.temp_end - se.values_end) +
-					align_size(simd_bytes, sizeof(Vec2d) * se.constants_end ) +
-					align_size(simd_bytes, sizeof(Operation) * (sorted_nodes.size() + 64) )
-
-					;
-			ArenaAlloc arena(simd_bytes, memory_est);
-
-			return arena.create<Processor<Vec<Vec2d>>>(arena, se, vec_size);
+			return create_processor_<Vec2d>(se, vector_size, simd_size, arena);
 		} break;
 		case 4:
 		{
-			uint memory_est =
-					align_size(simd_bytes, sizeof(Processor<Vec<Vec4d>>)) +
-					align_size(simd_bytes, sizeof(uint) * vector_size) +
-					align_size(simd_bytes, se.temp_end * sizeof(Vec<Vec4d>)) +
-					sizeof(double) * vector_size * (se.temp_end - se.values_end) +
-					align_size(simd_bytes, sizeof(Vec4d) * se.constants_end ) +
-					align_size(simd_bytes, sizeof(Operation) * (sorted_nodes.size() + 64) )
-
-					;
-			ArenaAlloc arena(simd_bytes, memory_est);
-
-			return arena.create<Processor<Vec<Vec4d>>>(arena, se, vec_size);
+			return create_processor_<Vec4d>(se, vector_size, simd_size, arena);
 		} break;
 		case 8:
 		{
-			uint memory_est =
-					align_size(simd_bytes, sizeof(Processor<Vec<Vec8d>>)) +
-					align_size(simd_bytes, sizeof(uint) * vector_size) +
-					align_size(simd_bytes, se.temp_end * sizeof(Vec<Vec8d>)) +
-					sizeof(double) * vector_size * (se.temp_end - se.values_end) +
-					align_size(simd_bytes, sizeof(Vec8d) * se.constants_end ) +
-					align_size(simd_bytes, sizeof(Operation) * (sorted_nodes.size() + 64) )
-
-					;
-			ArenaAlloc arena(simd_bytes, memory_est);
-
-			return arena.create<Processor<Vec<Vec8d>>>(arena, se, vec_size);
-			} break;
+			return create_processor_<Vec8d>(se, vector_size, simd_size, arena);
+		} break;
 		default:
 		{
-			uint memory_est =
-					align_size(simd_bytes, sizeof(Processor<Vec<double>>)) +
-					align_size(simd_bytes, sizeof(uint) * vector_size) +
-					align_size(simd_bytes, se.temp_end * sizeof(Vec<double>)) +
-					sizeof(double) * vector_size * (se.temp_end - se.values_end) +
-					align_size(simd_bytes, sizeof(double) * se.constants_end ) +
-					align_size(simd_bytes, sizeof(Operation) * (sorted_nodes.size() + 64) )
-
-					;
-			ArenaAlloc arena(simd_bytes, memory_est);
-
-			return arena.create<Processor<Vec<double>>>(arena, se, vec_size);
+			return create_processor_<double>(se, vector_size, 1, arena);
 		} break;
 	}
 }
 
 
 } // bparser namespace
+
 
 
 
