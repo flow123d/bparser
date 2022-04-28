@@ -34,6 +34,11 @@ void eval(VecType &res, VecType a, VecType b)
 template<typename bool_type> struct b_to_d;
 
 template<>
+struct b_to_d<int64_t> {
+    typedef double double_type;
+};
+
+template<>
 struct b_to_d<Vec2db> {
     typedef Vec2d double_type;
 };
@@ -49,6 +54,12 @@ struct b_to_d<Vec8db> {
 };
 
 template<typename bool_type> union b_to_d_mask;
+
+template<>
+union b_to_d_mask<int64_t> {
+	int64_t	mask;
+	double  value;
+};
 
 template<>
 union b_to_d_mask<Vec2db> {
@@ -77,6 +88,11 @@ inline typename b_to_d<bool_type>::double_type as_double(bool_type in) {
 template<typename double_type> struct d_to_b;
 
 template<>
+struct d_to_b<double> {
+    typedef int64_t bool_type;
+};
+
+template<>
 struct d_to_b<Vec2d> {
     typedef Vec2db bool_type;
 };
@@ -92,6 +108,12 @@ struct d_to_b<Vec8d> {
 };
 
 template<typename double_type> union d_to_b_mask;
+
+template<>
+union d_to_b_mask<double> {
+	double  value;
+	int64_t	mask;
+};
 
 template<>
 union d_to_b_mask<Vec2d> {
@@ -118,15 +140,6 @@ inline typename d_to_b<double_type>::bool_type as_bool(double_type in) {
     return x.mask;
 }
 
-// template<typename bool_type>
-// typename b_to_d<bool_type>::double_type as_double(bool_type &in) {
-//     return *((typename b_to_d<bool_type>::double_type *)(&in));
-// }
-
-// template<typename double_type>
-// typename d_to_b<double_type>::bool_type as_bool(double_type &in) {
-//     return *((typename d_to_b<double_type>::bool_type *)(&in));
-// }
 
 //#define MAX_VECTOR_SIZE 256
 int main()
@@ -188,7 +201,7 @@ int main()
 
     as_bool(rrr) = xxx;
 
-    printVector<Vec8db>(as_bool(rrr), "rrr");
+    printVector<d_to_b<Vec8d>::bool_type>(as_bool(rrr), "rrr");
 
     Vec8d ccc;
     Vec8d &ccc_ref = ccc;
