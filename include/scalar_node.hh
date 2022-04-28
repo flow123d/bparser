@@ -35,9 +35,27 @@ enum ResultStorage {
 struct ScalarNode;
 typedef std::shared_ptr<ScalarNode> ScalarNodePtr;
 
-const int64_t true_value = -1LL;
+const int64_t true_value = 0xFFFFFFFFFFFFFFFFLL;
 const int64_t false_value = 0x0000000000000000LL;
 
+template<typename VecType>
+void printVector(const VecType & v, const char * prefix)
+{
+    bool first = true;
+    std::cout << prefix << "(";
+    for(int i = 0; i < VecType::size(); i++)
+    {
+        if (first)
+        {
+            std::cout << v[i];
+            first = false;
+            continue;
+        }
+
+        std::cout << " ; " << v[i];
+    }
+    std::cout << ")" << std::endl;
+}
 
 /**
  * ScalarNodes describes DAG of elementary operations. From this
@@ -464,7 +482,15 @@ struct _lt_ : public ScalarNode {
 };
 template<typename VecType>
 inline void _lt_::eval(VecType &res, VecType a, VecType b) {
+	std::cout << "In lt: " << std::endl;
+	printVector<VecType>(a, "a");
+	printVector<VecType>(b, "b");
+
 	res = as_double(a < b);
+
+	std::cout << "res pointer: " << &res << std::endl;
+
+	printVector<VecType>(res, "res");
 }
 template<>
 inline void _lt_::eval<double>(double &res, double a, double b) {
@@ -676,7 +702,15 @@ struct _ifelse_ : public ScalarNode {
 };
 template<typename VecType>
 inline void _ifelse_::eval(VecType &res, VecType a, VecType b, VecType c) {
+	std::cout << "In select: " << std::endl;
+	printVector<VecType>(a, "a");
+	printVector<VecType>(b, "b");
+	printVector<VecType>(c, "c");
+	
 	res = select(as_bool(b), a, c);	// we use bit masks for bool values
+
+	// printVector<d_to_b<VecType>::bool_type>(as_bool(b), "b_bool");
+	printVector<VecType>(res, "res");
 }
 template<>
 inline void _ifelse_::eval<double>(double &res, double a, double b, double c) {
