@@ -273,7 +273,7 @@ void test_expression() {
 	BP_ASSERT(test_expr("3 == cs3", vec_true));
 
 	BP_ASSERT(test_expr("8 if cs3 < 4.5 else 4", {8}));	//Inf, 2, 4, 8, 16, ...
-	// BP_ASSERT(test_expr("3 if cs3 < 4.5 else 4", {3}));	//pokud je podminka true
+	BP_ASSERT(test_expr("3 if cs3 < 4.5 else 4", {3}));	//pokud je podminka true
 	BP_ASSERT(test_expr("3 if cs3 > 4.5 else 4", {4}));
 	BP_ASSERT(test_expr("0 if cv4 > 4.5 else 1", {1, 0, 0}));
 
