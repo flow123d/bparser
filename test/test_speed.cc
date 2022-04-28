@@ -205,6 +205,8 @@ void test_expr(std::string expr, uint block_size, void (* func)(ExprData&)) {
 	using namespace bparser;
 	uint vec_size = 1*block_size;
 
+	uint simd_size = 4;
+
 	// TODO: allow changing variable pointers, between evaluations
 	// e.g. p.set_variable could return pointer to that pointer
 	// not so easy for vector and tensor variables, there are many pointers to set
@@ -218,7 +220,7 @@ void test_expr(std::string expr, uint block_size, void (* func)(ExprData&)) {
 	double parser_time_optim, parser_time_shared_arena, parser_time_copy, parser_time_noopt, cpp_time;
 
 	{ // one allocation in common arena
-		Parser p(block_size);
+		Parser p(block_size, simd_size);
 		p.parse(expr);
 		p.set_constant("cs1", {}, 	{data1.cs1});
 		p.set_constant("cv1", {3}, 	std::vector<double>(data1.cv1, data1.cv1+3));
@@ -243,7 +245,7 @@ void test_expr(std::string expr, uint block_size, void (* func)(ExprData&)) {
 	}
 
 	{ // one allocation in common arena, set this arena to processor
-		Parser p(block_size);
+		Parser p(block_size, simd_size);
 		p.parse(expr);
 		p.set_constant("cs1", {}, 	{data1.cs1});
 		p.set_constant("cv1", {3}, 	std::vector<double>(data1.cv1, data1.cv1+3));
@@ -268,7 +270,7 @@ void test_expr(std::string expr, uint block_size, void (* func)(ExprData&)) {
 	}
 
 	{ // one allocation in common arena, use set_var_copy
-		Parser p(block_size);
+		Parser p(block_size, simd_size);
 		p.parse(expr);
 		p.set_constant("cs1", {}, 	{data1.cs1});
 		p.set_constant("cv1", {3}, 	std::vector<double>(data1.cv1, data1.cv1+3));
@@ -293,7 +295,7 @@ void test_expr(std::string expr, uint block_size, void (* func)(ExprData&)) {
 	}
 
 	{ // unoptimized allocation in separated arenas
-		Parser p(block_size);
+		Parser p(block_size, simd_size);
 		p.parse(expr);
 		p.set_constant("cs1", {}, 	{data2.cs1});
 		p.set_constant("cv1", {3}, 	std::vector<double>(data2.cv1, data2.cv1+3));
