@@ -1,14 +1,15 @@
 #include <stdio.h>
 #include <chrono>
 #include <iostream>
-#include "..//third_party/VCL_v2/vectorclass.h"
+#include "test_tools.hh"
+#include "VCL_v2_include.hh"
 #include "..//third_party/VCL_v2/instrset_detect.cpp"
 
 const int64_t true_value = 0xFFFFFFFFFFFFFFFFLL; //-1LL;
 const int64_t false_value = 0x0000000000000000LL;
 
 // template<typename VecType>
-// void printVector(const VecType & v, const char * prefix)
+// void print_VCL_vector(const VecType & v, const char * prefix)
 // {
 //     bool first = true;
 //     std::cout << prefix << "(";
@@ -155,11 +156,11 @@ int main()
     x = a > b;
     r = as_double(x);
 
-    printVector<Vec2db>(x, "x");
-    printVector<Vec2d>(r, "r");
+    print_VCL_vector<Vec2db>(x, "x");
+    print_VCL_vector<Vec2d>(r, "r");
 
     r = select(x, a, b);
-    printVector<Vec2d>(r, "r");
+    print_VCL_vector<Vec2d>(r, "r");
 
 ///////////////////////////////////////////////////////////////
     Vec4d aa(0.0, 1.0, 20.0, 30.0);
@@ -172,21 +173,21 @@ int main()
 
     eval<Vec4d>(rr, aa, bb);
 
-    printVector<Vec4d>(rr, "rr");
-    printVector<Vec4db>(as_bool(rr), "rr");
-    printVector<Vec4d>(cc_ref, "cc_ref");
+    print_VCL_vector<Vec4d>(rr, "rr");
+    print_VCL_vector<Vec4db>(as_bool(rr), "rr");
+    print_VCL_vector<Vec4d>(cc_ref, "cc_ref");
 
     Vec4db xx = aa < bb;
     cc_ref = xx;
 
-    printVector<Vec4d>(cc_ref, "cc_ref");
+    print_VCL_vector<Vec4d>(cc_ref, "cc_ref");
 
     cc_ref = as_double(xx);
 
-    printVector<Vec4d>(cc_ref, "cc_ref");
+    print_VCL_vector<Vec4d>(cc_ref, "cc_ref");
 
     rr = select(xx, aa, bb);
-    printVector<Vec4d>(rr, "rr");
+    print_VCL_vector<Vec4d>(rr, "rr");
 
 
     std::cout << std::endl;
@@ -197,19 +198,19 @@ int main()
     Vec4db t_bin;
 
     t_bin = t_a < t_c;
-    printVector<Vec4db>(t_bin, "t_bin");
+    print_VCL_vector<Vec4db>(t_bin, "t_bin");
 
     t_b = as_double(t_a < t_c);
     // t_b = true_value;
 
-    printVector<Vec4d>(t_a, "t_a");
-    printVector<Vec4d>(t_b, "t_b");
-    printVector<d_to_b<Vec4d>::bool_type>(as_bool(t_b), "t_b_bool");
-    printVector<Vec4d>(t_c, "t_c");
+    print_VCL_vector<Vec4d>(t_a, "t_a");
+    print_VCL_vector<Vec4d>(t_b, "t_b");
+    print_VCL_vector<d_to_b<Vec4d>::bool_type>(as_bool(t_b), "t_b_bool");
+    print_VCL_vector<Vec4d>(t_c, "t_c");
 
     Vec4d t_r = select(as_bool(t_b), t_a, t_c);
     
-    printVector<Vec4d>(t_r, "select_res");
+    print_VCL_vector<Vec4d>(t_r, "select_res");
 
     std::cout << std::endl;
     std::cout << std::endl;
@@ -222,29 +223,29 @@ int main()
 
     xxx = aaa < bbb;
 
-    printVector<Vec8db>(xxx, "xxx");
+    print_VCL_vector<Vec8db>(xxx, "xxx");
 
     rrr = as_double(xxx);
 
-    printVector<Vec8d>(rrr, "rrr");
+    print_VCL_vector<Vec8d>(rrr, "rrr");
 
     as_bool(rrr) = xxx;
 
-    printVector<d_to_b<Vec8d>::bool_type>(as_bool(rrr), "rrr");
+    print_VCL_vector<d_to_b<Vec8d>::bool_type>(as_bool(rrr), "rrr");
 
     Vec8d ccc;
     Vec8d &ccc_ref = ccc;
     ccc_ref = as_double(aaa < bbb);
 
-    printVector<Vec8d>(ccc_ref, "ccc_ref");
-    printVector<Vec8db>(as_bool(ccc_ref), "ccc_ref");
+    print_VCL_vector<Vec8d>(ccc_ref, "ccc_ref");
+    print_VCL_vector<Vec8db>(as_bool(ccc_ref), "ccc_ref");
 
     eval<Vec8d>(rrr, aaa, bbb);
 
-    printVector<Vec8d>(rrr, "rrr");
+    print_VCL_vector<Vec8d>(rrr, "rrr");
 
     rrr = select(xxx, aaa, bbb);
-    printVector<Vec8d>(rrr, "rrr");
+    print_VCL_vector<Vec8d>(rrr, "rrr");
 
     auto start_time = std::chrono::high_resolution_clock::now();
     for (int i = 1; i < 1000000; i++)
@@ -302,15 +303,15 @@ int main()
 // test1_start:
 //     c = a + b;
 // test1_end:
-//     printVector(c, "c:" );
+//     print_VCL_vector(c, "c:" );
 
 // test2_start:
 //     d = a + 2 * b;
 // test2_end:
-//     printVector(d, "d:" );
+//     print_VCL_vector(d, "d:" );
 
 // test3_start:
 //     e = a * b;
 // test3_end:
-//     printVector(e, "e:" );
+//     print_VCL_vector(e, "e:" );
 
