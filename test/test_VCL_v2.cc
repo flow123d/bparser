@@ -4,24 +4,27 @@
 #include "..//third_party/VCL_v2/vectorclass.h"
 #include "..//third_party/VCL_v2/instrset_detect.cpp"
 
-template<typename VecType>
-void printVector(const VecType & v, const char * prefix)
-{
-    bool first = true;
-    std::cout << prefix << "(";
-    for(int i = 0; i < VecType::size(); i++)
-    {
-        if (first)
-        {
-            std::cout << v[i];
-            first = false;
-            continue;
-        }
+const int64_t true_value = 0xFFFFFFFFFFFFFFFFLL; //-1LL;
+const int64_t false_value = 0x0000000000000000LL;
 
-        std::cout << " ; " << v[i];
-    }
-    std::cout << ")" << std::endl;
-}
+// template<typename VecType>
+// void printVector(const VecType & v, const char * prefix)
+// {
+//     bool first = true;
+//     std::cout << prefix << "(";
+//     for(int i = 0; i < VecType::size(); i++)
+//     {
+//         if (first)
+//         {
+//             std::cout << v[i];
+//             first = false;
+//             continue;
+//         }
+
+//         std::cout << " ; " << v[i];
+//     }
+//     std::cout << ")" << std::endl;
+// }
 
 template <typename VecType>
 void eval(VecType &res, VecType a, VecType b)
@@ -184,6 +187,32 @@ int main()
 
     rr = select(xx, aa, bb);
     printVector<Vec4d>(rr, "rr");
+
+
+    std::cout << std::endl;
+    std::cout << std::endl;
+    Vec4d t_a(3.0, 3.0, 3.0, 3.0);
+    Vec4d t_b;
+    Vec4d t_c(4.0, 4.0, 4.0, 4.0);
+    Vec4db t_bin;
+
+    t_bin = t_a < t_c;
+    printVector<Vec4db>(t_bin, "t_bin");
+
+    t_b = as_double(t_a < t_c);
+    // t_b = true_value;
+
+    printVector<Vec4d>(t_a, "t_a");
+    printVector<Vec4d>(t_b, "t_b");
+    printVector<d_to_b<Vec4d>::bool_type>(as_bool(t_b), "t_b_bool");
+    printVector<Vec4d>(t_c, "t_c");
+
+    Vec4d t_r = select(as_bool(t_b), t_a, t_c);
+    
+    printVector<Vec4d>(t_r, "select_res");
+
+    std::cout << std::endl;
+    std::cout << std::endl;
 
 ////////////////////////////////////////////////////////////////////////
     Vec8d aaa(0.0, 1.0, 20.0, 30.0, 0.0, 1.0, 20.0, 30.0);
