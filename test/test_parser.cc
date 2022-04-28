@@ -11,31 +11,8 @@
 #include "assert.hh"
 #include "parser.hh"
 
-uint get_simd_size()
-{
-	if (__builtin_cpu_supports("avx512f"))
-	{
-		return 8;
-	}
-	if (__builtin_cpu_supports("avx2"))
-	{
-		return 4;
-	}
-	if (__builtin_cpu_supports("avx"))
-	{
-		return 4;
-	}
-	if (__builtin_cpu_supports("sse"))
-	{
-		return 2;
-	}
-	else
-	{
-		return 1;
-	}
-}
 
-uint simd_size = get_simd_size();
+uint simd_size = bparser::get_simd_size();
 
 bool test_fv(std::string expr, std::vector<std::string> ref_vars) {
 	using namespace bparser;

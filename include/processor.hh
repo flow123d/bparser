@@ -130,6 +130,30 @@ using namespace details;
 
 // typedef double double4 __attribute__((__vector_size__(32)));
 
+static uint get_simd_size()
+{
+	if (__builtin_cpu_supports("avx512f"))
+	{
+		return 8;
+	}
+	if (__builtin_cpu_supports("avx2"))
+	{
+		return 4;
+	}
+	if (__builtin_cpu_supports("avx"))
+	{
+		return 4;
+	}
+	if (__builtin_cpu_supports("sse"))
+	{
+		return 2;
+	}
+	else
+	{
+		return 1;
+	}
+}
+
 typedef std::shared_ptr<ArenaAlloc> ArenaAllocPtr;
 
 template <typename VecType>
@@ -299,7 +323,7 @@ struct ProcessorBase {
 	virtual ~ProcessorBase() {
 	}
 	
-	inline static ProcessorBase *create_processor(ExpressionDAG &se, uint vector_size, uint simd_size = 1, ArenaAllocPtr arena = nullptr);
+	inline static ProcessorBase *create_processor(ExpressionDAG &se, uint vector_size, uint simd_size = 0, ArenaAllocPtr arena = nullptr);
 
 	ArenaAllocPtr arena_;
 };
@@ -606,8 +630,9 @@ ProcessorBase * create_processor_(ExpressionDAG &se, uint vector_size,  uint sim
 
 
 inline ProcessorBase * ProcessorBase::create_processor(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena) {
-	
-
+	if (simd_size == 0) {
+		simd_size = get_simd_size();
+	}
 	//std::cout << "n_nodes: " << sorted_nodes.size() << " n_vec: " << se.n_vectors() << "\n";
 
 	switch (simd_size) {
