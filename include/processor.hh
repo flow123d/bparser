@@ -260,9 +260,13 @@ struct EvalImpl<4, T, VecType> {
 //				<< "iv2:" << uint(op.arg[2]) << std::endl;
 		for(uint i=0; i<w.subset_size; ++i) {
 			VecType *v0i = v0.value(i);
+			// std::cout << "In proc.hh, pointer v0i: " << v0i << ", value: " << std::endl;
 			VecType *v1i = v1.value(i);
+			// std::cout << "In proc.hh, pointer v1i: " << v1i << ", value: " << std::endl;
 			VecType *v2i = v2.value(i);
+			// std::cout << "In proc.hh, pointer v2i: " << v2i << ", value: " << std::endl;
 			VecType *v3i = v3.value(i);
+			// std::cout << "In proc.hh, pointer v3i: " << v3i << ", value: " << std::endl;
 			T::eval(*v0i, *v1i, *v2i, *v3i);
 		}
 	}
@@ -458,7 +462,7 @@ struct Processor : public ProcessorBase {
 	}
 
 	Operation make_operation(ScalarNodePtr  node) {
-		Operation op = {(unsigned char)0xff, {0,0,0}}  ;
+		Operation op = {(unsigned char)0xff, {0,0,0,0}}  ;
 		op.code = node->op_code_;
 		uint i_arg = 0;
 		//if (node->result_storage == temporary)
@@ -477,13 +481,15 @@ struct Processor : public ProcessorBase {
 	void run() {
 		this->copy_inputs();
 		for(Operation * op = program_;;++op) {
-//			std::cout << "op: " << (int)(op->code)
-//					<< " ia0: " << (int)(op->arg[0])
-//					<< " a0: " << workspace_.vector[op->arg[0]].values
-//					<< " ia1: " << (int)(op->arg[1])
-//					<< " a1: " << workspace_.vector[op->arg[1]].values
-//					<< " ia2: " << (int)(op->arg[2])
-//					<< " a2: " << workspace_.vector[op->arg[2]].values << "\n";
+			// std::cout << "op: " << (int)(op->code)
+			// 		<< " ia0: " << (int)(op->arg[0])
+			// 		<< " a0: " << workspace_.vector[op->arg[0]].values
+			// 		<< " ia1: " << (int)(op->arg[1])
+			// 		<< " a1: " << workspace_.vector[op->arg[1]].values
+			// 		<< " ia2: " << (int)(op->arg[2])
+			// 		<< " a2: " << workspace_.vector[op->arg[2]].values
+			// 		<< " ia3: " << (int)(op->arg[3])
+			// 		<< " a3: " << workspace_.vector[op->arg[3]].values << "\n";
 
 			switch (op->code) {
 			CODE(_minus_);
