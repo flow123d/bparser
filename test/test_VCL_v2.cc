@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <chrono>
 #include <iostream>
-#include "test_tools.hh"
-#include "VCL_v2_include.hh"
+#include "..//include/test_tools.hh"
+#include "..//third_party/VCL_v2/vectorclass.h"
 #include "..//third_party/VCL_v2/instrset_detect.cpp"
 
 const int64_t true_value = 0xFFFFFFFFFFFFFFFFLL; //-1LL;
@@ -161,6 +161,10 @@ int main()
 
     r = select(x, a, b);
     print_VCL_vector<Vec2d>(r, "r");
+
+    double d;
+
+    d = a[1];
 
 ///////////////////////////////////////////////////////////////
     Vec4d aa(0.0, 1.0, 20.0, 30.0);
