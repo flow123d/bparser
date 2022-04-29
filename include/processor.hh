@@ -161,7 +161,7 @@ struct Vec {
 	VecType *values;
 	uint *subset;
 
-	typedef VecType MyVec;
+	typedef VecType MyVCLVec;
 
 	void set(VecType * v, uint * s) {
 		values = v;
@@ -176,6 +176,15 @@ struct Vec {
 //		std::cout << " v: " << values[subset[i]][j] << "\n";
 		return &(values[subset[i]]);
 	}
+
+	VecType true_value() {
+		return get_true_value<VecType>();
+	}
+
+	VecType false_value() {
+		return get_false_value<VecType>();
+	}
+
 };
 
 
@@ -281,7 +290,8 @@ struct EvalImpl<4, T, VecType> {
 		Vec<VecType> v3 = w.vector[op.arg[3]];
 //		std::cout << "iv0:" << uint(op.arg[0])
 //				<< "iv1:" << uint(op.arg[1])
-//				<< "iv2:" << uint(op.arg[2]) << std::endl;
+//				<< "iv2:" << uint(op.arg[2])
+//				<< "iv3:" << uint(op.arg[3]) << std::endl;
 		for(uint i=0; i<w.subset_size; ++i) {
 			VecType *v0i = v0.value(i);
 			// std::cout << "In proc.hh, pointer v0i: " << v0i << ", value: " << std::endl;
@@ -350,8 +360,8 @@ struct Processor : public ProcessorBase {
 	 * - assigne result ids
 	 * - create processor
 	 */
-	typedef typename VecType::MyVec MVec;
-	static const uint simd_size = sizeof(MVec) / sizeof(double);
+	typedef typename VecType::MyVCLVec VCLVec;
+	static const uint simd_size = sizeof(VCLVec) / sizeof(double);
 
     
 
@@ -380,15 +390,15 @@ struct Processor : public ProcessorBase {
 		//std::cout << "aloc vec_subset: " << workspace_.vec_subset << " size: " << vec_size << "\n";
 
 		// std::cout << std::endl << "In porcessor.hh: " << std::endl;
-		// std::cout << "vec_size: " << vec_size << "\nsimd_size: " << simd_size << "\nsOfMVec: " << sizeof(MVec) << "\nsOfDouble: " << sizeof(double) << std::endl;
+		// std::cout << "vec_size: " << vec_size << "\nsimd_size: " << simd_size << "\nsOfVCLVec: " << sizeof(VCLVec) << "\nsOfDouble: " << sizeof(double) << std::endl;
 		// std::cout << "se.temp_end: " << se.temp_end << "\nse.values_end: " << se.values_end << "\nse.constants_end: " << se.constants_end << std::endl;
 
 
-		workspace_.vector = (Vec<MVec> *) arena_->allocate(sizeof(Vec<MVec>) * se.temp_end);
-		MVec * temp_base = (MVec *) arena_->allocate(
+		workspace_.vector = (Vec<VCLVec> *) arena_->allocate(sizeof(Vec<VCLVec>) * se.temp_end);
+		VCLVec * temp_base = (VCLVec *) arena_->allocate(
 				sizeof(double) * vec_size * simd_size * (se.temp_end - se.values_end));
-		MVec * const_base = (MVec *) arena_->allocate(
-				sizeof(MVec) * se.constants_end);
+		VCLVec * const_base = (VCLVec *) arena_->allocate(
+				sizeof(VCLVec) * se.constants_end);
 		for(uint i=0; i< se.constants_end; ++i)
 			vec_set(i, const_base + i, workspace_.const_subset);
 
@@ -421,7 +431,7 @@ struct Processor : public ProcessorBase {
 			switch (node->result_storage) {
 			case constant: {
 				double c_val = *node->get_value();
-				MVec * c_ptr = workspace_.vector[node->result_idx_].values;
+				VCLVec * c_ptr = workspace_.vector[node->result_idx_].values;
 				c_ptr[0] = c_val;
 				break;}
 				/*
@@ -429,15 +439,29 @@ struct Processor : public ProcessorBase {
 					c_ptr[0][j] = c_val;
 				break;}
 				*/
+			// case constant_bool:
+			// {
+			// 	double c_val = *node->get_value();
+			// 	VCLVec * c_ptr = workspace_.vector[node->result_idx_].values;
+			// 	Vec<VCLVec> * v;
+
+			// 	if (c_val == 0.0) {
+			// 		c_ptr[0] = v->false_value();
+			// 	}
+			// 	else {
+			// 		c_ptr[0] = v->true_value();
+			// 	}
+			// 	break;
+			// }
 			case value:
-				vec_set(node->result_idx_, (MVec *)node->get_value(), workspace_.vec_subset);
+				vec_set(node->result_idx_, (VCLVec *)node->get_value(), workspace_.vec_subset);
 				break;
 			case value_copy:
 			{
 				auto val_copy_ptr = ( std::dynamic_pointer_cast<ValueCopyNode> (node) );
 				if (val_copy_ptr->values_ == nullptr) {
 					val_copy_ptr->values_ = arena_->create_array<double>(vec_size);
-					vec_set(node->result_idx_, (MVec *)node->get_value(), workspace_.vec_subset);
+					vec_set(node->result_idx_, (VCLVec *)node->get_value(), workspace_.vec_subset);
 				}
 				val_copy_nodes_.push_back(val_copy_ptr);
 				break;
@@ -452,7 +476,7 @@ struct Processor : public ProcessorBase {
 				//++op;
 				break;
 			case expr_result:
-				vec_set(node->result_idx_, (MVec *)node->get_value(), workspace_.vec_subset);
+				vec_set(node->result_idx_, (VCLVec *)node->get_value(), workspace_.vec_subset);
 
 				*op = make_operation(node);
 				++op;
@@ -473,7 +497,7 @@ struct Processor : public ProcessorBase {
 
 	}
 
-	void vec_set(uint ivec, MVec * v, uint * s) {
+	void vec_set(uint ivec, VCLVec * v, uint * s) {
 		// std::cout << "Set vec: " << ivec << " ptr: " << &(workspace_.vector[ivec]) << " v: " << v << " s: " << s <<std::endl;
 		workspace_.vector[ivec].set(v, s);
 	}
@@ -499,7 +523,7 @@ struct Processor : public ProcessorBase {
 
 	template<class T>
 	inline void operation_eval(Operation op) {
-		EvalImpl<T::n_eval_args, T, MVec>::eval(op, workspace_);
+		EvalImpl<T::n_eval_args, T, VCLVec>::eval(op, workspace_);
 	}
 
 	void run() {
@@ -598,7 +622,7 @@ struct Processor : public ProcessorBase {
 	}
 
 	// ArenaAlloc arena_;
-	Workspace<MVec> workspace_;
+	Workspace<VCLVec> workspace_;
 	Operation * program_;
 	std::vector< std::shared_ptr<ValueCopyNode> > val_copy_nodes_;
 };

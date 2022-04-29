@@ -30,14 +30,12 @@ enum ResultStorage {
 	value = 2,
 	temporary = 3,
 	expr_result = 4,
-	value_copy = 5
+	value_copy = 5//,
+	// constant_bool = 6
 };
 
 struct ScalarNode;
 typedef std::shared_ptr<ScalarNode> ScalarNodePtr;
-
-const int64_t true_value = 0xFFFFFFFFFFFFFFFFLL;
-const int64_t false_value = 0x0000000000000000LL;
 
 
 /**
@@ -72,6 +70,7 @@ struct ScalarNode {
 	inline static ScalarNodePtr create_zero();
 	inline static ScalarNodePtr create_one();
 	inline static ScalarNodePtr create_const(double a);
+	inline static ScalarNodePtr create_const_bool(double a);
 	inline static ScalarNodePtr create_value(double *a);
 	inline static ScalarNodePtr create_val_copy(double *a);
 	inline static ScalarNodePtr create_result(ScalarNodePtr result, double *a);
@@ -143,6 +142,22 @@ struct ConstantNode : public ScalarNode {
 
 
 
+struct ConstantBoolNode : public ScalarNode {
+	ConstantBoolNode(double v)
+	: value_(v)
+	{
+		op_name_ = "ConstBool";
+		values_ = &value_;
+		// result_storage = constant_bool;
+	}
+
+	~ConstantBoolNode() override {
+	}
+
+	double value_;
+};
+
+
 struct ValueNode : public ScalarNode {
 	ValueNode(double *ptr)
 	{
@@ -182,6 +197,19 @@ struct ResultNode : public ScalarNode {
 		result_storage = expr_result; // use slot of the result of value, i.e. inputs[0]
 	}
 };
+
+/***********************
+ * Bool Value Nodes.
+ */
+template<typename T>
+static T get_true_value();
+
+template<typename T>
+static T get_false_value();
+
+static const int64_t double_true_value = 0xFFFFFFFFFFFFFFFFLL;
+static const int64_t double_false_value = 0x0000000000000000LL;
+
 
 
 /***********************
@@ -328,11 +356,11 @@ inline typename d_to_b<double_type>::bool_type as_bool(double_type in) {
 // }
 
 inline int64_t bitmask_false() {
-	return false_value;
+	return double_false_value;
 }
 
 inline int64_t bitmask_true() {
-	return true_value;
+	return double_true_value;
 }
 
 inline double double_false() {
@@ -346,6 +374,29 @@ inline double double_true() {
 inline double double_bool(bool x) {
 	return x ? double_true() : double_false();
 }
+
+template<typename T>
+T get_true_value()
+{
+	T x = 0;
+	return as_double(x == x);
+}
+// template<>
+// double get_true_value<double>()
+// {
+// 	return double_true();
+// }
+
+template<typename T>
+T get_false_value() {
+	T x = 0;
+	return as_double(x != x);
+}
+// template<>
+// double get_false_value<double>()
+// {
+// 	return double_false();
+// }
 
 
 /***
@@ -468,7 +519,7 @@ inline void _lt_::eval(VecType &res, VecType a, VecType b) {
 	std::cout << "In lt: " << std::endl;
 	print_VCL_vector<VecType>(a, "a");
 	print_VCL_vector<VecType>(b, "b");
-	
+
 	res = as_double(a < b);
 
 	std::cout << "res pointer: " << &res << std::endl;
@@ -718,6 +769,10 @@ ScalarNodePtr ScalarNode::create_one() {
 
 inline ScalarNodePtr ScalarNode::create_const(double a) {
 	return std::make_shared<ConstantNode>(a);
+}
+
+inline ScalarNodePtr ScalarNode::create_const_bool(double a) {
+	return std::make_shared<ConstantBoolNode>(a);
 }
 
 // create value node

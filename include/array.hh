@@ -599,11 +599,15 @@ public:
 	}
 
 	static Array true_array(const Array &UNUSED(a)) {
-		return constant({bparser::details::true_value});
+		Vec4d v = bparser::details::get_true_value<Vec4d>();
+		return constant({v[0]});
+		// return constant({bparser::details::double_true_value});
 	}
 
 	static Array false_array(const Array &UNUSED(a)) {
-		return constant({bparser::details::false_value});
+		Vec4d v = bparser::details::get_false_value<Vec4d>();
+		return constant({v[0]});
+		// return constant({bparser::details::double_false_value});
 	}
 
 	template <class T>
@@ -685,6 +689,18 @@ public:
 		Array res(shape);
 		for(uint i_el=0; i_el < res.elements_.size(); ++i_el) {
 			res.elements_[i_el] = details::ScalarNode::create_const(values[i_el]);
+		}
+		BP_ASSERT(values.size() == shape_size(res.shape()));
+		return res;
+	}
+
+	static Array constant_bool(const std::vector<double> &values, Shape shape = {}) {
+		if (values.size() == 1 && values[0] == none_value())
+			return Array();
+
+		Array res(shape);
+		for(uint i_el=0; i_el < res.elements_.size(); ++i_el) {
+			res.elements_[i_el] = details::ScalarNode::create_const_bool(values[i_el]);
 		}
 		BP_ASSERT(values.size() == shape_size(res.shape()));
 		return res;
