@@ -26,10 +26,12 @@
 
 // Optimized structure, holds data in common arena
 struct ExprData {
-	ExprData(uint vec_size)
-	: vec_size(vec_size)
+	ExprData(uint vec_size, uint simd_size)
+	: vec_size(vec_size), simd_size(simd_size)
 	{
-		arena = std::make_shared<bparser::ArenaAlloc>(32, 256 * 1012);
+		uint simd_bytes = sizeof(double) * simd_size;
+
+		arena = std::make_shared<bparser::ArenaAlloc>(simd_bytes, 256 * 1012);
 		v1 = arena->create_array<double>(vec_size * 3);
 		fill_seq(v1, 100, 100 + 3 * vec_size);
 		v2 = arena->create_array<double>(vec_size * 3);
@@ -41,15 +43,20 @@ struct ExprData {
 		vres = arena->create_array<double>(vec_size * 3);
 		fill_const(vres, 3 * vec_size, -100);
 		subset = arena->create_array<uint>(vec_size);
-		for(uint i=0; i<vec_size/4; i++) subset[i] = i;
+		for(uint i=0; i<vec_size/simd_size; i++) subset[i] = i;
 		cs1 = 4;
-	}
+		for (uint i = 0; i < 3; i++)
+		{
+			cv1[i] = (i+1)*3;
+		}
+	}	
 
 	~ExprData()
 	{}
 
 	std::shared_ptr<bparser::ArenaAlloc> arena;
 	uint vec_size;
+	uint simd_size;
 	double *v1, *v2, *v3, *v4, *vres;
 	double cs1;
 	double cv1[3];
@@ -61,9 +68,9 @@ struct ExprData {
 
 // Unoptimized structure, holds data in separated arrays, copies data to arenas
 struct ExprData2 {
-	ExprData2(uint vec_size)
+	ExprData2(uint vec_size, uint simd_size)
 	: arena_1(32, 32 * 1012), arena_2(32, 32 * 1012), arena_3(32, 32 * 1012), arena_4(32, 32 * 1012),
-	  arena_res(32, 32 * 1012), arena_subs(32, 32 * 1012), vec_size(vec_size)
+	  arena_res(32, 32 * 1012), arena_subs(32, 32 * 1012), vec_size(vec_size), simd_size(simd_size)
 	{
 		d1 = new double[3 * vec_size];
 		fill_seq(d1, 100, 100 + 3 * vec_size);
@@ -81,7 +88,7 @@ struct ExprData2 {
 		fill_const(dres, 3 * vec_size, -100);
 		vres = arena_res.create_array<double>(vec_size * 3);
 		subset = arena_subs.create_array<uint>(vec_size);
-		for(uint i=0; i<vec_size/4; i++) subset[i] = i;
+		for(uint i=0; i<vec_size/simd_size; i++) subset[i] = i;
 		cs1 = 4;
 	}
 
@@ -116,6 +123,7 @@ struct ExprData2 {
 	bparser::ArenaAlloc arena_res;     ///< Arena of result vector
 	bparser::ArenaAlloc arena_subs;    ///< Arena of subset vector
 	uint vec_size;
+	uint simd_size;
 	double *d1, *d2, *d3, *d4, *dres;  ///< Data initialized out of arenas
 	double *v1, *v2, *v3, *v4, *vres;  ///< Pointers to arenas
 	double cs1;
@@ -130,9 +138,9 @@ struct ExprData2 {
 // C++ evaluation of expression "v1 + v2 + v3 + v4"
 void expr1(ExprData &data) {
 	for(uint i_comp=0; i_comp < 3*data.vec_size; i_comp += data.vec_size) {
-		for(uint i=0; i<data.vec_size/4; ++i) {
-			uint j = i_comp + 4*data.subset[i];
-			for(uint k = 0; k<4; k++) {
+		for(uint i=0; i<data.vec_size/data.simd_size; ++i) {
+			uint j = i_comp + data.simd_size*data.subset[i];
+			for(uint k = 0; k<data.simd_size; k++) {
 				double v1 = data.v1[j+k];
 				double v2 = data.v2[j+k];
 				double v3 = data.v3[j+k];
@@ -147,9 +155,9 @@ void expr1(ExprData &data) {
 // C++ evaluation of expression "3 * v1 + cs1 * v2 + v3 + 2.5 * v4"
 void expr2(ExprData &data) {
 	for(uint i_comp=0; i_comp < 3*data.vec_size; i_comp += data.vec_size) {
-		for(uint i=0; i<data.vec_size/4; ++i) {
-			uint j = i_comp + 4*data.subset[i];
-			for(uint k = 0; k<4; k++) {
+		for(uint i=0; i<data.vec_size/data.simd_size; ++i) {
+			uint j = i_comp + data.simd_size*data.subset[i];
+			for(uint k = 0; k<data.simd_size; k++) {
 				double v1 = data.v1[j+k];
 				double v2 = data.v2[j+k];
 				double v3 = data.v3[j+k];
@@ -164,9 +172,9 @@ void expr2(ExprData &data) {
 // C++ evaluation of expression "sin(v1)"
 void expr3(ExprData &data) {
 	for(uint i_comp=0; i_comp < 3*data.vec_size; i_comp += data.vec_size) {
-		for(uint i=0; i<data.vec_size/4; ++i) {
-			uint j = i_comp + 4*data.subset[i];
-			for(uint k = 0; k<4; k++) {
+		for(uint i=0; i<data.vec_size/data.simd_size; ++i) {
+			uint j = i_comp + data.simd_size*data.subset[i];
+			for(uint k = 0; k<data.simd_size; k++) {
 				double v1 = data.v1[j+k];
 				//double v2 = data.v2[j+k];
 				//double v3 = data.v3[j+k];
@@ -181,9 +189,9 @@ void expr3(ExprData &data) {
 // C++ evaluation of expression "[v2, v2, v2] @ v1 + v3"
 void expr4(ExprData &data) {
 	for(uint i_comp=0; i_comp < 3*data.vec_size; i_comp += data.vec_size) {
-		for(uint i=0; i<data.vec_size/4; ++i) {
-			uint j = i_comp + 4*data.subset[i];
-			for(uint k = 0; k<4; k++) {
+		for(uint i=0; i<data.vec_size/data.simd_size; ++i) {
+			uint j = i_comp + data.simd_size*data.subset[i];
+			for(uint k = 0; k<data.simd_size; k++) {
 				double v1 = data.v1[j+k];
 				double v2 = data.v2[j+k];
 				double v3 = data.v3[j+k];
@@ -205,7 +213,7 @@ void test_expr(std::string expr, uint block_size, void (* func)(ExprData&)) {
 	using namespace bparser;
 	uint vec_size = 1*block_size;
 
-	uint simd_size = 4;
+	uint simd_size = get_simd_size();
 
 	// TODO: allow changing variable pointers, between evaluations
 	// e.g. p.set_variable could return pointer to that pointer
@@ -213,9 +221,9 @@ void test_expr(std::string expr, uint block_size, void (* func)(ExprData&)) {
 	// Rather modify the test to fill the
 	uint n_repeats = (1024 / block_size) * 100000;
 
-	ExprData  data1(vec_size);
-	ExprData2 data2(vec_size);
-	ExprData  data3(vec_size);
+	ExprData  data1(vec_size, simd_size);
+	ExprData2 data2(vec_size, simd_size);
+	ExprData  data3(vec_size, simd_size);
 
 	double parser_time_optim, parser_time_shared_arena, parser_time_copy, parser_time_noopt, cpp_time;
 
@@ -245,7 +253,7 @@ void test_expr(std::string expr, uint block_size, void (* func)(ExprData&)) {
 	}
 
 	{ // one allocation in common arena, set this arena to processor
-		Parser p(block_size, simd_size);
+		Parser p(block_size);
 		p.parse(expr);
 		p.set_constant("cs1", {}, 	{data1.cs1});
 		p.set_constant("cv1", {3}, 	std::vector<double>(data1.cv1, data1.cv1+3));
@@ -270,7 +278,7 @@ void test_expr(std::string expr, uint block_size, void (* func)(ExprData&)) {
 	}
 
 	{ // one allocation in common arena, use set_var_copy
-		Parser p(block_size, simd_size);
+		Parser p(block_size);
 		p.parse(expr);
 		p.set_constant("cs1", {}, 	{data1.cs1});
 		p.set_constant("cv1", {3}, 	std::vector<double>(data1.cv1, data1.cv1+3));
@@ -295,7 +303,7 @@ void test_expr(std::string expr, uint block_size, void (* func)(ExprData&)) {
 	}
 
 	{ // unoptimized allocation in separated arenas
-		Parser p(block_size, simd_size);
+		Parser p(block_size);
 		p.parse(expr);
 		p.set_constant("cs1", {}, 	{data2.cs1});
 		p.set_constant("cv1", {3}, 	std::vector<double>(data2.cv1, data2.cv1+3));
