@@ -472,13 +472,13 @@ struct Processor : public ProcessorBase {
 			{
 				double c_val = *node->get_value();
 				VCLVec * c_ptr = workspace_.vector[node->result_idx_].values;
-				Vec<VCLVec> * v;
+				Vec<VCLVec> v;
 
 				if (c_val == 0.0) {
-					c_ptr[0] = v->false_value();
+					c_ptr[0] = v.false_value();
 				}
 				else {
-					c_ptr[0] = v->true_value();
+					c_ptr[0] = v.true_value();
 				}
 				break;
 			}
@@ -666,13 +666,16 @@ ProcessorBase * create_processor_(ExpressionDAG &se, uint vector_size,  uint sim
     BP_ASSERT(simd_bytes1 == simd_bytes);
     uint vec_size = (vector_size / simd_size);
     uint est = 
-            align_size(simd_bytes, sizeof(Processor<Vec<VCLVec>>)) +	//88
+            align_size(simd_bytes, sizeof(Processor<Vec<VCLVec>>)) +	// always 88
             align_size(simd_bytes, sizeof(uint) * vector_size) +
             align_size(simd_bytes, se.temp_end * sizeof(Vec<VCLVec>)) +    // temporaries
-            align_size(simd_bytes, sizeof(VCLVec) * vec_size * (se.temp_end - se.values_copy_end)) +  // vec_copy, same as temporaroes
+            align_size(simd_bytes, sizeof(VCLVec) * vec_size * (se.temp_end - se.values_copy_end)) +  // vec_copy, same as temporaries
             align_size(simd_bytes, sizeof(VCLVec) * vec_size * (se.values_copy_end - se.values_end)) + // vector values (probably not neccessary to allocate)
             align_size(simd_bytes, sizeof(VCLVec) * se.constants_end ) +
             align_size(simd_bytes, sizeof(Operation) * (sorted_nodes.size() + 64) );
+
+	est *= 2;
+	std::cout << "Estimated memory in processor: " << est << std::endl;
 
     if (arena == nullptr)
         arena = std::make_shared<ArenaAlloc>(simd_bytes, est);
