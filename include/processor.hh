@@ -154,6 +154,35 @@ static uint get_simd_size()
 	}
 }
 
+template<typename T>
+static T get_true_value();
+
+template<typename T>
+static T get_false_value();
+
+template<typename T>
+T get_true_value()
+{
+	T x = 0;
+	return as_double(x == x);
+}
+template<>
+double get_true_value<double>()
+{
+	return double_true();
+}
+
+template<typename T>
+T get_false_value() {
+	T x = 0;
+	return as_double(x != x);
+}
+template<>
+double get_false_value<double>()
+{
+	return double_false();
+}
+
 typedef std::shared_ptr<ArenaAlloc> ArenaAllocPtr;
 
 template <typename VecType>
@@ -439,20 +468,20 @@ struct Processor : public ProcessorBase {
 					c_ptr[0][j] = c_val;
 				break;}
 				*/
-			// case constant_bool:
-			// {
-			// 	double c_val = *node->get_value();
-			// 	VCLVec * c_ptr = workspace_.vector[node->result_idx_].values;
-			// 	Vec<VCLVec> * v;
+			case constant_bool:
+			{
+				double c_val = *node->get_value();
+				VCLVec * c_ptr = workspace_.vector[node->result_idx_].values;
+				Vec<VCLVec> * v;
 
-			// 	if (c_val == 0.0) {
-			// 		c_ptr[0] = v->false_value();
-			// 	}
-			// 	else {
-			// 		c_ptr[0] = v->true_value();
-			// 	}
-			// 	break;
-			// }
+				if (c_val == 0.0) {
+					c_ptr[0] = v->false_value();
+				}
+				else {
+					c_ptr[0] = v->true_value();
+				}
+				break;
+			}
 			case value:
 				vec_set(node->result_idx_, (VCLVec *)node->get_value(), workspace_.vec_subset);
 				break;
