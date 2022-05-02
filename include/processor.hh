@@ -675,7 +675,7 @@ ProcessorBase * create_processor_(ExpressionDAG &se, uint vector_size,  uint sim
             align_size(simd_bytes, sizeof(Operation) * (sorted_nodes.size() + 64) );
 
 	est *= 2;
-	std::cout << "Estimated memory in processor: " << est << std::endl;
+	// std::cout << "Estimated memory in processor: " << est << std::endl;
 
     if (arena == nullptr)
         arena = std::make_shared<ArenaAlloc>(simd_bytes, est);
