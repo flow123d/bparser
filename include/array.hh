@@ -599,15 +599,11 @@ public:
 	}
 
 	static Array true_array(const Array &UNUSED(a)) {
-		Vec4d v = bparser::details::get_true_value<Vec4d>();
-		return constant({v[0]});
-		// return constant({bparser::details::double_true_value});
+		return constant_bool({1});
 	}
 
 	static Array false_array(const Array &UNUSED(a)) {
-		Vec4d v = bparser::details::get_false_value<Vec4d>();
-		return constant({v[0]});
-		// return constant({bparser::details::double_false_value});
+		return constant_bool({0});
 	}
 
 	template <class T>
