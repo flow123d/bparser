@@ -242,7 +242,7 @@ void test_expr(std::string expr, uint block_size, void (* func)(ExprData&)) {
 		//std::cout.flush();
 		p.compile();
 
-		std::vector<uint> ss = std::vector<uint>(data1.subset, data1.subset+vec_size/4);
+		std::vector<uint> ss = std::vector<uint>(data1.subset, data1.subset+vec_size/simd_size);
 		p.set_subset(ss);
 		auto start_time = std::chrono::high_resolution_clock::now();
 		for(uint i_rep=0; i_rep < n_repeats; i_rep++) {
@@ -267,7 +267,7 @@ void test_expr(std::string expr, uint block_size, void (* func)(ExprData&)) {
 		//std::cout.flush();
 		p.compile(data1.arena);
 
-		std::vector<uint> ss = std::vector<uint>(data1.subset, data1.subset+vec_size/4);
+		std::vector<uint> ss = std::vector<uint>(data1.subset, data1.subset+vec_size/simd_size);
 		p.set_subset(ss);
 		auto start_time = std::chrono::high_resolution_clock::now();
 		for(uint i_rep=0; i_rep < n_repeats; i_rep++) {
@@ -292,7 +292,7 @@ void test_expr(std::string expr, uint block_size, void (* func)(ExprData&)) {
 		//std::cout.flush();
 		p.compile();
 
-		std::vector<uint> ss = std::vector<uint>(data1.subset, data1.subset+vec_size/4);
+		std::vector<uint> ss = std::vector<uint>(data1.subset, data1.subset+vec_size/simd_size);
 		p.set_subset(ss);
 		auto start_time = std::chrono::high_resolution_clock::now();
 		for(uint i_rep=0; i_rep < n_repeats; i_rep++) {
@@ -317,7 +317,7 @@ void test_expr(std::string expr, uint block_size, void (* func)(ExprData&)) {
 		//std::cout.flush();
 		p.compile();
 
-		std::vector<uint> ss = std::vector<uint>(data2.subset, data2.subset+vec_size/4);
+		std::vector<uint> ss = std::vector<uint>(data2.subset, data2.subset+vec_size/simd_size);
 		p.set_subset(ss);
 		auto start_time = std::chrono::high_resolution_clock::now();
 		for(uint i_rep=0; i_rep < n_repeats; i_rep++) {
