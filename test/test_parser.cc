@@ -125,12 +125,12 @@ std::vector<double> eval_bool_expr_(std::string expr) {
 
 	uint simd_size = get_simd_size();
 	uint simd_bytes = sizeof(double) * simd_size;
-	ArenaAlloc *arena = new ArenaAlloc(simd_bytes, 6 * vec_size * sizeof(double));
+	std::shared_ptr<bparser::ArenaAlloc> arena = std::make_shared<bparser::ArenaAlloc>(simd_bytes, 6 * vec_size * sizeof(double));
 
-	auto v1 = (*arena).create_array<double>(vec_size * 3);
+	auto v1 = arena->create_array<double>(vec_size * 3);
 	fill_seq(v1, 88, 100 + 3 * vec_size * 2, 2.0);
 
-	auto v2 = (*arena).create_array<double>(vec_size * 3);
+	auto v2 = arena->create_array<double>(vec_size * 3);
 	fill_seq(v2, 100, 100 + 3 * vec_size);
 
 
@@ -152,7 +152,6 @@ std::vector<double> eval_bool_expr_(std::string expr) {
 	p.set_subset({0, 1});
 	p.run();
 
-	arena->destroy();
 
 	std::vector<double> res(result_size * vec_size);
 	for(uint i=0; i < res.size(); i++) res[i] = vres[i];
@@ -180,6 +179,11 @@ bool test_bool_expr(std::string expr, std::vector<double> ref_result) {
 
 void test_bool_expression()
 {
+	/**
+	 * All bool tests have defined:
+	 * v1 - scalar array == [88..134]
+	 * v2 - vector array == [100..123]
+	 */
 	std::cout << std::endl << "** test bool expression" << std::endl;
 	BP_ASSERT(test_bool_expr("v1 < v2", {0,0,0}));
 }
@@ -311,7 +315,7 @@ int main()
 {
 	// test_free_variables();
 	test_expression();
-	// test_bool_expression();
+	test_bool_expression();
 #ifdef NDEBUG
 	test_speed_cases();
 #endif
