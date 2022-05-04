@@ -89,6 +89,9 @@ std::string print_vector(std::vector<T> x) {
 }
 
 template<typename VecType>
+static void print_VCL_vector(const VecType & v, const char * prefix);
+
+template<typename VecType>
 void print_VCL_vector(const VecType & v, const char * prefix)
 {
     bool first = true;
@@ -106,6 +109,12 @@ void print_VCL_vector(const VecType & v, const char * prefix)
     }
     std::cout << ")" << std::endl;
 }
+template<>
+void print_VCL_vector(const double & v, const char * prefix)
+{
+    std::cout << prefix << "(" << v << ")";
+}
+
 
 template< class T>
 bool vec_eq(std::vector<T> a, std::vector<T> b) {
