@@ -41,6 +41,7 @@ void test_free_variables() {
 }
 
 constexpr uint vec_size = 8;
+uint simd_size = bparser::get_simd_size();
 
 std::vector<double> eval_expr_(std::string expr, bparser::Shape ref_shape = {}) {
 	std::cout << "parser test : " << expr << "\n";
@@ -76,7 +77,12 @@ std::vector<double> eval_expr_(std::string expr, bparser::Shape ref_shape = {}) 
 
 	uint result_size = shape_size(p.result_array().shape());
 	fill_const(vres, vec_size * result_size, -1e100); // undefined value
-	p.set_subset({0, 1});
+
+	std::vector<uint> ss = std::vector<uint>(vec_size/simd_size);
+	for (uint i = 0; i < vec_size/simd_size; i++){
+		ss[i] = i;
+	}
+	p.set_subset(ss);
 	p.run();
 
 	std::vector<double> res(result_size * vec_size);
@@ -123,7 +129,6 @@ std::vector<double> eval_bool_expr_(std::string expr) {
 	std::cout << "parser test : " << expr << "\n";
 	using namespace bparser;
 
-	uint simd_size = get_simd_size();
 	uint simd_bytes = sizeof(double) * simd_size;
 	std::shared_ptr<bparser::ArenaAlloc> arena = std::make_shared<bparser::ArenaAlloc>(simd_bytes, 6 * vec_size * sizeof(double));
 
@@ -149,7 +154,12 @@ std::vector<double> eval_bool_expr_(std::string expr) {
 	double * vres = p.tmp_result_ptr();
 	uint result_size = shape_size(p.result_array().shape());
 	fill_const(vres, vec_size * result_size, -1e100); // undefined value
-	p.set_subset({0, 1});
+	
+	std::vector<uint> ss = std::vector<uint>(vec_size/simd_size);
+	for (uint i = 0; i < vec_size/simd_size; i++){
+		ss[i] = i;
+	}
+	p.set_subset(ss);
 	p.run();
 
 
