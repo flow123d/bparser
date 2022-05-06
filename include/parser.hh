@@ -48,27 +48,28 @@ class Parser {
 	std::map<std::string, Array> symbols_;
 	Array result_array_;
 	ProcessorBase * processor;
-	std::vector<double> tmp_result;
+	// std::vector<double> tmp_result;
+    double * tmp_result;
 
 public:
     /** @brief Constructor
      * max_vec_size - size of single array component in doubles
      */
     Parser(uint max_vec_size)
-	: max_vec_size(max_vec_size), simd_size(0), processor(nullptr), tmp_result()
+	: max_vec_size(max_vec_size), simd_size(0), processor(nullptr), tmp_result(nullptr)
 	{}
 
     Parser(uint max_vec_size, uint simd_size)
-	: max_vec_size(max_vec_size), simd_size(simd_size), processor(nullptr), tmp_result()
+	: max_vec_size(max_vec_size), simd_size(simd_size), processor(nullptr), tmp_result(nullptr)
 	{}
 
     /// @brief Destructor
     ~Parser() {
     	destroy_processor();
+        if (tmp_result != nullptr) delete [] tmp_result; // Allow if it is not a vector
     }
 
     void destroy_processor() {
-    	// if (tmp_result != nullptr) delete [] tmp_result; // Now it is a vector
     	if (processor != nullptr) {
             processor->~ProcessorBase();
         }
@@ -179,18 +180,22 @@ public:
 		auto res_it = symbols_.find("_result_");
 		if (res_it == symbols_.end()) {
 			// TODO: replace by storing result in the temporary variable of the processor
-			// tmp_result = new double[shape_size(result_shape) * max_vec_size];
-            tmp_result.resize(shape_size(result_shape) * max_vec_size);
+			tmp_result = new double[shape_size(result_shape) * max_vec_size];    // Pointer version
+            // tmp_result.resize(shape_size(result_shape) * max_vec_size);
 			result_array_ = Array::value(&tmp_result[0], max_vec_size, result_shape);
 			result_array_ = array.make_result(result_array_);
+
+            // std::cout << "&tmp_result[0]: " << &tmp_result[0] << std::endl;
 		} else {
 			result_array_ = array.make_result(res_it->second);
 		}
 
 		ExpressionDAG se(result_array_.elements());
-        // return se;
 		//se.print_in_dot();
 		processor = ProcessorBase::create_processor(se, max_vec_size, simd_size, arena);
+
+        // tmp_result[0] = 1;
+        // std::cout << "&tmp_result[0] again " << &tmp_result[0] << std::endl;
     }
 
     Array result_array() {
