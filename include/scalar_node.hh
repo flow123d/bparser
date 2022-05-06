@@ -430,7 +430,7 @@ struct _sub_ : public ScalarNode {
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a, VecType b) {
 		// std::cout << a << " - " << b << "\n";
- 		res = a - b;
+		res = a - b;
 	}
 };
 
@@ -442,6 +442,14 @@ struct _mul_ : public ScalarNode {
 	inline static void eval(VecType &res, VecType a, VecType b) {
 		// std::cout << a << " * " << b << "\n";
 		res = a * b;
+		// VecType c = a * b;
+		// print_VCL_vector(c, "c_mult");
+		// c.store(((double *)&res));
+ 		// for (uint i = 0; i < VecType::size(); i++)
+		// {
+		// 	((double *)&res)[i] = c[i];
+		// }
+		// print_VCL_vector(res, "res_mult");
 	}
 };
 
@@ -712,8 +720,13 @@ struct _copy_ : public ScalarNode {
 	static const char n_eval_args = 2;
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a) {
+		// std::cout << "&res: " << &res << std::endl;
+		// print_VCL_vector<VecType>(a, "a");
+		// res = 1;
+
 		res = a;
 		//std::cout << a << " -copy-> " << res << "\n";
+		// std::cout << "End of _copy_ func." << std::endl;
 	}
 };
 
