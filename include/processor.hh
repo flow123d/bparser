@@ -275,7 +275,7 @@ struct EvalImpl<2, T, VecType> {
 
 		for(uint i=0; i<w.subset_size; ++i) {
 
-			//std::cout << "subset: " << i << std::endl;
+			// std::cout << "subset: " << i << std::endl;
 
 			VecType * v0i = v0.value(i);
 			VecType * v1i = v1.value(i);
@@ -463,11 +463,11 @@ struct Processor : public ProcessorBase {
 				VCLVec * c_ptr = workspace_.vector[node->result_idx_].values;
 				c_ptr[0] = c_val;
 				break;}
-				/*
-				for(uint j=0; j<simd_size; ++j)
-					c_ptr[0][j] = c_val;
-				break;}
-				*/
+				
+				// for(uint j=0; j<simd_size; ++j)
+				// 	c_ptr[0][j] = c_val;
+				// break;}
+				
 			case constant_bool:
 			{
 				double c_val = *node->get_value();
@@ -558,15 +558,15 @@ struct Processor : public ProcessorBase {
 	void run() {
 		this->copy_inputs();
 		for(Operation * op = program_;;++op) {
-			// std::cout << "op: " << (int)(op->code)
-			// 		<< " ia0: " << (int)(op->arg[0])
-			// 		<< " a0: " << workspace_.vector[op->arg[0]].values
-			// 		<< " ia1: " << (int)(op->arg[1])
-			// 		<< " a1: " << workspace_.vector[op->arg[1]].values
-			// 		<< " ia2: " << (int)(op->arg[2])
-			// 		<< " a2: " << workspace_.vector[op->arg[2]].values
-			// 		<< " ia3: " << (int)(op->arg[3])
-			// 		<< " a3: " << workspace_.vector[op->arg[3]].values << "\n";
+			std::cout << "op: " << (int)(op->code)
+					<< " ia0: " << (int)(op->arg[0])
+					<< " a0: " << workspace_.vector[op->arg[0]].values
+					<< " ia1: " << (int)(op->arg[1])
+					<< " a1: " << workspace_.vector[op->arg[1]].values
+					<< " ia2: " << (int)(op->arg[2])
+					<< " a2: " << workspace_.vector[op->arg[2]].values
+					<< " ia3: " << (int)(op->arg[3])
+					<< " a3: " << workspace_.vector[op->arg[3]].values << "\n";
 
 			switch (op->code) {
 			CODE(_minus_);
@@ -605,7 +605,54 @@ struct Processor : public ProcessorBase {
 			CODE(_pow_);
 			CODE(_max_);
 			CODE(_min_);
-			CODE(_copy_);
+			// CODE(_copy_);
+			case 50:
+			{
+				Vec<VCLVec> v0 = workspace_.vector[op->arg[0]];
+				Vec<VCLVec> v1 = workspace_.vector[op->arg[1]];
+
+				// std::cout << "op before: " << (int)(op->code)
+				// 	<< " i0: " << (int)(op->arg[0])
+				// 	<< " v0: " << v0.values
+				// 	<< " i1: " << (int)(op->arg[1])
+				// 	<< " v1: " << v1.values << std::endl;
+
+
+				// for(uint i=0; i < workspace_.vector_size * simd_size; i++) {
+				// 		std::cout << "  " << i <<
+				// 			" res v0: " << ((double *)v0.values)[i] << ", res v1: " << ((double *)v1.values)[i] << "\n";
+				// }
+				// std::cout << "\n -memcpy- \n" << std::endl;
+
+				// memcpy(v0.values, v1.values, workspace_.vector_size * sizeof(VCLVec));
+
+				for(uint i=0; i<workspace_.subset_size; ++i) {
+
+					std::cout << "subset: " << i << std::endl;
+
+					VCLVec * v0i = v0.value(i);
+					VCLVec * v1i = v1.value(i);
+					// memcpy(v0i, v1i, sizeof(VCLVec));
+					for (uint j = 0; j < simd_size; j++) {
+						((double *)v0i)[j] = ((double *)v1i)[j];
+					}
+				}
+
+				for(uint i=0; i < workspace_.vector_size * simd_size; i++) {
+						std::cout << "  " << i <<
+							" res v0: " << ((double *)v0.values)[i] << ", res v1: " << ((double *)v1.values)[i] << "\n";
+				}
+
+				// std::cout << "VCLVec size " << sizeof(VCLVec) << " * vector_size " << workspace_.vector_size << std::endl;
+				// std::cout << "mem copy: " << workspace_.vector_size * sizeof(VCLVec) << std::endl;
+
+
+				std::cout << "op after : " << (int)(op->code)
+					<< " i0: " << (int)(op->arg[0])
+					<< " v0: " << v0.values
+					<< " i1: " << (int)(op->arg[1])
+					<< " v1: " << v1.values << "\n" << std::endl;
+			} break;
 			CODE(_ifelse_);
 			CODE(_log2_);
 //			CODE(__);
@@ -675,7 +722,7 @@ ProcessorBase * create_processor_(ExpressionDAG &se, uint vector_size,  uint sim
             align_size(simd_bytes, sizeof(Operation) * (sorted_nodes.size() + 64) );
 
 	est *= 2;
-	// std::cout << "Estimated memory in processor: " << est << std::endl;
+	// std::cout << "Estimated allocation of memory in processor: " << est << std::endl;
 
     if (arena == nullptr)
         arena = std::make_shared<ArenaAlloc>(simd_bytes, est);
