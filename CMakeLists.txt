@@ -9,7 +9,7 @@ message(STATUS "CMakeLists.txt - BParser")
 set(CMAKE_CXX_FLAGS     "-std=c++17 -finline-functions -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION")
 #set(CMAKE_CXX_FLAGS_RELEASE "-O3 -mavx512f -mfma") # VCL2 should compile
 # TODO: Try -Winline to be detect possibly non inlined functions.
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")# -march=native")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3" -march=native")
 
 
 set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG  -fsanitize=address -static-libasan -fno-omit-frame-pointer")  #
