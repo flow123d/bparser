@@ -96,7 +96,7 @@ void print_VCL_vector(const VecType & v, const char * prefix)
 {
     bool first = true;
     std::cout << prefix << "(";
-    for(int i = 0; i < VecType::size(); i++)
+    for(uint i = 0; i < VecType::size(); i++)
     {
         if (first)
         {
@@ -109,11 +109,11 @@ void print_VCL_vector(const VecType & v, const char * prefix)
     }
     std::cout << ")" << std::endl;
 }
-template<>
-void print_VCL_vector(const double & v, const char * prefix)
-{
-    std::cout << prefix << "(" << v << ")";
-}
+// template<>
+// void print_VCL_vector<double>(const double & v, const char * prefix)
+// {
+//     std::cout << prefix << "(" << v << ")";
+// }
 
 
 template< class T>
