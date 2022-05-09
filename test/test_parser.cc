@@ -208,6 +208,9 @@ void test_expression() {
 	 */
 	std::cout << "\n" << "** test expression" << "\n";
 
+	BP_ASSERT(test_expr("as1 - cv4", {-3,-4,-5}));
+	BP_ASSERT(test_expr("as1 - cv4", {-3,-4,-5}));
+
 	// Array creation and subscription
 	BP_ASSERT(test_expr("[1,2,3]", {1,2,3}, {3}));
 	BP_ASSERT(test_expr("[[1],[2],[3]]", {1,2,3}, {3,1}));

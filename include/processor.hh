@@ -166,22 +166,22 @@ T get_true_value()
 	T x = 0;
 	return as_double(x == x);
 }
-template<>
-double get_true_value<double>()
-{
-	return double_true();
-}
+// template<>
+// double get_true_value<double>()
+// {
+// 	return double_true();
+// }
 
 template<typename T>
 T get_false_value() {
 	T x = 0;
 	return as_double(x != x);
 }
-template<>
-double get_false_value<double>()
-{
-	return double_false();
-}
+// template<>
+// double get_false_value<double>()
+// {
+// 	return double_false();
+// }
 
 typedef std::shared_ptr<ArenaAlloc> ArenaAllocPtr;
 
@@ -291,9 +291,9 @@ struct EvalImpl<3, T, VecType> {
 		Vec<VecType> v0 = w.vector[op.arg[0]];
 		Vec<VecType> v1 = w.vector[op.arg[1]];
 		Vec<VecType> v2 = w.vector[op.arg[2]];
-//		std::cout << "iv0:" << uint(op.arg[0])
-//				<< "iv1:" << uint(op.arg[1])
-//				<< "iv2:" << uint(op.arg[2]) << std::endl;
+		std::cout << "iv0:" << uint(op.arg[0])
+				<< "iv1:" << uint(op.arg[1])
+				<< "iv2:" << uint(op.arg[2]) << std::endl;
 
 		//std::cout << testi++ << " * " << "\n";
 		
@@ -304,6 +304,9 @@ struct EvalImpl<3, T, VecType> {
 			VecType *v0i = v0.value(i);
 			VecType *v1i = v1.value(i);
 			VecType *v2i = v2.value(i);
+
+			print_VCL_vector(*v0i, "v0i");
+
 			T::eval(*v0i, *v1i, *v2i);
 		}
 	}
@@ -751,10 +754,10 @@ inline ProcessorBase * ProcessorBase::create_processor(ExpressionDAG &se, uint v
 		{
 			return create_processor_<Vec8d>(se, vector_size, simd_size, arena);
 		} break;
-		default:
-		{
-			return create_processor_<double>(se, vector_size, 1, arena);
-		} break;
+		// default:
+		// {
+		// 	return create_processor_<double>(se, vector_size, 1, arena);
+		// } break;
 	}
 }
 

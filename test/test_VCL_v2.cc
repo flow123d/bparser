@@ -8,25 +8,6 @@
 const int64_t true_value = 0xFFFFFFFFFFFFFFFFLL; //-1LL;
 const int64_t false_value = 0x0000000000000000LL;
 
-// template<typename VecType>
-// void print_VCL_vector(const VecType & v, const char * prefix)
-// {
-//     bool first = true;
-//     std::cout << prefix << "(";
-//     for(int i = 0; i < VecType::size(); i++)
-//     {
-//         if (first)
-//         {
-//             std::cout << v[i];
-//             first = false;
-//             continue;
-//         }
-
-//         std::cout << " ; " << v[i];
-//     }
-//     std::cout << ")" << std::endl;
-// }
-
 template <typename VecType>
 void eval(VecType &res, VecType a, VecType b)
 {

@@ -430,7 +430,18 @@ struct _sub_ : public ScalarNode {
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a, VecType b) {
 		// std::cout << a << " - " << b << "\n";
-		res = a - b;
+		// res = a - b;
+
+		std::cout << "Here" << std::endl;
+
+		print_VCL_vector(a, "a");
+		print_VCL_vector(b, "b");
+		print_VCL_vector(res, "res");
+
+		VecType	c = a - b;
+		print_VCL_vector(c, "c_subbb");
+		c.store((double *)&res);
+		print_VCL_vector(c, "c_sub");
 	}
 };
 
@@ -441,10 +452,24 @@ struct _mul_ : public ScalarNode {
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a, VecType b) {
 		// std::cout << a << " * " << b << "\n";
-		res = a * b;
+		//res = a * b;
+		(a * b).store((double*)&res);
 		// VecType c = a * b;
 		// print_VCL_vector(c, "c_mult");
 		// c.store(((double *)&res));
+
+		// double *buf = (double *)malloc(sizeof(VecType));
+
+		// c.store(buf);
+
+		// VecType d;
+		// d.load(buf);
+
+		// print_VCL_vector(d, "d_bef");
+
+		// d = d * 2;
+
+		// print_VCL_vector(d, "d_after");
  		// for (uint i = 0; i < VecType::size(); i++)
 		// {
 		// 	((double *)&res)[i] = c[i];
