@@ -203,7 +203,7 @@ struct Vec {
 //		std::cout << "i: " << i << "j: " << j << std::endl;
 //		std::cout << " si: " << subset[i] << std::endl;
 //		std::cout << " v: " << values[subset[i]][j] << "\n";
-		return &(values[subset[i * sizeof(VecType) / sizeof(double)]]);
+		return &(values[subset[i]]); //sizeof(VecType) / sizeof(double)
 	}
 
 	VecType true_value() {
@@ -273,13 +273,16 @@ struct EvalImpl<2, T, VecType> {
 
 		//std::cout << testi++ << " * " << "\n";
 
+		uint simd_size = sizeof(VecType) / sizeof(double);
 		for(uint i=0; i<w.subset_size; ++i) {
-
 			//std::cout << "subset: " << i << std::endl;
+			for (uint j=0; j < simd_size; j++)
+			{
+				double * v0i = v0.value(i*simd_size + j);
+				double * v1i = v1.value(i*simd_size + j);
+				T::eval(*v0i, *v1i);
+			}
 
-			double * v0i = v0.value(i);
-			double * v1i = v1.value(i);
-			T::eval(*v0i, *v1i);
 		}
 	}
 };
@@ -297,14 +300,16 @@ struct EvalImpl<3, T, VecType> {
 
 		//std::cout << testi++ << " * " << "\n";
 		
+		uint simd_size = sizeof(VecType) / sizeof(double);
 		for(uint i=0; i<w.subset_size; ++i) {
-
 			//std::cout << "subset: " << i << std::endl;
-
-			double *v0i = v0.value(i);
-			double *v1i = v1.value(i);
-			double *v2i = v2.value(i);
-			T::eval(*v0i, *v1i, *v2i);
+			for (uint j=0; j < simd_size; j++)
+			{
+				double * v0i = v0.value(i*simd_size + j);
+				double * v1i = v1.value(i*simd_size + j);
+				double * v2i = v2.value(i*simd_size + j);
+				T::eval(*v0i, *v1i, *v2i);
+			}
 		}
 	}
 };
