@@ -208,8 +208,11 @@ void test_expression() {
 	 */
 	std::cout << "\n" << "** test expression" << "\n";
 
-	BP_ASSERT(test_expr("as1 - cv4", {-3,-4,-5}));
-	BP_ASSERT(test_expr("as1 - cv4", {-3,-4,-5}));
+	// BP_ASSERT(test_expr("as1 * cv4", {4,5,6}));
+	// BP_ASSERT(test_expr("as1 * cv4", {4,5,6}));
+	// BP_ASSERT(test_expr("as1 - cv4", {-3,-4,-5}));
+	// BP_ASSERT(test_expr("as1 - cv4", {-3,-4,-5}));
+	// BP_ASSERT(test_expr("[2,3,4] / av2", {1,1.5,2}));
 
 	// Array creation and subscription
 	BP_ASSERT(test_expr("[1,2,3]", {1,2,3}, {3}));
@@ -328,7 +331,7 @@ int main()
 {
 	// test_free_variables();
 	test_expression();
-	test_bool_expression();
+	// test_bool_expression();
 #ifdef NDEBUG
 	test_speed_cases();
 #endif

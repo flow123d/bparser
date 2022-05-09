@@ -279,6 +279,7 @@ struct EvalImpl<2, T, VecType> {
 
 			VecType * v0i = v0.value(i);
 			VecType * v1i = v1.value(i);
+			
 			T::eval(*v0i, *v1i);
 		}
 	}
@@ -291,9 +292,9 @@ struct EvalImpl<3, T, VecType> {
 		Vec<VecType> v0 = w.vector[op.arg[0]];
 		Vec<VecType> v1 = w.vector[op.arg[1]];
 		Vec<VecType> v2 = w.vector[op.arg[2]];
-		std::cout << "iv0:" << uint(op.arg[0])
-				<< "iv1:" << uint(op.arg[1])
-				<< "iv2:" << uint(op.arg[2]) << std::endl;
+		// std::cout << "iv0:" << uint(op.arg[0])
+		// 		<< "iv1:" << uint(op.arg[1])
+		// 		<< "iv2:" << uint(op.arg[2]) << std::endl;
 
 		//std::cout << testi++ << " * " << "\n";
 		
@@ -304,9 +305,6 @@ struct EvalImpl<3, T, VecType> {
 			VecType *v0i = v0.value(i);
 			VecType *v1i = v1.value(i);
 			VecType *v2i = v2.value(i);
-
-			print_VCL_vector(*v0i, "v0i");
-
 			T::eval(*v0i, *v1i, *v2i);
 		}
 	}
@@ -631,7 +629,7 @@ struct Processor : public ProcessorBase {
 
 				for(uint i=0; i<workspace_.subset_size; ++i) {
 
-					std::cout << "subset: " << i << std::endl;
+					// std::cout << "subset: " << i << std::endl;
 
 					VCLVec * v0i = v0.value(i);
 					VCLVec * v1i = v1.value(i);
@@ -641,20 +639,20 @@ struct Processor : public ProcessorBase {
 					}
 				}
 
-				for(uint i=0; i < workspace_.vector_size * simd_size; i++) {
-						std::cout << "  " << i <<
-							" res v0: " << ((double *)v0.values)[i] << ", res v1: " << ((double *)v1.values)[i] << "\n";
-				}
+				// for(uint i=0; i < workspace_.vector_size * simd_size; i++) {
+				// 		std::cout << "  " << i <<
+				// 			" res v0: " << ((double *)v0.values)[i] << ", res v1: " << ((double *)v1.values)[i] << "\n";
+				// }
 
 				// std::cout << "VCLVec size " << sizeof(VCLVec) << " * vector_size " << workspace_.vector_size << std::endl;
 				// std::cout << "mem copy: " << workspace_.vector_size * sizeof(VCLVec) << std::endl;
 
 
-				std::cout << "op after : " << (int)(op->code)
-					<< " i0: " << (int)(op->arg[0])
-					<< " v0: " << v0.values
-					<< " i1: " << (int)(op->arg[1])
-					<< " v1: " << v1.values << "\n" << std::endl;
+				// std::cout << "op after : " << (int)(op->code)
+				// 	<< " i0: " << (int)(op->arg[0])
+				// 	<< " v0: " << v0.values
+				// 	<< " i1: " << (int)(op->arg[1])
+				// 	<< " v1: " << v1.values << "\n" << std::endl;
 			} break;
 			CODE(_ifelse_);
 			CODE(_log2_);
