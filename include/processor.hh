@@ -154,6 +154,40 @@ static uint get_simd_size()
 	}
 }
 
+
+// template<typename VecType>
+// static VecType * get_value(double *values, uint *subset, uint i);
+
+// template<typename VecType>
+// VecType * get_value(double *values,	uint *subset, uint i){
+// 	std::cout << " si: " << subset[i]*4 << std::endl;
+// 	std::cout << " v at si: " << values[subset[i]*4] << "\n" << std::endl;
+// 	std::cout << " v at si+1: " << values[subset[i]*4+1] << "\n" << std::endl;
+// 	std::cout << " v at si+2: " << values[subset[i]*4+2] << "\n" << std::endl;
+// 	std::cout << " v at si+3: " << values[subset[i]*4+3] << "\n" << std::endl;
+// 	double ret[4];
+// 	ret[0] = values[subset[i]*4];
+// 	ret[1] = values[subset[i]*4+1];
+// 	ret[2] = values[subset[i]*4+2];
+// 	ret[3] = values[subset[i]*4+3];
+// 	std::cout << "1" << std::endl;
+// 	VecType * r = (VecType*)malloc(sizeof(VecType));
+// 	std::cout << "2" << std::endl;
+// 	r->load((double*)ret);
+// 	std::cout << "3" << std::endl;
+// 	return r;
+// }
+// template<>
+// double * get_value<double>(double *values, uint *subset, uint i){
+// 	return &(values[subset[i]]);
+// }
+
+
+
+
+
+
+
 template<typename T>
 static T get_true_value();
 
@@ -198,12 +232,24 @@ struct Vec {
 	}
 
 	inline double * value(uint i) {
-//		std::cout << "self: " << this << std::endl;
-//		std::cout << "v: " << values << "s: " << subset << std::endl;
-//		std::cout << "i: " << i << "j: " << j << std::endl;
-//		std::cout << " si: " << subset[i] << std::endl;
-//		std::cout << " v: " << values[subset[i]][j] << "\n";
-		return &(values[subset[i]]); //sizeof(VecType) / sizeof(double)
+		// std::cout << "self: " << this << std::endl;
+		// std::cout << "v: " << values << " s: " << subset << std::endl;
+		// std::cout << "i: " << i << std::endl;
+		// std::cout << " si: " << subset[i/4] << std::endl;
+		// std::cout << " v at si: " << values[subset[i]] << "\n" << std::endl;
+
+		double * ret = (double*)malloc(sizeof(VecType));
+		ret[0] = values[subset[i]*4];
+		ret[1] = values[subset[i]*4+1];
+		ret[2] = values[subset[i]*4+2];
+		ret[3] = values[subset[i]*4+3];
+		return ret;
+		// VecType * r = (VecType*)malloc(sizeof(VecType));
+		// r->load(ret);
+
+		// return get_value<VecType>(values, subset, i);
+
+		// return &(values[subset[i]*4]);
 	}
 
 	VecType true_value() {
@@ -257,9 +303,19 @@ template <class T, typename VecType>
 struct EvalImpl<1, T, VecType> {
 	inline static void eval(Operation op,  Workspace<VecType> &w) {
 		Vec<VecType> v0 = w.vector[op.arg[0]];
+
+		// uint simd_size = sizeof(VecType) / sizeof(double);
 		for(uint i=0; i<w.subset_size; ++i) {
-			double * v0i = v0.value(i);
+			//std::cout << "subset: " << i << std::endl;
+			// for (uint j=0; j < simd_size; j++)
+			// {
+			double * v0id = v0.value(i);
+			VecType v0i;
+			v0i.load(v0id);
+
 			T::eval(*v0i);
+			// }
+			free(v0id); 
 		}
 	}
 };
@@ -273,16 +329,22 @@ struct EvalImpl<2, T, VecType> {
 
 		//std::cout << testi++ << " * " << "\n";
 
-		uint simd_size = sizeof(VecType) / sizeof(double);
+		// uint simd_size = sizeof(VecType) / sizeof(double);
 		for(uint i=0; i<w.subset_size; ++i) {
 			//std::cout << "subset: " << i << std::endl;
-			for (uint j=0; j < simd_size; j++)
-			{
-				double * v0i = v0.value(i*simd_size + j);
-				double * v1i = v1.value(i*simd_size + j);
-				T::eval(*v0i, *v1i);
-			}
+			// for (uint j=0; j < simd_size; j++)
+			// {
+			double * v0id = v0.value(i);
+			double * v1id = v1.value(i);
+			VecType v0i;
+			VecType v1i;
+			v0i.load(v0id);
+			v1i.load(v1id);
 
+			T::eval(*v0i, *v1i);
+			// }
+			free(v0id); 
+			free(v1id); 
 		}
 	}
 };
@@ -300,16 +362,26 @@ struct EvalImpl<3, T, VecType> {
 
 		//std::cout << testi++ << " * " << "\n";
 		
-		uint simd_size = sizeof(VecType) / sizeof(double);
+		// uint simd_size = sizeof(VecType) / sizeof(double);
 		for(uint i=0; i<w.subset_size; ++i) {
-			//std::cout << "subset: " << i << std::endl;
-			for (uint j=0; j < simd_size; j++)
-			{
-				double * v0i = v0.value(i*simd_size + j);
-				double * v1i = v1.value(i*simd_size + j);
-				double * v2i = v2.value(i*simd_size + j);
+			std::cout << "subset: " << i << std::endl;
+			// for (uint j=0; j < simd_size; j++)
+			// {
+				double * v0id = v0.value(i);
+				double * v1id = v1.value(i);
+				double * v2id = v2.value(i);
+				VecType v0i;
+				VecType v1i;
+				VecType v2i;
+				v0i.load(v0id);
+				v1i.load(v1id);
+				v2i.load(v2id);
+				
 				T::eval(*v0i, *v1i, *v2i);
-			}
+			// }
+			free(v0id); 
+			free(v1id); 	
+			free(v2id); 	
 		}
 	}
 };
@@ -326,16 +398,43 @@ struct EvalImpl<4, T, VecType> {
 //				<< "iv1:" << uint(op.arg[1])
 //				<< "iv2:" << uint(op.arg[2])
 //				<< "iv3:" << uint(op.arg[3]) << std::endl;
+		// uint simd_size = sizeof(VecType) / sizeof(double);
 		for(uint i=0; i<w.subset_size; ++i) {
-			double *v0i = v0.value(i);
-			// std::cout << "In proc.hh, pointer v0i: " << v0i << ", value: " << std::endl;
-			double *v1i = v1.value(i);
-			// std::cout << "In proc.hh, pointer v1i: " << v1i << ", value: " << std::endl;
-			double *v2i = v2.value(i);
-			// std::cout << "In proc.hh, pointer v2i: " << v2i << ", value: " << std::endl;
-			double *v3i = v3.value(i);
-			// std::cout << "In proc.hh, pointer v3i: " << v3i << ", value: " << std::endl;
-			T::eval(*v0i, *v1i, *v2i, *v3i);
+			//std::cout << "subset: " << i << std::endl;
+			// for (uint j=0; j < simd_size; j++)
+			// {
+				double * v0id = v0.value(i);
+				double * v1id = v1.value(i);
+				double * v2id = v2.value(i);
+				double * v3id = v3.value(i);
+				VecType v0i;
+				VecType v1i;
+				VecType v2i;
+				VecType v3i;
+				v0i.load(v0id);
+				v1i.load(v1id);
+				v2i.load(v2id);
+				v3i.load(v3id);
+				// double v0id[4] = v0.value(i);
+				// double v1id[4] = v1.value(i);
+				// double v2id[4] = v2.value(i);
+				// double v3id[4] = v3.value(i);
+				// VecType v0i(v0id[0], v0id[1], v0id[2], v0id[3]);
+				// VecType v1i(v1id[0], v1id[1], v1id[2], v1id[3]);
+				// VecType v2i(v2id[0], v2id[1], v2id[2], v2id[3]);
+				// VecType v3i(v3id[0], v3id[1], v3id[2], v3id[3]);
+				// std::cout << "In proc.hh, pointer v0i: " << v0i << ", value: " << std::endl;
+				// std::cout << "In proc.hh, pointer v1i: " << v1i << ", value: " << std::endl;
+				// std::cout << "In proc.hh, pointer v2i: " << v2i << ", value: " << std::endl;
+				// std::cout << "In proc.hh, pointer v3i: " << v3i << ", value: " << std::endl;
+				T::eval(*v0i, *v1i, *v2i, *v3i);
+
+				//get reference na adresu prvku ret[0]
+			// }
+			free(v0id); 
+			free(v1id); 
+			free(v2id); 	
+			free(v3id); 	
 		}
 	}
 };

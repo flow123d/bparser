@@ -325,7 +325,7 @@ int main()
 {
 	// test_free_variables();
 	test_expression();
-	test_bool_expression();
+	// test_bool_expression();
 #ifdef NDEBUG
 	test_speed_cases();
 #endif
