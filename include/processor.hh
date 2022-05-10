@@ -232,11 +232,11 @@ struct Vec {
 	}
 
 	inline double * value(uint i) {
-		// std::cout << "self: " << this << std::endl;
-		// std::cout << "v: " << values << " s: " << subset << std::endl;
-		// std::cout << "i: " << i << std::endl;
-		// std::cout << " si: " << subset[i/4] << std::endl;
-		// std::cout << " v at si: " << values[subset[i]] << "\n" << std::endl;
+		std::cout << "self: " << this << std::endl;
+		std::cout << "v: " << values << " s: " << subset << std::endl;
+		std::cout << "i: " << i << std::endl;
+		std::cout << " si: " << subset[i] << std::endl;
+		std::cout << " v at si: " << values[subset[i]] << "\n" << std::endl;
 
 		double * ret = (double*)malloc(sizeof(VecType));
 		ret[0] = values[subset[i]*4];
@@ -313,7 +313,7 @@ struct EvalImpl<1, T, VecType> {
 			VecType v0i;
 			v0i.load(v0id);
 
-			T::eval(*v0i);
+			T::eval(v0i);
 			// }
 			free(v0id); 
 		}
@@ -326,7 +326,7 @@ struct EvalImpl<2, T, VecType> {
 	inline static void eval(Operation op,  Workspace<VecType> &w) {
 		Vec<VecType> v0 = w.vector[op.arg[0]];
 		Vec<VecType> v1 = w.vector[op.arg[1]];
-
+		
 		//std::cout << testi++ << " * " << "\n";
 
 		// uint simd_size = sizeof(VecType) / sizeof(double);
@@ -337,11 +337,18 @@ struct EvalImpl<2, T, VecType> {
 			double * v0id = v0.value(i);
 			double * v1id = v1.value(i);
 			VecType v0i;
+			print_VCL_vector(v0i, "v0i_1");
 			VecType v1i;
 			v0i.load(v0id);
 			v1i.load(v1id);
 
-			T::eval(*v0i, *v1i);
+			print_VCL_vector(v0i, "v0i_2");
+			print_VCL_vector(v1i, "v1i");
+
+			T::eval(v0i, v1i);
+
+			print_VCL_vector(v0i, "v0i_3");
+			std::cout << std::endl;
 			// }
 			free(v0id); 
 			free(v1id); 
@@ -377,7 +384,9 @@ struct EvalImpl<3, T, VecType> {
 				v1i.load(v1id);
 				v2i.load(v2id);
 				
-				T::eval(*v0i, *v1i, *v2i);
+				T::eval(v0i, v1i, v2i);
+
+				print_VCL_vector(v0i, "v0i");
 			// }
 			free(v0id); 
 			free(v1id); 	
@@ -427,7 +436,7 @@ struct EvalImpl<4, T, VecType> {
 				// std::cout << "In proc.hh, pointer v1i: " << v1i << ", value: " << std::endl;
 				// std::cout << "In proc.hh, pointer v2i: " << v2i << ", value: " << std::endl;
 				// std::cout << "In proc.hh, pointer v3i: " << v3i << ", value: " << std::endl;
-				T::eval(*v0i, *v1i, *v2i, *v3i);
+				T::eval(v0i, v1i, v2i, v3i);
 
 				//get reference na adresu prvku ret[0]
 			// }
@@ -558,8 +567,9 @@ struct Processor : public ProcessorBase {
 		 * from composition of operations - top sort but no dep. on result_idx_
 		 */
 		Operation *op = program_;
+		int hlp_index = 0;
 		for(auto it=sorted_nodes.rbegin(); it != sorted_nodes.rend(); ++it) {
-			//se._print_node(*it);
+			se._print_node(*it);
 			ScalarNodePtr  node = *it;
 			switch (node->result_storage) {
 			case constant: {
@@ -568,8 +578,16 @@ struct Processor : public ProcessorBase {
 				// c_ptr[0] = c_val;
 				// break;}
 				
-				for(uint j=0; j<simd_size; ++j)
-					c_ptr[j] = c_val;
+				for(uint j=0; j<simd_size; ++j) {
+					std::cout << "c_val = " << c_val << std::endl;
+					std::cout << "c_ptr[j] = " << c_ptr[j+hlp_index] << std::endl;
+					std::cout << "&c_ptr[j] = " << &c_ptr[j+hlp_index] << std::endl;
+					
+					c_ptr[j+hlp_index] = c_val;
+					std::cout << "c_ptr[j]after = " << c_ptr[j+hlp_index] << std::endl;
+					std::cout << std::endl;
+				}
+				hlp_index+=4;
 				break;}
 				
 			case constant_bool:
@@ -810,10 +828,10 @@ inline ProcessorBase * ProcessorBase::create_processor(ExpressionDAG &se, uint v
 		{
 			return create_processor_<Vec8d>(se, vector_size, simd_size, arena);
 		} break;
-		default:
-		{
-			return create_processor_<double>(se, vector_size, 1, arena);
-		} break;
+		// default:
+		// {
+		// 	return create_processor_<double>(se, vector_size, 1, arena);
+		// } break;
 	}
 }
 
