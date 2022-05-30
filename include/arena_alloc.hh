@@ -27,7 +27,7 @@ struct ArenaAlloc {
 		size_ = align_size(alignment_, size);
 		base_ = (char *)memalign(alignment_, size_);
 		ptr_ = base_;
-		//std::cout << "arena begin: " << (void *)base_ << " end: " << end() << std::endl;
+		std::cout << "arena begin: " << (void *)base_ << " end: " << end() << std::endl;
 	}
 	
 	~ArenaAlloc() {
@@ -46,12 +46,12 @@ struct ArenaAlloc {
 		size = align_size(alignment_, size);
 		void * ptr = ptr_;
 		ptr_ += size;
-		// std::cout << "allocated: " << ptr << " end: " << (void *)ptr_ << " aend: " << end() << "\n";
+		std::cout << "allocated: " << ptr << " end: " << (void *)ptr_ << " aend: " << end() << "\n";
 		BP_ASSERT(ptr_ <= end());
-		// if (ptr_ > end())
-		// {
-		// 	std::cout << "Ptr <= end()" << std::endl;
-		// }
+		if (ptr_ > end())
+		{
+			std::cout << "Ptr <= end()" << std::endl;
+		}
 		return ptr;
 	}
 

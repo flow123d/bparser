@@ -432,12 +432,19 @@ struct _sub_ : public ScalarNode {
 		// std::cout << a << " - " << b << "\n";
 		// res = a - b;
 
-		(a - b).store((double*)&res);
-		// std::cout << "Here" << std::endl;
+		std::cout << "1" << std::endl;
 
-		// print_VCL_vector(a, "a");
-		// print_VCL_vector(b, "b");
-		// print_VCL_vector(res, "res");
+		print_VCL_vector(res, "res");
+		
+		std::cout << "2" << std::endl;
+
+		(a - b).store((double*)&res);
+
+		std::cout << "3" << std::endl;
+
+		print_VCL_vector(a, "a");
+		print_VCL_vector(b, "b");
+		print_VCL_vector(res, "res");
 
 		// VecType	c = a - b;
 		// print_VCL_vector(c, "c_subbb");
@@ -685,7 +692,9 @@ struct _pow_ : public ScalarNode {
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a, VecType b) {
 		// TODO: vectorize
-		res = pow(a, b);
+		// res = pow(a, b);
+		VecType r = pow(a, b);
+		r.store((double*)&res);
 	}
 };
 

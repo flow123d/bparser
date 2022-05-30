@@ -126,7 +126,7 @@ using namespace details;
 //};
 
 
-// const uint simd_size = 4;
+// const uint simd_size r= 4;
 
 // typedef double double4 __attribute__((__vector_size__(32)));
 
@@ -204,6 +204,10 @@ struct Vec {
 //		std::cout << " si: " << subset[i] << std::endl;
 //		std::cout << " v: " << values[subset[i]][j] << "\n";
 		return &(values[subset[i]]);
+	}
+
+	inline double * value_double(uint i) {
+		
 	}
 
 	VecType true_value() {
@@ -302,7 +306,9 @@ struct EvalImpl<3, T, VecType> {
 
 			//std::cout << "subset: " << i << std::endl;
 
-			VecType *v0i = v0.value(i);
+
+			VecType v0i;
+			v0i.load(v0.value(i));
 			VecType *v1i = v1.value(i);
 			VecType *v2i = v2.value(i);
 			T::eval(*v0i, *v1i, *v2i);
@@ -723,7 +729,7 @@ ProcessorBase * create_processor_(ExpressionDAG &se, uint vector_size,  uint sim
             align_size(simd_bytes, sizeof(Operation) * (sorted_nodes.size() + 64) );
 
 	est *= 2;
-	// std::cout << "Estimated allocation of memory in processor: " << est << std::endl;
+	std::cout << "Estimated allocation of memory in processor: " << est << std::endl;
 
     if (arena == nullptr)
         arena = std::make_shared<ArenaAlloc>(simd_bytes, est);
