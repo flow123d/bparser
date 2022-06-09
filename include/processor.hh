@@ -383,6 +383,8 @@ struct EvalImpl<3, T, VecType> {
 				v0i.load(v0id);
 				v1i.load(v1id);
 				v2i.load(v2id);
+
+					//load jen na vstupni a na vystupu pouze store
 				
 				T::eval(v0i, v1i, v2i);
 
