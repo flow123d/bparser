@@ -232,11 +232,15 @@ struct Vec {
 	}
 
 	inline double * value(uint i) {
-		std::cout << "self: " << this << std::endl;
-		std::cout << "v: " << values << " s: " << subset << std::endl;
-		std::cout << "i: " << i << std::endl;
-		std::cout << " si: " << subset[i] << std::endl;
-		std::cout << " v at si: " << values[subset[i]] << "\n" << std::endl;
+		// std::cout << "self: " << this << std::endl;
+		// std::cout << "v: " << values << " s: " << subset << std::endl;
+		// std::cout << "i: " << i << std::endl;
+		// std::cout << " si: " << subset[i] << std::endl;
+		// std::cout << " v at si: " << values[subset[i]] << "\n" << std::endl;
+
+		std::cout << " subset0: " << subset[0] << std::endl;
+		std::cout << " subset1: " << subset[1] << std::endl;
+		std::cout << " subset2: " << subset[2] << std::endl;
 
 		double * ret = (double*)malloc(sizeof(VecType));
 		ret[0] = values[subset[i]*4];
@@ -251,6 +255,14 @@ struct Vec {
 
 		// return &(values[subset[i]*4]);
 	}
+
+	double * getAdress(uint i){
+		return &values[subset[i]*4];
+	}
+
+	
+
+	
 
 	VecType true_value() {
 		return get_true_value<VecType>();
@@ -309,13 +321,15 @@ struct EvalImpl<1, T, VecType> {
 			//std::cout << "subset: " << i << std::endl;
 			// for (uint j=0; j < simd_size; j++)
 			// {
-			double * v0id = v0.value(i);
+			double * v0id = v0.getAdress(i);
 			VecType v0i;
 			v0i.load(v0id);
 
 			T::eval(v0i);
+
+			// store result
+			v0i.store(v0id); // uloz hodnotu z vektoru v0i do výsledku v paměti na adresu v0id
 			// }
-			free(v0id); 
 		}
 	}
 };
@@ -334,23 +348,23 @@ struct EvalImpl<2, T, VecType> {
 			//std::cout << "subset: " << i << std::endl;
 			// for (uint j=0; j < simd_size; j++)
 			// {
-			double * v0id = v0.value(i);
+			double * v0id = v0.getAdress(i);
 			double * v1id = v1.value(i);
 			VecType v0i;
-			print_VCL_vector(v0i, "v0i_1");
 			VecType v1i;
 			v0i.load(v0id);
 			v1i.load(v1id);
 
-			print_VCL_vector(v0i, "v0i_2");
 			print_VCL_vector(v1i, "v1i");
 
 			T::eval(v0i, v1i);
 
-			print_VCL_vector(v0i, "v0i_3");
+			// store result
+			v0i.store(v0id); // uloz hodnotu z vektoru v0i do výsledku v paměti na adresu v0id
+
+			print_VCL_vector(v0i, "v0i");
 			std::cout << std::endl;
 			// }
-			free(v0id); 
 			free(v1id); 
 		}
 	}
@@ -374,23 +388,31 @@ struct EvalImpl<3, T, VecType> {
 			std::cout << "subset: " << i << std::endl;
 			// for (uint j=0; j < simd_size; j++)
 			// {
-				double * v0id = v0.value(i);
+				double * v0id = v0.getAdress(i);
 				double * v1id = v1.value(i);
 				double * v2id = v2.value(i);
 				VecType v0i;
 				VecType v1i;
 				VecType v2i;
-				v0i.load(v0id);
+				//v0i.load(v0id);
 				v1i.load(v1id);
 				v2i.load(v2id);
+
+				print_VCL_vector(v1i, "v1i");
+				print_VCL_vector(v2i, "v2i");
 
 					//load jen na vstupni a na vystupu pouze store
 				
 				T::eval(v0i, v1i, v2i);
-
 				print_VCL_vector(v0i, "v0i");
+				// store result
+				v0i.store(v0id); // uloz hodnotu z vektoru v0i do výsledku v paměti na adresu v0id
+				std::cout << "*v0id = " << *v0id << std::endl;  
+				std::cout << "*(v0id+1) = " << *(v0id+1) << std::endl;  
+				std::cout << "*(v0id+2) = " << *(v0id+2) << std::endl;
+				std::cout << "*(v0id+3) = " << *(v0id+3) << std::endl;
+				
 			// }
-			free(v0id); 
 			free(v1id); 	
 			free(v2id); 	
 		}
@@ -414,7 +436,7 @@ struct EvalImpl<4, T, VecType> {
 			//std::cout << "subset: " << i << std::endl;
 			// for (uint j=0; j < simd_size; j++)
 			// {
-				double * v0id = v0.value(i);
+				double * v0id = v0.getAdress(i);
 				double * v1id = v1.value(i);
 				double * v2id = v2.value(i);
 				double * v3id = v3.value(i);
@@ -440,9 +462,13 @@ struct EvalImpl<4, T, VecType> {
 				// std::cout << "In proc.hh, pointer v3i: " << v3i << ", value: " << std::endl;
 				T::eval(v0i, v1i, v2i, v3i);
 
+				
+
+				// store result
+				v0i.store(v0id); // uloz hodnotu z vektoru v0i do výsledku v paměti na adresu v0id
+
 				//get reference na adresu prvku ret[0]
 			// }
-			free(v0id); 
 			free(v1id); 
 			free(v2id); 	
 			free(v3id); 	
@@ -569,9 +595,11 @@ struct Processor : public ProcessorBase {
 		 * from composition of operations - top sort but no dep. on result_idx_
 		 */
 		Operation *op = program_;
-		int hlp_index = 0;
+		// int hlp_index = 0;
 		for(auto it=sorted_nodes.rbegin(); it != sorted_nodes.rend(); ++it) {
 			se._print_node(*it);
+			std::cout << "op points at:" << op << std::endl;
+
 			ScalarNodePtr  node = *it;
 			switch (node->result_storage) {
 			case constant: {
@@ -581,15 +609,17 @@ struct Processor : public ProcessorBase {
 				// break;}
 				
 				for(uint j=0; j<simd_size; ++j) {
-					std::cout << "c_val = " << c_val << std::endl;
-					std::cout << "c_ptr[j] = " << c_ptr[j+hlp_index] << std::endl;
-					std::cout << "&c_ptr[j] = " << &c_ptr[j+hlp_index] << std::endl;
+					// std::cout << "c_val = " << c_val << std::endl;
+					// std::cout << "c_ptr[j] = " << c_ptr[j+hlp_index] << std::endl;
+					// std::cout << "&c_ptr[j] = " << &c_ptr[j+hlp_index] << std::endl;
 					
-					c_ptr[j+hlp_index] = c_val;
-					std::cout << "c_ptr[j]after = " << c_ptr[j+hlp_index] << std::endl;
-					std::cout << std::endl;
+					// c_ptr[j+hlp_index] = c_val;
+					// std::cout << "c_ptr[j]after = " << c_ptr[j+hlp_index] << std::endl;
+					// std::cout << std::endl;
+
+					c_ptr[j] = c_val;
 				}
-				hlp_index+=4;
+				// hlp_index+=4;
 				break;}
 				
 			case constant_bool:
@@ -653,7 +683,7 @@ struct Processor : public ProcessorBase {
 	}
 
 	void vec_set(uint ivec, double * v, uint * s) {
-		// std::cout << "Set vec: " << ivec << " ptr: " << &(workspace_.vector[ivec]) << " v: " << v << " s: " << s <<std::endl;
+		std::cout << "Set vec: " << ivec << " ptr: " << &(workspace_.vector[ivec]) << " v: " << v << " s: " << s <<std::endl;
 		workspace_.vector[ivec].set(v, s);
 	}
 
@@ -672,6 +702,16 @@ struct Processor : public ProcessorBase {
 		op.arg[i_arg++] = node->result_idx_;
 		for(uint j=0; j<node->n_inputs_; ++j)
 			op.arg[i_arg++] = node->inputs_[j]->result_idx_;
+
+		std::cout << "Created new op: " << (int)(op.code)
+			<< " ia0: " << (int)(op.arg[0])
+			<< " a0: " << workspace_.vector[op.arg[0]].values
+			<< " ia1: " << (int)(op.arg[1])
+			<< " a1: " << workspace_.vector[op.arg[1]].values
+			<< " ia2: " << (int)(op.arg[2])
+			<< " a2: " << workspace_.vector[op.arg[2]].values
+			<< " ia3: " << (int)(op.arg[3])
+			<< " a3: " << workspace_.vector[op.arg[3]].values << "\n";
 		return op;
 	}
 
@@ -684,15 +724,17 @@ struct Processor : public ProcessorBase {
 	void run() {
 		this->copy_inputs();
 		for(Operation * op = program_;;++op) {
-			// std::cout << "op: " << (int)(op->code)
-			// 		<< " ia0: " << (int)(op->arg[0])
-			// 		<< " a0: " << workspace_.vector[op->arg[0]].values
-			// 		<< " ia1: " << (int)(op->arg[1])
-			// 		<< " a1: " << workspace_.vector[op->arg[1]].values
-			// 		<< " ia2: " << (int)(op->arg[2])
-			// 		<< " a2: " << workspace_.vector[op->arg[2]].values
-			// 		<< " ia3: " << (int)(op->arg[3])
-			// 		<< " a3: " << workspace_.vector[op->arg[3]].values << "\n";
+			std::cout << "op points at:" << op << std::endl;
+
+			std::cout << "op: " << (int)(op->code)
+					<< " ia0: " << (int)(op->arg[0])
+					<< " a0: " << workspace_.vector[op->arg[0]].values
+					<< " ia1: " << (int)(op->arg[1])
+					<< " a1: " << workspace_.vector[op->arg[1]].values
+					<< " ia2: " << (int)(op->arg[2])
+					<< " a2: " << workspace_.vector[op->arg[2]].values
+					<< " ia3: " << (int)(op->arg[3])
+					<< " a3: " << workspace_.vector[op->arg[3]].values << "\n";
 
 			switch (op->code) {
 			CODE(_minus_);
@@ -761,10 +803,11 @@ struct Processor : public ProcessorBase {
 		workspace_.subset_size = subset.size();
 		//std::cout << "vec_subset: " << workspace_.vec_subset << "\n";
 		for(uint i=0; i<workspace_.subset_size; ++i) {
-			//std::cout << "vec_i: " << workspace_.vec_subset + i << " " << i << "\n";
+			std::cout << "subset_i: " << subset[i] << " i=" << i << "\n";
 			workspace_.vec_subset[i] = subset[i];
+			std::cout << "subsetvec_i: " << workspace_.vec_subset[i]<< " i=" << i << "\n";
 		}
-		// std::cout << "subset: " << workspace_.vec_subset << std::endl;
+		//std::cout << "subset: " << workspace_.vec_subset << std::endl;
 	}
 	
 	// Copy data of ValueCopyNode objects to arena_

@@ -128,7 +128,7 @@ public:
 	}
 
 	void _print_node(ScalarNodePtr  node) {
-		std::cout << node->op_name_ <<  "_" << node->result_idx_;
+		std::cout << "Node: " << node->op_name_ <<  "_" << node->result_idx_ << " " << node->result_storage << std::endl;
 	}
 
 
