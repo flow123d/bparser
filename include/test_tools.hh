@@ -96,7 +96,7 @@ void print_VCL_vector(const VecType & v, const char * prefix)
 {
     bool first = true;
     std::cout << prefix << "(";
-    for(uint i = 0; i < VecType::size(); i++)
+    for(int i = 0; i < VecType::size(); i++)
     {
         if (first)
         {
