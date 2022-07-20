@@ -95,7 +95,7 @@ public:
 		_topological_sort();
 
 		_setup_result_storage();
-		temp_end += storage.size();
+		temp_end += storage.size()*4; // TODO FIXME (SIMD_SIZE) <--------------------------------------------
 		return sorted;
 	}
 
@@ -171,18 +171,24 @@ private:
 		// set result_idx_ of constant nodes
 		uint i_storage = 0;
 		for(ScalarNodePtr  node : nodes)
-			if (node->result_storage == constant || node->result_storage == constant_bool)
-				node->result_idx_ = i_storage++;
+			if (node->result_storage == constant || node->result_storage == constant_bool){
+				node->result_idx_ = i_storage;
+				i_storage += 4; // TODO FIXME (SIMD_SIZE) <--------------------------------------------
+			}
 		constants_end = i_storage;
 		// set result_idx_ of value/result nodes
 		for(ScalarNodePtr  node : nodes)
-			if (node->result_storage == value || node->result_storage == expr_result)
-				node->result_idx_ = i_storage++;
+			if (node->result_storage == value || node->result_storage == expr_result){
+				node->result_idx_ = i_storage;
+				i_storage += 4; // TODO FIXME (SIMD_SIZE) <--------------------------------------------
+			}
 		values_end = i_storage;
 		// set result_idx_ of value/result nodes
 		for(ScalarNodePtr  node : nodes)
-			if (node->result_storage == value_copy)
-				node->result_idx_ = i_storage++;
+			if (node->result_storage == value_copy){
+				node->result_idx_ = i_storage;
+				i_storage += 4; // TODO FIXME (SIMD_SIZE) <--------------------------------------------
+			}
 		values_copy_end = i_storage;
 		temp_end = i_storage; // still empty
 	}
@@ -269,7 +275,7 @@ private:
 					node->result_idx_ = temp_end + i;
 					return;
 				}
-			node->result_idx_ = temp_end + storage.size();
+			node->result_idx_ = temp_end + storage.size()*4; // TODO FIXME (SIMD_SIZE) <--------------------------------------------
 			storage.push_back(1);
 			return;
 		}
