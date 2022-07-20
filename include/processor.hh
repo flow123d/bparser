@@ -238,9 +238,9 @@ struct Vec {
 		// std::cout << " si: " << subset[i] << std::endl;
 		// std::cout << " v at si: " << values[subset[i]] << "\n" << std::endl;
 
-		std::cout << " subset0: " << subset[0] << std::endl;
+		std::cout << "\n subset0: " << subset[0] << std::endl;
 		std::cout << " subset1: " << subset[1] << std::endl;
-		std::cout << " subset2: " << subset[2] << std::endl;
+		std::cout << " subset2: " << subset[2] << "\n" << std::endl;
 
 		double * ret = (double*)malloc(sizeof(VecType));
 		ret[0] = values[subset[i]*4];
