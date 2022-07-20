@@ -238,9 +238,9 @@ struct Vec {
 		// std::cout << " si: " << subset[i] << std::endl;
 		// std::cout << " v at si: " << values[subset[i]] << "\n" << std::endl;
 
-		std::cout << "\n subset0: " << subset[0] << std::endl;
-		std::cout << " subset1: " << subset[1] << std::endl;
-		std::cout << " subset2: " << subset[2] << "\n" << std::endl;
+		// std::cout << " subset0: " << subset[0] << std::endl;
+		// std::cout << " subset1: " << subset[1] << std::endl;
+		// std::cout << " subset2: " << subset[2] << std::endl;
 
 		double * ret = (double*)malloc(sizeof(VecType));
 		ret[0] = values[subset[i]*4];
@@ -407,10 +407,10 @@ struct EvalImpl<3, T, VecType> {
 				print_VCL_vector(v0i, "v0i");
 				// store result
 				v0i.store(v0id); // uloz hodnotu z vektoru v0i do výsledku v paměti na adresu v0id
-				std::cout << "*v0id = " << *v0id << std::endl;  
-				std::cout << "*(v0id+1) = " << *(v0id+1) << std::endl;  
-				std::cout << "*(v0id+2) = " << *(v0id+2) << std::endl;
-				std::cout << "*(v0id+3) = " << *(v0id+3) << std::endl;
+				// std::cout << "*v0id = " << *v0id << std::endl;  
+				// std::cout << "*(v0id+1) = " << *(v0id+1) << std::endl;  
+				// std::cout << "*(v0id+2) = " << *(v0id+2) << std::endl;
+				// std::cout << "*(v0id+3) = " << *(v0id+3) << std::endl;
 				
 			// }
 			free(v1id); 	
@@ -683,7 +683,7 @@ struct Processor : public ProcessorBase {
 	}
 
 	void vec_set(uint ivec, double * v, uint * s) {
-		std::cout << "Set vec: " << ivec << " ptr: " << &(workspace_.vector[ivec]) << " v: " << v << " s: " << s <<std::endl;
+		std::cout << "Set vec: " << ivec << " ptr: " << &(workspace_.vector[ivec]) << " v: " << v  << " &v: " << *v  << " s: " << s << " &s: " << *s <<std::endl;
 		workspace_.vector[ivec].set(v, s);
 	}
 
@@ -843,7 +843,7 @@ ProcessorBase * create_processor_(ExpressionDAG &se, uint vector_size,  uint sim
             align_size(simd_bytes, sizeof(VCLVec) * se.constants_end ) +
             align_size(simd_bytes, sizeof(Operation) * (sorted_nodes.size() + 64) );
 
-	est *= 2;
+	est *= 1.2;
 	// std::cout << "Estimated memory in processor: " << est << std::endl;
 
     if (arena == nullptr)
