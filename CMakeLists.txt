@@ -6,12 +6,16 @@ message(STATUS "CMakeLists.txt - BParser")
 
 # CLANG
 #set(CMAKE_CXX_FLAGS     "-std=c++14 -finline-hint-functions -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION")
-set(CMAKE_CXX_FLAGS     "-std=c++14 -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION")
+set(CMAKE_CXX_FLAGS     "-std=c++14 -fPIC -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -mavx2")
 #set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG -rdynamic -lSegFault -fsanitize=address -static-libasan -fno-omit-frame-pointer")  #
 
 # valgrind setting
 set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG  -fsanitize=address -static-libasan -fno-omit-frame-pointer")  #
+
+if(FLOW_BUILD_TYPE STREQUAL "debug")
+    set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG -fno-omit-frame-pointer")  #
+endif()
 
 #ASAN_OPT         := -g -fsanitize=address -static-libasan -fno-omit-frame-pointer
 #MSAN_OPT         := -g -fsanitize=memory    -fno-omit-frame-pointer
@@ -155,7 +159,7 @@ include_directories(
 
 # add tager for libbparser
 
-add_library(bparser 
+add_library(bparser SHARED
     ${CMAKE_CURRENT_SOURCE_DIR}/include/grammar.cc
 )
 
