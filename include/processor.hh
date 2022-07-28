@@ -242,23 +242,24 @@ struct Vec {
 		// std::cout << " subset1: " << subset[1] << std::endl;
 		// std::cout << " subset2: " << subset[2] << std::endl;
 
-		double * ret = (double*)malloc(sizeof(VecType));
-		ret[0] = values[subset[i]*4];
-		ret[1] = values[subset[i]*4+1];
-		ret[2] = values[subset[i]*4+2];
-		ret[3] = values[subset[i]*4+3];
-		return ret;
+		// double * ret = (double*)malloc(sizeof(VecType));
+		// ret[0] = values[subset[i]*4];
+		// ret[1] = values[subset[i]*4+1];
+		// ret[2] = values[subset[i]*4+2];
+		// ret[3] = values[subset[i]*4+3];
+		// return ret;
+
 		// VecType * r = (VecType*)malloc(sizeof(VecType));
 		// r->load(ret);
 
 		// return get_value<VecType>(values, subset, i);
 
-		// return &(values[subset[i]*4]);
+		return &(values[subset[i]*4]);
 	}
 
-	double * getAdress(uint i){
-		return &values[subset[i]*4];
-	}
+	// double * getAdress(uint i){
+	// 	return &values[subset[i]*4];
+	// }
 
 	
 
@@ -321,7 +322,7 @@ struct EvalImpl<1, T, VecType> {
 			//std::cout << "subset: " << i << std::endl;
 			// for (uint j=0; j < simd_size; j++)
 			// {
-			double * v0id = v0.getAdress(i);
+			double * v0id = v0.value(i);
 			VecType v0i;
 			v0i.load(v0id);
 
@@ -348,7 +349,7 @@ struct EvalImpl<2, T, VecType> {
 			//std::cout << "subset: " << i << std::endl;
 			// for (uint j=0; j < simd_size; j++)
 			// {
-			double * v0id = v0.getAdress(i);
+			double * v0id = v0.value(i);
 			double * v1id = v1.value(i);
 			VecType v0i;
 			VecType v1i;
@@ -388,7 +389,7 @@ struct EvalImpl<3, T, VecType> {
 			std::cout << "subset: " << i << std::endl;
 			// for (uint j=0; j < simd_size; j++)
 			// {
-				double * v0id = v0.getAdress(i);
+				double * v0id = v0.value(i);
 				double * v1id = v1.value(i);
 				double * v2id = v2.value(i);
 				VecType v0i;
@@ -436,7 +437,7 @@ struct EvalImpl<4, T, VecType> {
 			//std::cout << "subset: " << i << std::endl;
 			// for (uint j=0; j < simd_size; j++)
 			// {
-				double * v0id = v0.getAdress(i);
+				double * v0id = v0.value(i);
 				double * v1id = v1.value(i);
 				double * v2id = v2.value(i);
 				double * v3id = v3.value(i);
@@ -501,6 +502,10 @@ struct ProcessorBase {
 	}
 
 	virtual ~ProcessorBase() {
+	}
+
+	virtual ArenaAllocPtr get_arena(){
+		return arena_;
 	}
 	
 	inline static ProcessorBase *create_processor(ExpressionDAG &se, uint vector_size, uint simd_size = 0, ArenaAllocPtr arena = nullptr);
@@ -568,7 +573,7 @@ struct Processor : public ProcessorBase {
 		double * temp_base = (double *) arena_->allocate(
 				sizeof(double) * vec_size * simd_size * (se.temp_end - se.values_end));
 		double * const_base = (double *) arena_->allocate(
-				sizeof(VCLVec) * se.constants_end);
+				sizeof(double) * simd_size * se.constants_end);		//zmenit na sizeof(double) z sizeof(VCLVec)
 		for(uint i=0; i< se.constants_end; ++i)
 			vec_set(i, const_base + i, workspace_.const_subset);
 
@@ -687,11 +692,15 @@ struct Processor : public ProcessorBase {
 		workspace_.vector[ivec].set(v, s);
 	}
 
+	ArenaAllocPtr get_arena(){
+		return arena_;
+	}
+
 	~Processor() {
 		for (auto node : val_copy_nodes_) {
 			node->values_ = nullptr;
 		}
-		//arena_->destroy();
+		// arena_->destroy();
 	}
 
 	Operation make_operation(ScalarNodePtr  node) {
@@ -804,7 +813,7 @@ struct Processor : public ProcessorBase {
 		//std::cout << "vec_subset: " << workspace_.vec_subset << "\n";
 		for(uint i=0; i<workspace_.subset_size; ++i) {
 			std::cout << "subset_i: " << subset[i] << " i=" << i << "\n";
-			workspace_.vec_subset[i] = subset[i];
+			workspace_.vec_subset[i] = subset[i];									//set po simd_size 0, 4, 8,....
 			std::cout << "subsetvec_i: " << workspace_.vec_subset[i]<< " i=" << i << "\n";
 		}
 		//std::cout << "subset: " << workspace_.vec_subset << std::endl;
