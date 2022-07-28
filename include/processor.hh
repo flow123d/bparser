@@ -366,7 +366,7 @@ struct EvalImpl<2, T, VecType> {
 			print_VCL_vector(v0i, "v0i");
 			std::cout << std::endl;
 			// }
-			free(v1id); 
+			// free(v1id); 
 		}
 	}
 };
@@ -414,8 +414,8 @@ struct EvalImpl<3, T, VecType> {
 				// std::cout << "*(v0id+3) = " << *(v0id+3) << std::endl;
 				
 			// }
-			free(v1id); 	
-			free(v2id); 	
+			// free(v1id); 	
+			// free(v2id); 	
 		}
 	}
 };
@@ -470,9 +470,9 @@ struct EvalImpl<4, T, VecType> {
 
 				//get reference na adresu prvku ret[0]
 			// }
-			free(v1id); 
-			free(v2id); 	
-			free(v3id); 	
+			// free(v1id); 
+			// free(v2id); 	
+			// free(v3id); 	
 		}
 	}
 };
@@ -573,7 +573,7 @@ struct Processor : public ProcessorBase {
 		double * temp_base = (double *) arena_->allocate(
 				sizeof(double) * vec_size * simd_size * (se.temp_end - se.values_end));
 		double * const_base = (double *) arena_->allocate(
-				sizeof(double) * simd_size * se.constants_end);		//zmenit na sizeof(double) z sizeof(VCLVec)
+				sizeof(double) * simd_size * se.constants_end);
 		for(uint i=0; i< se.constants_end; ++i)
 			vec_set(i, const_base + i, workspace_.const_subset);
 
