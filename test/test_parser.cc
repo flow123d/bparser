@@ -209,10 +209,10 @@ void test_expression() {
 	std::cout << "\n" << "** test expression" << "\n";
 
 	// TEMPORARY
-	BP_ASSERT(test_expr("cv4 + as1", {120,150,180}));
-	BP_ASSERT(test_expr("cv4 * cs3", {120,150,180}));
-	BP_ASSERT(test_expr("cv4", {8,10,12}));
-	BP_ASSERT(test_expr("cv4 * av2", {8,10,12}));
+	// BP_ASSERT(test_expr("cv4 + as1", {120,150,180}));
+	// BP_ASSERT(test_expr("cv4 * cs3", {120,150,180}));
+	// BP_ASSERT(test_expr("cv4", {8,10,12}));
+	// BP_ASSERT(test_expr("cv4 * av2", {8,10,12}));
 
 	// Array creation and subscription
 	BP_ASSERT(test_expr("[1,2,3]", {1,2,3}, {3}));
