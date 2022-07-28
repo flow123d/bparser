@@ -70,6 +70,8 @@ public:
     void destroy_processor() {
     	// if (tmp_result != nullptr) delete [] tmp_result; // Now it is a vector
     	if (processor != nullptr) {
+            // ArenaAllocPtr arena = processor->get_arena();
+            // arena->destroy();
             processor->~ProcessorBase();
         }
     	processor = nullptr;
