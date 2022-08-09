@@ -561,28 +561,28 @@ struct Processor : public ProcessorBase {
 		workspace_.const_subset = arena_->create_array<uint>(vec_size);
 		for(uint i=0; i<vec_size;++i) workspace_.const_subset[i] = 0;
 		workspace_.vec_subset = (uint *) arena_->allocate(sizeof(uint) * vec_size);
-		//std::cout << "&vec_subset: " << &(workspace_.vec_subset) << "\n";
-		//std::cout << "aloc vec_subset: " << workspace_.vec_subset << " size: " << vec_size << "\n";
+		std::cout << "&vec_subset: " << &(workspace_.vec_subset) << "\n";
+		std::cout << "aloc vec_subset: " << workspace_.vec_subset << " size: " << vec_size << "\n";
 
 		// std::cout << std::endl << "In porcessor.hh: " << std::endl;
 		// std::cout << "vec_size: " << vec_size << "\nsimd_size: " << simd_size << "\nsOfVCLVec: " << sizeof(VCLVec) << "\nsOfDouble: " << sizeof(double) << std::endl;
 		// std::cout << "se.temp_end: " << se.temp_end << "\nse.values_end: " << se.values_end << "\nse.constants_end: " << se.constants_end << std::endl;
 
 
-		workspace_.vector = (Vec<VCLVec> *) arena_->allocate(sizeof(Vec<VCLVec>) * se.temp_end * simd_size);
+		workspace_.vector = (Vec<VCLVec> *) arena_->allocate(sizeof(Vec<VCLVec>) * se.temp_end);
 		double * temp_base = (double *) arena_->allocate(
 				sizeof(double) * vec_size * simd_size * (se.temp_end - se.values_end));
 		double * const_base = (double *) arena_->allocate(
 				sizeof(double) * simd_size * se.constants_end);
-		for(uint i=0; i< se.constants_end * simd_size; ++i)
-			vec_set(i, const_base + i, workspace_.const_subset);
+		for(uint i=0; i< se.constants_end; ++i)
+			vec_set(i, const_base + i * simd_size, workspace_.const_subset);
 
 		uint i_tmp = 0;
-		for(uint i=se.values_end * simd_size; i< se.values_copy_end * simd_size; ++i, ++i_tmp)
-			vec_set(i, temp_base + i_tmp*vec_size, workspace_.vec_subset);
+		for(uint i=se.values_end; i< se.values_copy_end; ++i, ++i_tmp)
+			vec_set(i, temp_base + i_tmp*vec_size*simd_size, workspace_.vec_subset);
 
-		for(uint i=se.values_copy_end * simd_size; i< se.temp_end * simd_size; ++i, ++i_tmp)
-			vec_set(i, temp_base + i_tmp*vec_size, workspace_.vec_subset);
+		for(uint i=se.values_copy_end; i< se.temp_end; ++i, ++i_tmp)
+			vec_set(i, temp_base + i_tmp*vec_size*simd_size, workspace_.vec_subset);
 
 		// value vectors ... setup when processing the nodes, every value node processed exactly once
 		// we need the values pointer from these nodes.
@@ -600,7 +600,6 @@ struct Processor : public ProcessorBase {
 		 * from composition of operations - top sort but no dep. on result_idx_
 		 */
 		Operation *op = program_;
-		// int hlp_index = 0;
 
 		std::cout << "workspace_.vector[0*simd_size].values = " << workspace_.vector[0*simd_size].values << std::endl;
 		std::cout << "workspace_.vector[1*simd_size].values = " << workspace_.vector[1*simd_size].values << std::endl;
@@ -626,14 +625,13 @@ struct Processor : public ProcessorBase {
 		for(auto it=sorted_nodes.rbegin(); it != sorted_nodes.rend(); ++it) {
 			se._print_node(*it);
 			std::cout << "op points at:" << op << std::endl;
-			// std::cout << "hlp_index = " << hlp_index << std::endl;
 			ScalarNodePtr  node = *it;
 			switch (node->result_storage) {
 			case constant: {
 				double c_val = *node->get_value();
-				double * c_ptr = workspace_.vector[(node->result_idx_)*simd_size].values;
+				double * c_ptr = workspace_.vector[node->result_idx_].values;
 				std::cout << "node->result_idx_ = " << node->result_idx_ << std::endl;
-				std::cout << "node->result_idx_*simd_size = " << node->result_idx_*simd_size << std::endl;
+				// std::cout << "node->result_idx_*simd_size = " << node->result_idx_*simd_size << std::endl;
 				std::cout << "c_ptr = " << c_ptr << std::endl;
 				// c_ptr[0] = c_val;
 				// break;}
@@ -644,18 +642,16 @@ struct Processor : public ProcessorBase {
 					std::cout << "&c_ptr[j] = " << &c_ptr[j] << std::endl;
 					
 					c_ptr[j] = c_val;
-					// c_ptr[j+hlp_index] = c_val;
-					// std::cout << "c_ptr[j]after = " << c_ptr[j+hlp_index] << std::endl;
+					// std::cout << "c_ptr[j]after = " << c_ptr[j] << std::endl;
 					// std::cout << std::endl;
 
 				}
-				// hlp_index+=simd_size;
 				break;}
 				
 			case constant_bool:
 			{
 				double c_val = *node->get_value();
-				double * c_ptr = workspace_.vector[(node->result_idx_)*simd_size].values;
+				double * c_ptr = workspace_.vector[node->result_idx_].values;
 				Vec<double> v;
 
 				if (c_val == 0.0) {
@@ -666,19 +662,19 @@ struct Processor : public ProcessorBase {
 					for(uint j=0; j<simd_size; ++j)
 						c_ptr[j] = v.true_value();
 				}
-				// hlp_index+=simd_size;
 				break;
 			}
 			case value:
 				for (uint i=0; i < simd_size; i++)
-					vec_set(node->result_idx_ * simd_size + i, (double *)node->get_value()+i, workspace_.vec_subset);
+					vec_set(node->result_idx_, (double *)node->get_value(), workspace_.vec_subset);
 				break;
 			case value_copy:
 			{
 				auto val_copy_ptr = ( std::dynamic_pointer_cast<ValueCopyNode> (node) );
 				if (val_copy_ptr->values_ == nullptr) {
 					val_copy_ptr->values_ = arena_->create_array<double>(vec_size);
-					vec_set(node->result_idx_, (double *)node->get_value(), workspace_.vec_subset);
+					for (uint i=0; i < simd_size; i++)
+						vec_set(node->result_idx_, (double *)node->get_value(), workspace_.vec_subset);
 				}
 				val_copy_nodes_.push_back(val_copy_ptr);
 				break;
@@ -694,7 +690,7 @@ struct Processor : public ProcessorBase {
 				break;
 			case expr_result:
 				for (uint i=0; i < simd_size; i++)
-					vec_set(node->result_idx_ * simd_size + i, (double *)node->get_value()+i, workspace_.vec_subset);
+					vec_set(node->result_idx_, (double *)node->get_value(), workspace_.vec_subset);
 
 				*op = make_operation(node);
 				++op;
@@ -736,9 +732,9 @@ struct Processor : public ProcessorBase {
 		op.code = node->op_code_;
 		uint i_arg = 0;
 		//if (node->result_storage == temporary)
-		op.arg[i_arg++] = node->result_idx_*simd_size;
+		op.arg[i_arg++] = node->result_idx_;
 		for(uint j=0; j<node->n_inputs_; ++j)
-			op.arg[i_arg++] = (node->inputs_[j]->result_idx_)*simd_size;
+			op.arg[i_arg++] = node->inputs_[j]->result_idx_;
 
 		std::cout << "Created new op: " << (int)(op.code)
 			<< " ia0: " << (int)(op.arg[0])
@@ -874,13 +870,13 @@ ProcessorBase * create_processor_(ExpressionDAG &se, uint vector_size,  uint sim
     uint est = 
             align_size(simd_bytes, sizeof(Processor<Vec<VCLVec>>)) +	// always 88
             align_size(simd_bytes, sizeof(uint) * vector_size) +
-            align_size(simd_bytes, se.temp_end * simd_size* sizeof(Vec<VCLVec>)) +    // temporaries
+            align_size(simd_bytes, se.temp_end * sizeof(Vec<VCLVec>)) +    // temporaries
             align_size(simd_bytes, sizeof(VCLVec) * vec_size * (se.temp_end - se.values_copy_end)) +  // vec_copy, same as temporaries
             align_size(simd_bytes, sizeof(VCLVec) * vec_size * (se.values_copy_end - se.values_end)) + // vector values (probably not neccessary to allocate)
             align_size(simd_bytes, sizeof(VCLVec) * se.constants_end ) +
             align_size(simd_bytes, sizeof(Operation) * (sorted_nodes.size() + 64) );
 
-	est *= 2;
+	// est *= 2;
 	// std::cout << "Estimated memory in processor: " << est << std::endl;
 
     if (arena == nullptr)
