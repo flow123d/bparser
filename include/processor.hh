@@ -208,7 +208,7 @@ struct Vec {
 		// std::cout << " subset1: " << subset[1] << std::endl;
 		// std::cout << " subset2: " << subset[2] << std::endl;
 
-		return &(values[subset[i]*4]);
+		return &(values[subset[i]*sizeof(VecType)/sizeof(double)]);	//TODO: Make it dynamic, probably with subset change
 	}
 
 
@@ -259,145 +259,246 @@ struct EvalImpl;
 //	static inline void eval(Operation op, Workspace &w) {};
 //};
 
+
+// EvalmImpl with 1 operand
 template <class T, typename VecType>
 struct EvalImpl<1, T, VecType> {
-	inline static void eval(Operation op,  Workspace<VecType> &w) {
-		Vec<VecType> v0 = w.vector[op.arg[0]];
-
-		// uint simd_size = sizeof(VecType) / sizeof(double);
-		for(uint i=0; i<w.subset_size; ++i) {
-			//std::cout << "subset: " << i << std::endl;
-
-			double * v0id = v0.value(i);
-			VecType v0i;
-
-			// load value into vector
-			v0i.load(v0id);
-
-			// evaluate result
-			T::eval(v0i);
-
-			// store result into memory at v0id
-			v0i.store(v0id);
-		}
-	}
+	inline static void eval(Operation op,  Workspace<VecType> &w);
 };
 
+template <class T>
+struct EvalImpl<1, T, double> {
+	inline static void eval(Operation op,  Workspace<double> &w);
+};
 
+template <class T, typename VecType>
+inline void EvalImpl<1, T, VecType>::eval(Operation op,  Workspace<VecType> &w) {
+	Vec<VecType> v0 = w.vector[op.arg[0]];
+
+	for(uint i=0; i<w.subset_size; ++i) {
+		//std::cout << "subset: " << i << std::endl;
+
+		double * v0id = v0.value(i);
+		VecType v0i;
+
+		// load value into vector
+		v0i.load(v0id);
+
+		// evaluate result
+		T::eval(v0i);
+
+		// store result into memory at v0id
+		v0i.store(v0id);
+	}
+}
+
+template <class T>
+inline void EvalImpl<1, T, double>::eval(Operation op,  Workspace<double> &w) {
+	Vec<double> v0 = w.vector[op.arg[0]];
+
+	for(uint i=0; i<w.subset_size; ++i) {
+		//std::cout << "subset: " << i << std::endl;
+
+		double * v0id = v0.value(i);
+		
+		// evaluate result
+		T::eval(*v0id);
+	}
+}
+
+
+// EvalmImpl with 2 operands
 template <class T, typename VecType>
 struct EvalImpl<2, T, VecType> {
-	inline static void eval(Operation op,  Workspace<VecType> &w) {
-		Vec<VecType> v0 = w.vector[op.arg[0]];
-		Vec<VecType> v1 = w.vector[op.arg[1]];
-
-		// uint simd_size = sizeof(VecType) / sizeof(double);
-		for(uint i=0; i<w.subset_size; ++i) {
-			//std::cout << "subset: " << i << std::endl;
-
-			double * v0id = v0.value(i);
-			double * v1id = v1.value(i);
-			VecType v0i;
-			VecType v1i;
-
-			// load values into vectors
-			v0i.load(v0id);
-			v1i.load(v1id);
-
-			// print_VCL_vector(v1i, "v1i");
-
-			// evaluate result
-			T::eval(v0i, v1i);
-
-			// store result into memory at v0id
-			v0i.store(v0id); 
-
-			// print_VCL_vector(v0i, "v0i");
-			// std::cout << std::endl;
-		}
-	}
+	inline static void eval(Operation op,  Workspace<VecType> &w);
 };
 
+template <class T>
+struct EvalImpl<2, T, double> {
+	inline static void eval(Operation op,  Workspace<double> &w);
+};
 
 template <class T, typename VecType>
+inline void EvalImpl<2, T, VecType>::eval(Operation op,  Workspace<VecType> &w) {
+	Vec<VecType> v0 = w.vector[op.arg[0]];
+	Vec<VecType> v1 = w.vector[op.arg[1]];
+
+	for(uint i=0; i<w.subset_size; ++i) {
+		//std::cout << "subset: " << i << std::endl;
+
+		double * v0id = v0.value(i);
+		double * v1id = v1.value(i);
+		VecType v0i;
+		VecType v1i;
+
+		// load values into vectors
+		v0i.load(v0id);
+		v1i.load(v1id);
+
+		// print_VCL_vector(v1i, "v1i");
+
+		// evaluate result
+		T::eval(v0i, v1i);
+
+		// store result into memory at v0id
+		v0i.store(v0id); 
+
+		// print_VCL_vector(v0i, "v0i");
+		// std::cout << std::endl;
+	}
+}
+
+template <class T>
+inline void EvalImpl<2, T, double>::eval(Operation op,  Workspace<double> &w) {
+	Vec<double> v0 = w.vector[op.arg[0]];
+	Vec<double> v1 = w.vector[op.arg[1]];
+
+	for(uint i=0; i<w.subset_size; ++i) {
+		//std::cout << "subset: " << i << std::endl;
+
+		double * v0id = v0.value(i);
+		double * v1id = v1.value(i);
+		
+		// evaluate result
+		T::eval(*v0id, *v1id);
+	}
+}
+
+
+// EvalmImpl with 3 operands
+template <class T, typename VecType>
 struct EvalImpl<3, T, VecType> {
-	inline static void eval(Operation op,  Workspace<VecType> &w) {
-		Vec<VecType> v0 = w.vector[op.arg[0]];
-		Vec<VecType> v1 = w.vector[op.arg[1]];
-		Vec<VecType> v2 = w.vector[op.arg[2]];
+	inline static void eval(Operation op,  Workspace<VecType> &w);
+};
+
+template <class T>
+struct EvalImpl<3, T, double> {
+	inline static void eval(Operation op,  Workspace<double> &w);
+};
+
+template <class T, typename VecType>
+inline void EvalImpl<3, T, VecType>::eval(Operation op,  Workspace<VecType> &w) {
+	Vec<VecType> v0 = w.vector[op.arg[0]];
+	Vec<VecType> v1 = w.vector[op.arg[1]];
+	Vec<VecType> v2 = w.vector[op.arg[2]];
 //		std::cout << "iv0:" << uint(op.arg[0])
 //				<< "iv1:" << uint(op.arg[1])
 //				<< "iv2:" << uint(op.arg[2]) << std::endl;
-		
-		// uint simd_size = sizeof(VecType) / sizeof(double);
-		for(uint i=0; i<w.subset_size; ++i) {
-			// std::cout << "subset: " << i << std::endl;
+	
+	for(uint i=0; i<w.subset_size; ++i) {
+		// std::cout << "subset: " << i << std::endl;
 
-			double * v0id = v0.value(i);
-			double * v1id = v1.value(i);
-			double * v2id = v2.value(i);
-			VecType v0i;
-			VecType v1i;
-			VecType v2i;
+		double * v0id = v0.value(i);
+		double * v1id = v1.value(i);
+		double * v2id = v2.value(i);
+		VecType v0i;
+		VecType v1i;
+		VecType v2i;
 
-			// load values into vectors
-			v0i.load(v0id);
-			v1i.load(v1id);
-			v2i.load(v2id);
+		// load values into vectors
+		v0i.load(v0id);
+		v1i.load(v1id);
+		v2i.load(v2id);
 
-			// print_VCL_vector(v1i, "v1i");
-			// print_VCL_vector(v2i, "v2i");
+		// print_VCL_vector(v1i, "v1i");
+		// print_VCL_vector(v2i, "v2i");
 
-			// evaluate result
-			T::eval(v0i, v1i, v2i);
+		// evaluate result
+		T::eval(v0i, v1i, v2i);
 
-			// print_VCL_vector(v0i, "v0i");
+		// print_VCL_vector(v0i, "v0i");
 
-			// store result into memory at v0id
-			v0i.store(v0id);
-		}
+		// store result into memory at v0id
+		v0i.store(v0id);
 	}
-};
+}
+
+template <class T>
+inline void EvalImpl<3, T, double>::eval(Operation op,  Workspace<double> &w) {
+	Vec<double> v0 = w.vector[op.arg[0]];
+	Vec<double> v1 = w.vector[op.arg[1]];
+	Vec<double> v2 = w.vector[op.arg[2]];
+
+	for(uint i=0; i<w.subset_size; ++i) {
+		//std::cout << "subset: " << i << std::endl;
+
+		double * v0id = v0.value(i);
+		double * v1id = v1.value(i);
+		double * v2id = v2.value(i);
+		
+		// evaluate result
+		T::eval(*v0id, *v1id, *v2id);
+	}
+}
 
 
+// EvalmImpl with 3 operands
 template <class T, typename VecType>
 struct EvalImpl<4, T, VecType> {
-	inline static void eval(Operation op,  Workspace<VecType> &w) {
-		Vec<VecType> v0 = w.vector[op.arg[0]];
-		Vec<VecType> v1 = w.vector[op.arg[1]];
-		Vec<VecType> v2 = w.vector[op.arg[2]];
-		Vec<VecType> v3 = w.vector[op.arg[3]];
+	inline static void eval(Operation op,  Workspace<VecType> &w);
+};
+
+template <class T>
+struct EvalImpl<4, T, double> {
+	inline static void eval(Operation op,  Workspace<double> &w);
+};
+
+template <class T, typename VecType>
+inline void EvalImpl<4, T, VecType>::eval(Operation op,  Workspace<VecType> &w) {
+	Vec<VecType> v0 = w.vector[op.arg[0]];
+	Vec<VecType> v1 = w.vector[op.arg[1]];
+	Vec<VecType> v2 = w.vector[op.arg[2]];
+	Vec<VecType> v3 = w.vector[op.arg[3]];
 //		std::cout << "iv0:" << uint(op.arg[0])
 //				<< "iv1:" << uint(op.arg[1])
 //				<< "iv2:" << uint(op.arg[2])
 //				<< "iv3:" << uint(op.arg[3]) << std::endl;
 
-		// uint simd_size = sizeof(VecType) / sizeof(double);
-		for(uint i=0; i<w.subset_size; ++i) {
-			//std::cout << "subset: " << i << std::endl;
+	for(uint i=0; i<w.subset_size; ++i) {
+		//std::cout << "subset: " << i << std::endl;
 
-			double * v0id = v0.value(i);
-			double * v1id = v1.value(i);
-			double * v2id = v2.value(i);
-			double * v3id = v3.value(i);
-			VecType v0i;
-			VecType v1i;
-			VecType v2i;
-			VecType v3i;
+		double * v0id = v0.value(i);
+		double * v1id = v1.value(i);
+		double * v2id = v2.value(i);
+		double * v3id = v3.value(i);
+		VecType v0i;
+		VecType v1i;
+		VecType v2i;
+		VecType v3i;
 
-			// load values into vectors
-			v0i.load(v0id);
-			v1i.load(v1id);
-			v2i.load(v2id);
-			v3i.load(v3id);
+		// load values into vectors
+		v0i.load(v0id);
+		v1i.load(v1id);
+		v2i.load(v2id);
+		v3i.load(v3id);
 
-			// evaluate result
-			T::eval(v0i, v1i, v2i, v3i);
+		// evaluate result
+		T::eval(v0i, v1i, v2i, v3i);
 
-			// store result into memory at v0id
-			v0i.store(v0id);
-		}
+		// store result into memory at v0id
+		v0i.store(v0id);
 	}
-};
+}
+
+template <class T>
+inline void EvalImpl<4, T, double>::eval(Operation op,  Workspace<double> &w) {
+	Vec<double> v0 = w.vector[op.arg[0]];
+	Vec<double> v1 = w.vector[op.arg[1]];
+	Vec<double> v2 = w.vector[op.arg[2]];
+	Vec<double> v3 = w.vector[op.arg[3]];
+
+	for(uint i=0; i<w.subset_size; ++i) {
+		//std::cout << "subset: " << i << std::endl;
+
+		double * v0id = v0.value(i);
+		double * v1id = v1.value(i);
+		double * v2id = v2.value(i);
+		double * v3id = v3.value(i);
+		
+		// evaluate result
+		T::eval(*v0id, *v1id, *v2id, *v3id);
+	}
+}
 
 
 
@@ -829,10 +930,10 @@ inline ProcessorBase * ProcessorBase::create_processor(ExpressionDAG &se, uint v
 		{
 			return create_processor_<Vec8d>(se, vector_size, simd_size, arena);
 		} break;
-		// default:
-		// {
-		// 	return create_processor_<double>(se, vector_size, 1, arena);
-		// } break;
+		default:
+		{
+			return create_processor_<double>(se, vector_size, 1, arena);
+		} break;
 	}
 }
 
