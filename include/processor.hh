@@ -208,7 +208,7 @@ struct Vec {
 		// std::cout << " subset1: " << subset[1] << std::endl;
 		// std::cout << " subset2: " << subset[2] << std::endl;
 
-		return &(values[subset[i]*sizeof(VecType)/sizeof(double)]);	//TODO: Make it dynamic, probably with subset change
+		return &(values[subset[i]]);
 	}
 
 
@@ -861,7 +861,7 @@ struct Processor : public ProcessorBase {
 		// std::cout << "vec_subset: " << workspace_.vec_subset << "\n";
 		for(uint i=0; i<workspace_.subset_size; ++i) {
 			// std::cout << "subset_i: " << subset[i] << " i=" << i << "\n";
-			workspace_.vec_subset[i] = subset[i];									//set po simd_size 0, 4, 8,....
+			workspace_.vec_subset[i] = subset[i] * simd_size;									//set po simd_size 0, 4, 8,....
 			// std::cout << "subsetvec_i: " << workspace_.vec_subset[i]<< " i=" << i << "\n";
 		}
 		// std::cout << "subset: " << workspace_.vec_subset << std::endl;
