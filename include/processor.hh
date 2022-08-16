@@ -888,7 +888,7 @@ ProcessorBase * create_processor_(ExpressionDAG &se, uint vector_size,  uint sim
     uint simd_bytes = sizeof(double) * simd_size;
     ExpressionDAG::NodeVec & sorted_nodes = se.sort_nodes();
     uint simd_bytes1 = sizeof(VCLVec);
-    std::cout << simd_bytes1 << "!=" << simd_bytes << "\n";
+    // std::cout << simd_bytes1 << "!=" << simd_bytes << "\n";
     BP_ASSERT(simd_bytes1 == simd_bytes);
     uint vec_size = (vector_size / simd_size);
     uint est = 
