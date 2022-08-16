@@ -890,6 +890,7 @@ ProcessorBase * create_processor_(ExpressionDAG &se, uint vector_size,  uint sim
     uint simd_bytes1 = sizeof(VCLVec);
     // std::cout << simd_bytes1 << "!=" << simd_bytes << "\n";
     BP_ASSERT(simd_bytes1 == simd_bytes);
+	simd_bytes = simd_bytes1;
     uint vec_size = (vector_size / simd_size);
     uint est = 
             align_size(simd_bytes, sizeof(Processor<Vec<VCLVec>>)) +	// always 88
