@@ -16,8 +16,11 @@
 #include <vector>
 #include "array.hh"
 #include "ast.hh"
-#include "processor.hh"
+// #include "processor.hh"
 #include "grammar.hh"
+
+#include "createProcessor.hh"
+#include "expression_dag.hh"
 
 namespace bparser {
 
@@ -189,7 +192,7 @@ public:
 			result_array_ = array.make_result(res_it->second);
 		}
 
-		ExpressionDAG se(result_array_.elements());
+		details::ExpressionDAG se(result_array_.elements());
         // return se;
 		//se.print_in_dot();
 		processor = ProcessorBase::create_processor(se, max_vec_size, simd_size, arena);
