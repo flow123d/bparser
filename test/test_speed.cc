@@ -69,8 +69,8 @@ struct ExprData {
 // Unoptimized structure, holds data in separated arrays, copies data to arenas
 struct ExprData2 {
 	ExprData2(uint vec_size, uint simd_size)
-	: arena_1(32, 32 * 1012), arena_2(32, 32 * 1012), arena_3(32, 32 * 1012), arena_4(32, 32 * 1012),
-	  arena_res(32, 32 * 1012), arena_subs(32, 32 * 1012), vec_size(vec_size), simd_size(simd_size)
+	: arena_1(sizeof(double)*simd_size, 256 * 1012), arena_2(sizeof(double)*simd_size, 256 * 1012), arena_3(sizeof(double)*simd_size, 256 * 1012), arena_4(sizeof(double)*simd_size, 256 * 1012),
+	  arena_res(sizeof(double)*simd_size, 256 * 1012), arena_subs(sizeof(double)*simd_size, 256 * 1012), vec_size(vec_size), simd_size(simd_size)
 	{
 		d1 = new double[3 * vec_size];
 		fill_seq(d1, 100, 100 + 3 * vec_size);

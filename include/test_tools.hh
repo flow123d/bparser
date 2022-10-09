@@ -89,8 +89,8 @@ std::string print_vector(std::vector<T> x) {
 }
 
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-function"
+// #pragma GCC diagnostic push
+// #pragma GCC diagnostic ignored "-Wunused-function"
 
 template<typename VecType>
 static void print_VCL_vector(const VecType & v, const char * prefix);
@@ -119,7 +119,7 @@ void print_VCL_vector(const double & v, const char * prefix)
     std::cout << prefix << "(" << v << ")";
 }
 
-#pragma GCC diagnostic pop
+// #pragma GCC diagnostic pop
 
 
 template< class T>
