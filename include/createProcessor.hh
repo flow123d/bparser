@@ -4,7 +4,7 @@
 
 namespace bparser{
 
-    uint get_simd_size();
+    // uint get_simd_size();
 
     // inline ProcessorBase * ProcessorBase::create_processor(details::ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena);
 
