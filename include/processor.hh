@@ -26,6 +26,8 @@ using namespace details;
 
 
 
+
+
 /**
  *
  */
@@ -134,29 +136,29 @@ using namespace details;
 
 // typedef double double4 __attribute__((__vector_size__(32)));
 
-// static uint get_simd_size()
-// {
-// 	if (__builtin_cpu_supports("avx512f"))
-// 	{
-// 		return 8;
-// 	}
-// 	if (__builtin_cpu_supports("avx2"))
-// 	{
-// 		return 4;
-// 	}
-// 	if (__builtin_cpu_supports("avx"))
-// 	{
-// 		return 4;
-// 	}
-// 	if (__builtin_cpu_supports("sse"))
-// 	{
-// 		return 2;
-// 	}
-// 	else
-// 	{
-// 		return 1;
-// 	}
-// }
+static uint get_simd_size()
+{
+	if (__builtin_cpu_supports("avx512f"))
+	{
+		return 8;
+	}
+	if (__builtin_cpu_supports("avx2"))
+	{
+		return 4;
+	}
+	if (__builtin_cpu_supports("avx"))
+	{
+		return 4;
+	}
+	if (__builtin_cpu_supports("sse"))
+	{
+		return 2;
+	}
+	else
+	{
+		return 1;
+	}
+}
 
 template<typename T>
 static T get_true_value();
@@ -540,7 +542,10 @@ struct ProcessorBase {
 	ArenaAllocPtr arena_;
 };
 
-
+ProcessorBase * create_processor_SSE(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena);
+ProcessorBase * create_processor_AVX2(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena);
+ProcessorBase * create_processor_AVX512(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena);
+ProcessorBase * create_processor_double(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena);
 
 /**
  * Store and execute generated "bytecode".
@@ -914,15 +919,43 @@ ProcessorBase * create_processor_(ExpressionDAG &se, uint vector_size,  uint sim
     return arena->create<Processor<Vec<VCLVec>>>(arena, se, vec_size);
 }
 
-// inline ProcessorBase * create_processor_4(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena) {
+// template<>
+// inline ProcessorBase * create_processor_<Vec2d>(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena) {
 //     uint simd_bytes = sizeof(double) * simd_size;
 //     ExpressionDAG::NodeVec & sorted_nodes = se.sort_nodes();
-//     uint simd_bytes1 = sizeof(Vec4d);
-//     // std::cout << simd_bytes1 << "!=" << simd_bytes << "\n";
+//     uint simd_bytes1 = sizeof(Vec2d);
+//     std::cout << simd_bytes1 << "!=" << simd_bytes << "\n";
 //     BP_ASSERT(simd_bytes1 == simd_bytes);
 //     uint vec_size = (vector_size / simd_size);
 //     uint est = 
-//             align_size(simd_bytes, sizeof(Processor<Vec<Vec4d>>)) +	// always 88
+//             align_size(simd_bytes, sizeof(Processor<Vec<Vec2d>>)) +
+//             align_size(simd_bytes, sizeof(uint) * vector_size) +
+//             align_size(simd_bytes, se.temp_end * sizeof(Vec<Vec2d>)) +    // temporaries
+//             align_size(simd_bytes, sizeof(Vec2d) * vec_size * (se.temp_end - se.values_copy_end)) +  // vec_copy, same as temporaries
+//             align_size(simd_bytes, sizeof(Vec2d) * vec_size * (se.values_copy_end - se.values_end)) + // vector values (probably not neccessary to allocate)
+//             align_size(simd_bytes, sizeof(Vec2d) * se.constants_end ) +
+//             align_size(simd_bytes, sizeof(Operation) * (sorted_nodes.size() + 64) );
+
+// 	// est *= 2;
+// 	// std::cout << "Estimated memory in processor: " << est << std::endl;
+
+//     if (arena == nullptr)
+//         arena = std::make_shared<ArenaAlloc>(simd_bytes, est);
+//     else
+//         BP_ASSERT(arena->size_ >= est);
+//     return arena->create<Processor<Vec<Vec2d>>>(arena, se, vec_size);
+// }
+
+// template<>
+// inline ProcessorBase * create_processor_<Vec4d>(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena) {
+//     uint simd_bytes = sizeof(double) * simd_size;
+//     ExpressionDAG::NodeVec & sorted_nodes = se.sort_nodes();
+//     uint simd_bytes1 = sizeof(Vec4d);
+//     std::cout << simd_bytes1 << "!=" << simd_bytes << "\n";
+//     BP_ASSERT(simd_bytes1 == simd_bytes);
+//     uint vec_size = (vector_size / simd_size);
+//     uint est = 
+//             align_size(simd_bytes, sizeof(Processor<Vec<Vec4d>>)) +
 //             align_size(simd_bytes, sizeof(uint) * vector_size) +
 //             align_size(simd_bytes, se.temp_end * sizeof(Vec<Vec4d>)) +    // temporaries
 //             align_size(simd_bytes, sizeof(Vec4d) * vec_size * (se.temp_end - se.values_copy_end)) +  // vec_copy, same as temporaries
@@ -940,7 +973,60 @@ ProcessorBase * create_processor_(ExpressionDAG &se, uint vector_size,  uint sim
 //     return arena->create<Processor<Vec<Vec4d>>>(arena, se, vec_size);
 // }
 
-ProcessorBase * create_processor_AVX2(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena);
+// template<>
+// inline ProcessorBase * create_processor_<Vec8d>(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena) {
+//     uint simd_bytes = sizeof(double) * simd_size;
+//     ExpressionDAG::NodeVec & sorted_nodes = se.sort_nodes();
+//     uint simd_bytes1 = sizeof(Vec8d);
+//     std::cout << simd_bytes1 << "!=" << simd_bytes << "\n";
+//     BP_ASSERT(simd_bytes1 == simd_bytes);
+//     uint vec_size = (vector_size / simd_size);
+//     uint est = 
+//             align_size(simd_bytes, sizeof(Processor<Vec<Vec8d>>)) +
+//             align_size(simd_bytes, sizeof(uint) * vector_size) +
+//             align_size(simd_bytes, se.temp_end * sizeof(Vec<Vec8d>)) +    // temporaries
+//             align_size(simd_bytes, sizeof(Vec8d) * vec_size * (se.temp_end - se.values_copy_end)) +  // vec_copy, same as temporaries
+//             align_size(simd_bytes, sizeof(Vec8d) * vec_size * (se.values_copy_end - se.values_end)) + // vector values (probably not neccessary to allocate)
+//             align_size(simd_bytes, sizeof(Vec8d) * se.constants_end ) +
+//             align_size(simd_bytes, sizeof(Operation) * (sorted_nodes.size() + 64) );
+
+// 	// est *= 2;
+// 	// std::cout << "Estimated memory in processor: " << est << std::endl;
+
+//     if (arena == nullptr)
+//         arena = std::make_shared<ArenaAlloc>(simd_bytes, est);
+//     else
+//         BP_ASSERT(arena->size_ >= est);
+//     return arena->create<Processor<Vec<Vec8d>>>(arena, se, vec_size);
+// }
+
+// template<>
+// inline ProcessorBase * create_processor_<double>(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena) {
+//     uint simd_bytes = sizeof(double) * simd_size;
+//     ExpressionDAG::NodeVec & sorted_nodes = se.sort_nodes();
+//     uint simd_bytes1 = sizeof(double);
+//     std::cout << simd_bytes1 << "!=" << simd_bytes << "\n";
+//     BP_ASSERT(simd_bytes1 == simd_bytes);
+//     uint vec_size = (vector_size / simd_size);
+//     uint est = 
+//             align_size(simd_bytes, sizeof(Processor<Vec<double>>)) +
+//             align_size(simd_bytes, sizeof(uint) * vector_size) +
+//             align_size(simd_bytes, se.temp_end * sizeof(Vec<double>)) +    // temporaries
+//             align_size(simd_bytes, sizeof(double) * vec_size * (se.temp_end - se.values_copy_end)) +  // vec_copy, same as temporaries
+//             align_size(simd_bytes, sizeof(double) * vec_size * (se.values_copy_end - se.values_end)) + // vector values (probably not neccessary to allocate)
+//             align_size(simd_bytes, sizeof(double) * se.constants_end ) +
+//             align_size(simd_bytes, sizeof(Operation) * (sorted_nodes.size() + 64) );
+
+// 	// est *= 2;
+// 	// std::cout << "Estimated memory in processor: " << est << std::endl;
+
+//     if (arena == nullptr)
+//         arena = std::make_shared<ArenaAlloc>(simd_bytes, est);
+//     else
+//         BP_ASSERT(arena->size_ >= est);
+//     return arena->create<Processor<Vec<double>>>(arena, se, vec_size);
+// }
+
 
 // inline ProcessorBase * ProcessorBase::create_processor(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena) {
 // 	if (simd_size == 0) {
