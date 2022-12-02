@@ -277,30 +277,30 @@ void test_expr(std::string expr, uint block_size, void (* func)(ExprData&)) {
 		parser_time_shared_arena = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time).count();
 	}
 
-	{ // one allocation in common arena, use set_var_copy
-		Parser p(block_size);
-		p.parse(expr);
-		p.set_constant("cs1", {}, 	{data1.cs1});
-		p.set_constant("cv1", {3}, 	std::vector<double>(data1.cv1, data1.cv1+3));
-		p.set_var_copy("v1", {3}, data1.v1);
-		p.set_var_copy("v2", {3}, data1.v2);
-		p.set_var_copy("v3", {3}, data1.v3);
-		p.set_var_copy("v4", {3}, data1.v4);
-		p.set_variable("_result_", {3}, data1.vres);
-		//std::cout << "vres: " << vres << ", " << vres + block_size << ", " << vres + 2*vec_size << "\n";
-		//std::cout << "Symbols: " << print_vector(p.symbols()) << "\n";
-		//std::cout.flush();
-		p.compile();
+	// { // one allocation in common arena, use set_var_copy
+	// 	Parser p(block_size);
+	// 	p.parse(expr);
+	// 	p.set_constant("cs1", {}, 	{data1.cs1});
+	// 	p.set_constant("cv1", {3}, 	std::vector<double>(data1.cv1, data1.cv1+3));
+	// 	p.set_var_copy("v1", {3}, data1.v1);
+	// 	p.set_var_copy("v2", {3}, data1.v2);
+	// 	p.set_var_copy("v3", {3}, data1.v3);
+	// 	p.set_var_copy("v4", {3}, data1.v4);
+	// 	p.set_variable("_result_", {3}, data1.vres);
+	// 	//std::cout << "vres: " << vres << ", " << vres + block_size << ", " << vres + 2*vec_size << "\n";
+	// 	//std::cout << "Symbols: " << print_vector(p.symbols()) << "\n";
+	// 	//std::cout.flush();
+	// 	p.compile();
 
-		std::vector<uint> ss = std::vector<uint>(data1.subset, data1.subset+vec_size/simd_size);
-		p.set_subset(ss);
-		auto start_time = std::chrono::high_resolution_clock::now();
-		for(uint i_rep=0; i_rep < n_repeats; i_rep++) {
-			p.run();
-		}
-		auto end_time = std::chrono::high_resolution_clock::now();
-		parser_time_copy = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time).count();
-	}
+	// 	std::vector<uint> ss = std::vector<uint>(data1.subset, data1.subset+vec_size/simd_size);
+	// 	p.set_subset(ss);
+	// 	auto start_time = std::chrono::high_resolution_clock::now();
+	// 	for(uint i_rep=0; i_rep < n_repeats; i_rep++) {
+	// 		p.run();
+	// 	}
+	// 	auto end_time = std::chrono::high_resolution_clock::now();
+	// 	parser_time_copy = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time).count();
+	// }
 
 	{ // unoptimized allocation in separated arenas
 		Parser p(block_size);
