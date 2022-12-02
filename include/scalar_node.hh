@@ -16,9 +16,6 @@
 #include "config.hh"
 #include "assert.hh"
 #include "VCL_v2_include.hh"
-// #include "VCL_v2_include_SSE.hh"
-// #include "VCL_v2_include_AVX2.hh"
-// #include "VCL_v2_include_AVX512.hh"
 #include "arena_alloc.hh"
 #include "test_tools.hh"
 
