@@ -4,12 +4,10 @@
 // turn off the specific warning.
 #pragma GCC diagnostic ignored "-Wunused-but-set-parameter"
 
-// #include "vectorclass.h"
+#undef MAX_VECTOR_SIZE
+#define MAX_VECTOR_SIZE 128
 
-#include "vectormath_exp.h"
-#include "vectormath_hyp.h"
-#include "vectormath_trig.h"
-
+#include "vectorclass.h"
 
 // turn the warnings back on
 #pragma GCC diagnostic pop
