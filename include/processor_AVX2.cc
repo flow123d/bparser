@@ -3,6 +3,8 @@
 #include "arena_alloc.hh"
 #include "expression_dag.hh"
 
+#include "VCL_v2_include_AVX2.hh"
+
 
 namespace bparser{
 
