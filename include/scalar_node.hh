@@ -16,6 +16,9 @@
 #include "config.hh"
 #include "assert.hh"
 #include "VCL_v2_include.hh"
+// #include "VCL_v2_include_SSE.hh"
+// #include "VCL_v2_include_AVX2.hh"
+// #include "VCL_v2_include_AVX512.hh"
 #include "arena_alloc.hh"
 #include "test_tools.hh"
 
@@ -737,7 +740,7 @@ inline void _ifelse_::eval(VecType &res, VecType a, VecType b, VecType c) {
 	
 	res = select(as_bool(b), a, c);	// we use bit masks for bool values
 
-	print_VCL_vector<VecType>(res, "res");
+	// print_VCL_vector<VecType>(res, "res");
 }
 template<>
 inline void _ifelse_::eval<double>(double &res, double a, double b, double c) {
