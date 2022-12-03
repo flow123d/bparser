@@ -9,7 +9,7 @@ namespace bparser{
 
 
     template<>
-    inline ProcessorBase * create_processor_<Vec2d>(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena) {
+    ProcessorBase * create_processor_<Vec2d>(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena) {
         uint simd_bytes = sizeof(double) * simd_size;
         ExpressionDAG::NodeVec & sorted_nodes = se.sort_nodes();
         uint simd_bytes1 = sizeof(Vec2d);
