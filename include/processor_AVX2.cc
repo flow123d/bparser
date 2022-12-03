@@ -14,7 +14,7 @@ namespace bparser{
         uint simd_bytes = sizeof(double) * simd_size;
         ExpressionDAG::NodeVec & sorted_nodes = se.sort_nodes();
         uint simd_bytes1 = sizeof(Vec4d);
-        std::cout << simd_bytes1 << "!=" << simd_bytes << "\n";
+        // std::cout << simd_bytes1 << "!=" << simd_bytes << "\n";
         BP_ASSERT(simd_bytes1 == simd_bytes);
         uint vec_size = (vector_size / simd_size);
         uint est = 
@@ -26,7 +26,6 @@ namespace bparser{
                 align_size(simd_bytes, sizeof(Vec4d) * se.constants_end ) +
                 align_size(simd_bytes, sizeof(Operation) * (sorted_nodes.size() + 64) );
 
-        // est *= 2;
         // std::cout << "Estimated memory in processor: " << est << std::endl;
 
         if (arena == nullptr)
@@ -38,7 +37,7 @@ namespace bparser{
 
         
     ProcessorBase * create_processor_AVX2(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena) {
-    return create_processor_<Vec4d>(se, vector_size, simd_size, arena);
+        return create_processor_<Vec4d>(se, vector_size, simd_size, arena);
     }
 
 
