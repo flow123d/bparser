@@ -35,9 +35,9 @@ namespace bparser{
     }
 
         
-    ProcessorBase * create_processor_SSE(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena) {
-        return create_processor_<Vec2d>(se, vector_size, simd_size, arena);
-    }
+    // ProcessorBase * create_processor_SSE(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena) {
+    //     return create_processor_<Vec2d>(se, vector_size, simd_size, arena);
+    // }
 
 
 }

@@ -35,9 +35,9 @@ namespace bparser{
     }
 
         
-    ProcessorBase * create_processor_AVX512(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena) {
-        return create_processor_<Vec8d>(se, vector_size, simd_size, arena);
-    }
+    // ProcessorBase * create_processor_AVX512(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena) {
+    //     return create_processor_<Vec8d>(se, vector_size, simd_size, arena);
+    // }
 
 
 }

@@ -541,10 +541,10 @@ struct ProcessorBase {
 	ArenaAllocPtr arena_;
 };
 
-ProcessorBase * create_processor_SSE(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena);
-ProcessorBase * create_processor_AVX2(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena);
-ProcessorBase * create_processor_AVX512(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena);
-ProcessorBase * create_processor_double(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena);
+// ProcessorBase * create_processor_SSE(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena);
+// ProcessorBase * create_processor_AVX2(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena);
+// ProcessorBase * create_processor_AVX512(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena);
+// ProcessorBase * create_processor_double(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena);
 
 /**
  * Store and execute generated "bytecode".
