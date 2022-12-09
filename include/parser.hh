@@ -19,7 +19,7 @@
 #include "processor.hh"
 #include "grammar.hh"
 
-#include "createProcessor.hh"
+#include "create_processor.hh"
 
 
 namespace bparser {
