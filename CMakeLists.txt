@@ -163,7 +163,7 @@ include_directories(
 
 set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/include/processor_SSE.cc -msse4.2 -mfma)
 set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/include/processor_AVX2.cc -mavx2 -mfma)
-set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/include/processor_AVX512.cc -mavx512f -mfma)
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/include/processor_AVX512.cc -mavx512dq -mfma)
 
 add_library(bparser 
     ${CMAKE_CURRENT_SOURCE_DIR}/include/grammar.cc
