@@ -7,10 +7,10 @@ message(STATUS "CMakeLists.txt - BParser")
 # CLANG
 #set(CMAKE_CXX_FLAGS     "-std=c++14 -finline-hint-functions -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION")
 set(CMAKE_CXX_FLAGS     "-std=c++17 -finline-functions -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-unused-function -Wno-unused-variable -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+# set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native")
 #set(CMAKE_CXX_FLAGS_RELEASE "-O3 -mavx512f -mfma") # VCL2 should compile
 # TODO: Try -Winline to be detect possibly non inlined functions.
-# set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 
 set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG  -fsanitize=address -static-libasan -fno-omit-frame-pointer")  #
@@ -160,6 +160,10 @@ include_directories(
 )
 
 # add tager for libbparser
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/include/processor_SSE.cc -msse4.2 -mfma)
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/include/processor_AVX2.cc -mavx2 -mfma)
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/include/processor_AVX512.cc -mavx512f -mfma)
 
 add_library(bparser 
     ${CMAKE_CURRENT_SOURCE_DIR}/include/grammar.cc
