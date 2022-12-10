@@ -144,11 +144,7 @@ static uint get_simd_size()
 	{
 		return 4;
 	}
-	if (__builtin_cpu_supports("avx"))
-	{
-		return 4;
-	}
-	if (__builtin_cpu_supports("sse"))
+	if (__builtin_cpu_supports("sse4.1"))
 	{
 		return 2;
 	}
