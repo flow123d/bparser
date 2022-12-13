@@ -208,13 +208,6 @@ void test_expression() {
 	 */
 	std::cout << "\n" << "** test expression" << "\n";
 
-	// _BP_ASSERT(test_expr("a=[av2, cv4, 2*av2]; b=[a, a-1]; b[1,:,1]", {1, 4, 3}, {3}));
-	// BP_ASSERT(test_expr("as1 * cv4", {4,5,6}));
-	// BP_ASSERT(test_expr("as1 * cv4", {4,5,6}));
-	// BP_ASSERT(test_expr("as1 - cv4", {-3,-4,-5}));
-	// BP_ASSERT(test_expr("as1 - cv4", {-3,-4,-5}));
-	// BP_ASSERT(test_expr("[2,3,4] / av2", {1,1.5,2}));
-
 	// Array creation and subscription
 	BP_ASSERT(test_expr("[1,2,3]", {1,2,3}, {3}));
 	BP_ASSERT(test_expr("[[1],[2],[3]]", {1,2,3}, {3,1}));
@@ -230,7 +223,7 @@ void test_expression() {
 	BP_ASSERT(test_expr("cv4[:, None]", {4,5,6}, {3,1}));
 	BP_ASSERT(test_expr("a=[av2, cv4, 2*av2]; a[:,1]", {2,5,4}, {3}));
 	BP_ASSERT(test_expr("a=[av2, cv4, 2*av2]; b=[a, a-1]; b[:,1,:]", {4,5,6,3,4,5}, {2,3}));
-	// BP_ASSERT(test_expr("a=[av2, cv4, 2*av2]; b=[a, a-1]; b[1,:,1]", {1, 4, 3}, {3}));
+	BP_ASSERT(test_expr("a=[av2, cv4, 2*av2]; b=[a, a-1]; b[1,:,1]", {1, 4, 3}, {3}));
 
 
 	BP_ASSERT(test_expr("cs3 * av2", {6,6,6}));
@@ -244,7 +237,7 @@ void test_expression() {
 	BP_ASSERT(test_expr("cv4[:2] ** 2", {16, 25}));
 	BP_ASSERT(test_expr("cv4[[0,1]] ** 2", {16, 25}));
 	BP_ASSERT(test_expr("cv4[[0]] ** 2", {16}));
-	BP_ASSERT(test_expr("m=[cv4, av2]; m[[0,0,1], [0, 2, 0]]", {4, 6, 2}, {3}));
+	//BP_ASSERT(test_expr("m=[cv4, av2]; m[[0,0,1], [0, 2, 0]]", {4, 6, 2}, {3}));
 
 	BP_ASSERT(fail_expr("cs3[0]", "Too many indices")); // ?fail
 	BP_ASSERT(test_expr("cv4[0, None] * cv4[None, 1]", {})); // ?? matrix
@@ -332,12 +325,8 @@ int main()
 {
 	test_free_variables();
 	test_expression();
-	// test_bool_expression();
+	test_bool_expression();
 #ifdef NDEBUG
 	test_speed_cases();
 #endif
 }
-
-
-
-
