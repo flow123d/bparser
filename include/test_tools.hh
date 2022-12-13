@@ -13,8 +13,6 @@
 #include <vector>
 
 
-
-
 #define ASSERT_THROW(expression, msg) {				            \
 	bool success = false;										\
     try {                                                       \
@@ -110,13 +108,11 @@ void print_VCL_vector(const VecType & v, const char * prefix)
     }
     std::cout << ")" << std::endl;
 }
-// template<>
-// void print_VCL_vector<double>(const double & v, const char * prefix)
-// {
-//     std::cout << prefix << "(" << v << ")";
-// }
-
-// #pragma GCC diagnostic pop
+template<>
+void print_VCL_vector<double>(const double & v, const char * prefix)
+{
+    std::cout << prefix << "(" << v << ")";
+}
 
 
 template< class T>

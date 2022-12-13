@@ -343,6 +343,7 @@ inline typename d_to_b<double_type>::bool_type as_bool(double_type in) {
 // 	return m.mask;
 // }
 
+
 static const int64_t double_true_value = 0xFFFFFFFFFFFFFFFFLL;
 static const int64_t double_false_value = 0x0000000000000000LL;
 
@@ -365,29 +366,6 @@ inline double double_true() {
 inline double double_bool(bool x) {
 	return x ? double_true() : double_false();
 }
-
-// template<typename T>
-// T get_true_value()
-// {
-// 	T x = 0;
-// 	return as_double(x == x);
-// }
-// template<>
-// double get_true_value<double>()
-// {
-// 	return double_true();
-// }
-
-// template<typename T>
-// T get_false_value() {
-// 	T x = 0;
-// 	return as_double(x != x);
-// }
-// template<>
-// double get_false_value<double>()
-// {
-// 	return double_false();
-// }
 
 
 /***
@@ -430,26 +408,7 @@ struct _sub_ : public ScalarNode {
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a, VecType b) {
 		// std::cout << a << " - " << b << "\n";
-		// res = a - b;
-
-		std::cout << "1" << std::endl;
-
-		print_VCL_vector(res, "res");
-		
-		std::cout << "2" << std::endl;
-
-		(a - b).store((double*)&res);
-
-		std::cout << "3" << std::endl;
-
-		print_VCL_vector(a, "a");
-		print_VCL_vector(b, "b");
-		print_VCL_vector(res, "res");
-
-		// VecType	c = a - b;
-		// print_VCL_vector(c, "c_subbb");
-		// c.store((double *)&res);
-		// print_VCL_vector(c, "c_sub");
+ 		res = a - b;
 	}
 };
 
@@ -460,29 +419,7 @@ struct _mul_ : public ScalarNode {
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a, VecType b) {
 		// std::cout << a << " * " << b << "\n";
-		// res = a * b;
-		(a * b).store((double*)&res);
-		// VecType c = a * b;
-		// print_VCL_vector(c, "c_mult");
-		// c.store(((double *)&res));
-
-		// double *buf = (double *)malloc(sizeof(VecType));
-
-		// c.store(buf);
-
-		// VecType d;
-		// d.load(buf);
-
-		// print_VCL_vector(d, "d_bef");
-
-		// d = d * 2;
-
-		// print_VCL_vector(d, "d_after");
- 		// for (uint i = 0; i < VecType::size(); i++)
-		// {
-		// 	((double *)&res)[i] = c[i];
-		// }
-		// print_VCL_vector(res, "res_mult");
+		res = a * b;
 	}
 };
 
@@ -491,8 +428,7 @@ struct _div_ : public ScalarNode {
 	static const char n_eval_args = 3;
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a, VecType b) {
-		// res = a / b;
-		(a / b).store((double*)&res);
+		res = a / b;
 	}
 };
 
@@ -549,14 +485,7 @@ struct _lt_ : public ScalarNode {
 };
 template<typename VecType>
 inline void _lt_::eval(VecType &res, VecType a, VecType b) {
-	// std::cout << "In lt: " << std::endl;
-	// print_VCL_vector<VecType>(a, "a");
-	// print_VCL_vector<VecType>(b, "b");
-
 	res = as_double(a < b);
-
-	// std::cout << "res pointer: " << &res << std::endl;
-	// print_VCL_vector<VecType>(res, "res");
 }
 template<>
 inline void _lt_::eval<double>(double &res, double a, double b) {
@@ -696,9 +625,7 @@ struct _pow_ : public ScalarNode {
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a, VecType b) {
 		// TODO: vectorize
-		// res = pow(a, b);
-		VecType r = pow(a, b);
-		r.store((double*)&res);
+		res = pow(a, b);
 	}
 };
 
@@ -760,13 +687,8 @@ struct _copy_ : public ScalarNode {
 	static const char n_eval_args = 2;
 	template <typename VecType>
 	inline static void eval(VecType &res, VecType a) {
-		// std::cout << "&res: " << &res << std::endl;
-		// print_VCL_vector<VecType>(a, "a");
-		// res = 1;
-
 		res = a;
 		//std::cout << a << " -copy-> " << res << "\n";
-		// std::cout << "End of _copy_ func." << std::endl;
 	}
 };
 

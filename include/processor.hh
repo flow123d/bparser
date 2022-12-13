@@ -22,6 +22,10 @@
 namespace bparser {
 using namespace details;
 
+
+
+
+
 /**
  *
  */
@@ -126,7 +130,7 @@ using namespace details;
 //};
 
 
-// const uint simd_size r= 4;
+// const uint simd_size = 4;
 
 // typedef double double4 __attribute__((__vector_size__(32)));
 
@@ -198,11 +202,6 @@ struct Vec {
 		// std::cout << "v: " << values << " s: " << subset << std::endl;
 		// std::cout << "i: " << i << std::endl;
 		// std::cout << " si: " << subset[i] << std::endl;
-		// std::cout << " v at si*4: " << values[subset[i]*4] << "\n" << std::endl;
-		// std::cout << " &v at si*4: " << &values[subset[i]*4] << "\n" << std::endl;
-		// std::cout << " subset0: " << subset[0] << std::endl;
-		// std::cout << " subset1: " << subset[1] << std::endl;
-		// std::cout << " subset2: " << subset[2] << std::endl;
 
 		return &(values[subset[i]]);
 	}
@@ -314,7 +313,6 @@ struct EvalImpl<2, T, double> {
 	inline static void eval(Operation op,  Workspace<double> &w);
 };
 
-// EvalmImpl with 2 operands
 template <class T, typename VecType>
 inline void EvalImpl<2, T, VecType>::eval(Operation op,  Workspace<VecType> &w) {
 	Vec<VecType> v0 = w.vector[op.arg[0]];
@@ -332,16 +330,11 @@ inline void EvalImpl<2, T, VecType>::eval(Operation op,  Workspace<VecType> &w) 
 		v0i.load(v0id);
 		v1i.load(v1id);
 
-		// print_VCL_vector(v1i, "v1i");
-
 		// evaluate result
 		T::eval(v0i, v1i);
 
 		// store result into memory at v0id
 		v0i.store(v0id); 
-
-		// print_VCL_vector(v0i, "v0i");
-		// std::cout << std::endl;
 	}
 }
 
@@ -351,7 +344,7 @@ inline void EvalImpl<2, T, double>::eval(Operation op,  Workspace<double> &w) {
 	Vec<double> v1 = w.vector[op.arg[1]];
 
 	for(uint i=0; i<w.subset_size; ++i) {
-		// std::cout << "subset: " << i << std::endl;
+		//std::cout << "subset: " << i << std::endl;
 
 		double * v0id = v0.value(i);
 		double * v1id = v1.value(i);
@@ -374,61 +367,13 @@ struct EvalImpl<3, T, double> {
 };
 
 template <class T, typename VecType>
-inline void EvalImpl<2, T, VecType>::eval(Operation op,  Workspace<VecType> &w) {
-	Vec<VecType> v0 = w.vector[op.arg[0]];
-	Vec<VecType> v1 = w.vector[op.arg[1]];
-
-	for(uint i=0; i<w.subset_size; ++i) {
-		//std::cout << "subset: " << i << std::endl;
-
-		double * v0id = v0.value(i);
-		double * v1id = v1.value(i);
-		VecType v0i;
-		VecType v1i;
-
-		// load values into vectors
-		v0i.load(v0id);
-		v1i.load(v1id);
-
-		// print_VCL_vector(v1i, "v1i");
-
-		// evaluate result
-		T::eval(v0i, v1i);
-
-		// store result into memory at v0id
-		v0i.store(v0id); 
-
-		// print_VCL_vector(v0i, "v0i");
-		// std::cout << std::endl;
-	}
-}
-
-template <class T>
-inline void EvalImpl<2, T, double>::eval(Operation op,  Workspace<double> &w) {
-	Vec<double> v0 = w.vector[op.arg[0]];
-	Vec<double> v1 = w.vector[op.arg[1]];
-
-	for(uint i=0; i<w.subset_size; ++i) {
-		//std::cout << "subset: " << i << std::endl;
-
-		double * v0id = v0.value(i);
-		double * v1id = v1.value(i);
-		
-		// evaluate result
-		T::eval(*v0id, *v1id);
-	}
-}
-
-
-// EvalmImpl with 3 operands
-template <class T, typename VecType>
 inline void EvalImpl<3, T, VecType>::eval(Operation op,  Workspace<VecType> &w) {
 	Vec<VecType> v0 = w.vector[op.arg[0]];
 	Vec<VecType> v1 = w.vector[op.arg[1]];
 	Vec<VecType> v2 = w.vector[op.arg[2]];
-//		std::cout << "iv0:" << uint(op.arg[0])
-//				<< "iv1:" << uint(op.arg[1])
-//				<< "iv2:" << uint(op.arg[2]) << std::endl;
+		// std::cout << "iv0:" << uint(op.arg[0])
+		// 		<< "iv1:" << uint(op.arg[1])
+		// 		<< "iv2:" << uint(op.arg[2]) << std::endl;
 	
 	for(uint i=0; i<w.subset_size; ++i) {
 		// std::cout << "subset: " << i << std::endl;
@@ -445,13 +390,8 @@ inline void EvalImpl<3, T, VecType>::eval(Operation op,  Workspace<VecType> &w) 
 		v1i.load(v1id);
 		v2i.load(v2id);
 
-		// print_VCL_vector(v1i, "v1i");
-		// print_VCL_vector(v2i, "v2i");
-
 		// evaluate result
 		T::eval(v0i, v1i, v2i);
-
-		// print_VCL_vector(v0i, "v0i");
 
 		// store result into memory at v0id
 		v0i.store(v0id);
@@ -494,10 +434,10 @@ inline void EvalImpl<4, T, VecType>::eval(Operation op,  Workspace<VecType> &w) 
 	Vec<VecType> v1 = w.vector[op.arg[1]];
 	Vec<VecType> v2 = w.vector[op.arg[2]];
 	Vec<VecType> v3 = w.vector[op.arg[3]];
-//		std::cout << "iv0:" << uint(op.arg[0])
-//				<< "iv1:" << uint(op.arg[1])
-//				<< "iv2:" << uint(op.arg[2])
-//				<< "iv3:" << uint(op.arg[3]) << std::endl;
+		// std::cout << "iv0:" << uint(op.arg[0])
+		// 		<< "iv1:" << uint(op.arg[1])
+		// 		<< "iv2:" << uint(op.arg[2])
+		// 		<< "iv3:" << uint(op.arg[3]) << std::endl;
 
 	for(uint i=0; i<w.subset_size; ++i) {
 		//std::cout << "subset: " << i << std::endl;
@@ -581,10 +521,6 @@ struct ProcessorBase {
 	ArenaAllocPtr arena_;
 };
 
-// ProcessorBase * create_processor_SSE(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena);
-// ProcessorBase * create_processor_AVX2(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena);
-// ProcessorBase * create_processor_AVX512(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena);
-// ProcessorBase * create_processor_double(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena);
 
 /**
  * Store and execute generated "bytecode".
@@ -672,6 +608,7 @@ struct Processor : public ProcessorBase {
 		 * from composition of operations - top sort but no dep. on result_idx_
 		 */
 		Operation *op = program_;
+		
 		for(auto it=sorted_nodes.rbegin(); it != sorted_nodes.rend(); ++it) {
 			// se._print_node(*it);
 			// std::cout << "op points at:" << op << std::endl;
@@ -682,18 +619,9 @@ struct Processor : public ProcessorBase {
 				double * c_ptr = workspace_.vector[node->result_idx_].values;
 				// std::cout << "node->result_idx_ = " << node->result_idx_ << std::endl;
 				// std::cout << "c_ptr = " << c_ptr << std::endl;
-				// c_ptr[0] = c_val;
-				// break;}
 				
 				for(uint j=0; j<simd_size; ++j) {
-					// std::cout << "c_val = " << c_val << std::endl;
-					// std::cout << "c_ptr[j] = " << c_ptr[j] << std::endl;
-					// std::cout << "&c_ptr[j] = " << &c_ptr[j] << std::endl;
-					
 					c_ptr[j] = c_val;
-					// std::cout << "c_ptr[j]after = " << c_ptr[j] << std::endl;
-					// std::cout << std::endl;
-
 				}
 				break;}
 				
@@ -734,8 +662,8 @@ struct Processor : public ProcessorBase {
 				break;
 			case none:
 				BP_ASSERT(false);
-				//*op = make_operation(node);
-				//++op;
+				// *op = make_operation(node);
+				// ++op;
 				break;
 			case expr_result:
 				for (uint i=0; i < simd_size; i++)
@@ -744,13 +672,13 @@ struct Processor : public ProcessorBase {
 				*op = make_operation(node);
 				++op;
 
-				//ASSERT(node->n_inputs_ == 1);
-				//ScalarNodePtr  prev_node = node->inputs_[0];
-				//ASSERT(prev_node->result_storage == temporary);
-				//workspace_.vector[prev_node->result_idx_].set((double4 *)node->get_value(), workspace_.vec_subset);
-//				std::cout << " ir: " << node->result_idx_ << " a0: "
-//						<< workspace_.vector[node->result_idx_].values
-//						<< "\n";
+				// ASSERT(node->n_inputs_ == 1);
+				// ScalarNodePtr  prev_node = node->inputs_[0];
+				// ASSERT(prev_node->result_storage == temporary);
+				// workspace_.vector[prev_node->result_idx_].set((double4 *)node->get_value(), workspace_.vec_subset);
+				// std::cout << " ir: " << node->result_idx_ << " a0: "
+				// 		<< workspace_.vector[node->result_idx_].values
+				// 		<< "\n";
 				break;
 			}
 			BP_ASSERT(op < program_ + n_operations);
@@ -886,7 +814,7 @@ struct Processor : public ProcessorBase {
 		// std::cout << "vec_subset: " << workspace_.vec_subset << "\n";
 		for(uint i=0; i<workspace_.subset_size; ++i) {
 			// std::cout << "subset_i: " << subset[i] << " i=" << i << "\n";
-			workspace_.vec_subset[i] = subset[i] * simd_size;									//set po simd_size 0, 4, 8,....
+			workspace_.vec_subset[i] = subset[i] * simd_size;
 			// std::cout << "subsetvec_i: " << workspace_.vec_subset[i]<< " i=" << i << "\n";
 		}
 		// std::cout << "subset: " << workspace_.vec_subset << std::endl;
@@ -963,8 +891,6 @@ ProcessorBase * create_processor_(ExpressionDAG &se, uint vector_size,  uint sim
 
 
 } // bparser namespace
-
-
 
 
 #endif /* INCLUDE_PROCESSOR_HH_ */
