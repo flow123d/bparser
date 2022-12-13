@@ -237,11 +237,11 @@ void test_expression() {
 	BP_ASSERT(test_expr("cv4[:2] ** 2", {16, 25}));
 	BP_ASSERT(test_expr("cv4[[0,1]] ** 2", {16, 25}));
 	BP_ASSERT(test_expr("cv4[[0]] ** 2", {16}));
-	//BP_ASSERT(test_expr("m=[cv4, av2]; m[[0,0,1], [0, 2, 0]]", {4, 6, 2}, {3}));
+	// BP_ASSERT(test_expr("m=[cv4, av2]; m[[0,0,1], [0, 2, 0]]", {4, 6, 2}, {3}));
 
 	BP_ASSERT(fail_expr("cs3[0]", "Too many indices")); // ?fail
 	BP_ASSERT(test_expr("cv4[0, None] * cv4[None, 1]", {})); // ?? matrix
-	//BP_ASSERT(test_expr("[]", {0}));
+	// BP_ASSERT(test_expr("[]", {0}));
 	BP_ASSERT(fail_expr("[]", "Empty Array"));
 	BP_ASSERT(fail_expr("[1,cv4,av2]", "stack: all input arrays must have the same shape"));
 	BP_ASSERT(test_expr("[1,1]", {1, 1}));
@@ -282,8 +282,8 @@ void test_expression() {
 	BP_ASSERT(test_expr("floor(-3.5)", {-4}, {}));
 	BP_ASSERT(test_expr("ceil(-3.5)", {-3}, {}));
 	BP_ASSERT(test_expr("-sgn(-2) + sgn(2) + sgn(0)", {2}, {}));
-	//BP_ASSERT(test_expr("rad2deg(pi)", {180}));
-	//BP_ASSERT(test_expr("deg2rad(90)", {M_PI/2}));
+	// BP_ASSERT(test_expr("rad2deg(pi)", {180}));
+	// BP_ASSERT(test_expr("deg2rad(90)", {M_PI/2}));
 
 	BP_ASSERT(test_expr("acos(0.5)", {M_PI/3}));
 	BP_ASSERT(test_expr("asin(0.5)", {M_PI/6}));
@@ -309,8 +309,8 @@ void test_expression() {
 	BP_ASSERT(test_expr("flatten(eye(3))", {1, 0, 0, 0, 1, 0, 0, 0, 1}));
 	BP_ASSERT(test_expr("zeros([2,3])", {0, 0, 0, 0, 0, 0}, {2,3}));
 	BP_ASSERT(test_expr("ones([2,3])", {1, 1, 1, 1, 1, 1}, {2,3}));
-	//BP_ASSERT(test_expr("full([2,3], 5)", {5, 5, 5, 5, 5, 5}, {2,3}));
-	//BP_ASSERT(test_expr("norm([2, 3])", {5}));
+	// BP_ASSERT(test_expr("full([2,3], 5)", {5, 5, 5, 5, 5, 5}, {2,3}));
+	// BP_ASSERT(test_expr("norm([2, 3])", {5}));
 	BP_ASSERT(test_expr("minimum([1,2,3], [0,4,3])", {0,2,3}));
 	BP_ASSERT(test_expr("maximum([1,2,3], [0,4,3])", {1,4,3}));
 
