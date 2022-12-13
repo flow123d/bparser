@@ -17,7 +17,7 @@
 #include "arena_alloc.hh"
 #include "expression_dag.hh"
 #include "scalar_node.hh"
-#include "VCL_v2_include.hh"
+
 
 namespace bparser {
 using namespace details;
@@ -140,11 +140,7 @@ static uint get_simd_size()
 	{
 		return 4;
 	}
-	if (__builtin_cpu_supports("avx"))
-	{
-		return 4;
-	}
-	if (__builtin_cpu_supports("sse"))
+	if (__builtin_cpu_supports("sse4.1"))
 	{
 		return 2;
 	}
@@ -187,28 +183,30 @@ typedef std::shared_ptr<ArenaAlloc> ArenaAllocPtr;
 
 template <typename VecType>
 struct Vec {
-	VecType *values;
+	double *values;
 	uint *subset;
 
 	typedef VecType MyVCLVec;
 
-	void set(VecType * v, uint * s) {
+	void set(double * v, uint * s) {
 		values = v;
 		subset = s;
 	}
 
-	inline VecType * value(uint i) {
-//		std::cout << "self: " << this << std::endl;
-//		std::cout << "v: " << values << "s: " << subset << std::endl;
-//		std::cout << "i: " << i << "j: " << j << std::endl;
-//		std::cout << " si: " << subset[i] << std::endl;
-//		std::cout << " v: " << values[subset[i]][j] << "\n";
+	inline double * value(uint i) {
+		// std::cout << "self: " << this << std::endl;
+		// std::cout << "v: " << values << " s: " << subset << std::endl;
+		// std::cout << "i: " << i << std::endl;
+		// std::cout << " si: " << subset[i] << std::endl;
+		// std::cout << " v at si*4: " << values[subset[i]*4] << "\n" << std::endl;
+		// std::cout << " &v at si*4: " << &values[subset[i]*4] << "\n" << std::endl;
+		// std::cout << " subset0: " << subset[0] << std::endl;
+		// std::cout << " subset1: " << subset[1] << std::endl;
+		// std::cout << " subset2: " << subset[2] << std::endl;
+
 		return &(values[subset[i]]);
 	}
 
-	inline double * value_double(uint i) {
-		
-	}
 
 	VecType true_value() {
 		return get_true_value<VecType>();
@@ -257,90 +255,295 @@ struct EvalImpl;
 //	static inline void eval(Operation op, Workspace &w) {};
 //};
 
+
+// EvalmImpl with 1 operand
 template <class T, typename VecType>
 struct EvalImpl<1, T, VecType> {
-	inline static void eval(Operation op,  Workspace<VecType> &w) {
-		Vec<VecType> v0 = w.vector[op.arg[0]];
-		for(uint i=0; i<w.subset_size; ++i) {
-			VecType * v0i = v0.value(i);
-			T::eval(*v0i);
-		}
-	}
+	inline static void eval(Operation op,  Workspace<VecType> &w);
 };
 
+template <class T>
+struct EvalImpl<1, T, double> {
+	inline static void eval(Operation op,  Workspace<double> &w);
+};
 
+template <class T, typename VecType>
+inline void EvalImpl<1, T, VecType>::eval(Operation op,  Workspace<VecType> &w) {
+	Vec<VecType> v0 = w.vector[op.arg[0]];
+
+	for(uint i=0; i<w.subset_size; ++i) {
+		//std::cout << "subset: " << i << std::endl;
+
+		double * v0id = v0.value(i);
+		VecType v0i;
+
+		// load value into vector
+		v0i.load(v0id);
+
+		// evaluate result
+		T::eval(v0i);
+
+		// store result into memory at v0id
+		v0i.store(v0id);
+	}
+}
+
+template <class T>
+inline void EvalImpl<1, T, double>::eval(Operation op,  Workspace<double> &w) {
+	Vec<double> v0 = w.vector[op.arg[0]];
+
+	for(uint i=0; i<w.subset_size; ++i) {
+		//std::cout << "subset: " << i << std::endl;
+
+		double * v0id = v0.value(i);
+		
+		// evaluate result
+		T::eval(*v0id);
+	}
+}
+
+
+// EvalmImpl with 2 operands
 template <class T, typename VecType>
 struct EvalImpl<2, T, VecType> {
-	inline static void eval(Operation op,  Workspace<VecType> &w) {
-		Vec<VecType> v0 = w.vector[op.arg[0]];
-		Vec<VecType> v1 = w.vector[op.arg[1]];
-
-		//std::cout << testi++ << " * " << "\n";
-
-		for(uint i=0; i<w.subset_size; ++i) {
-
-			// std::cout << "subset: " << i << std::endl;
-
-			VecType * v0i = v0.value(i);
-			VecType * v1i = v1.value(i);
-			
-			T::eval(*v0i, *v1i);
-		}
-	}
+	inline static void eval(Operation op,  Workspace<VecType> &w);
 };
 
+template <class T>
+struct EvalImpl<2, T, double> {
+	inline static void eval(Operation op,  Workspace<double> &w);
+};
 
+// EvalmImpl with 2 operands
+template <class T, typename VecType>
+inline void EvalImpl<2, T, VecType>::eval(Operation op,  Workspace<VecType> &w) {
+	Vec<VecType> v0 = w.vector[op.arg[0]];
+	Vec<VecType> v1 = w.vector[op.arg[1]];
+
+	for(uint i=0; i<w.subset_size; ++i) {
+		//std::cout << "subset: " << i << std::endl;
+
+		double * v0id = v0.value(i);
+		double * v1id = v1.value(i);
+		VecType v0i;
+		VecType v1i;
+
+		// load values into vectors
+		v0i.load(v0id);
+		v1i.load(v1id);
+
+		// print_VCL_vector(v1i, "v1i");
+
+		// evaluate result
+		T::eval(v0i, v1i);
+
+		// store result into memory at v0id
+		v0i.store(v0id); 
+
+		// print_VCL_vector(v0i, "v0i");
+		// std::cout << std::endl;
+	}
+}
+
+template <class T>
+inline void EvalImpl<2, T, double>::eval(Operation op,  Workspace<double> &w) {
+	Vec<double> v0 = w.vector[op.arg[0]];
+	Vec<double> v1 = w.vector[op.arg[1]];
+
+	for(uint i=0; i<w.subset_size; ++i) {
+		// std::cout << "subset: " << i << std::endl;
+
+		double * v0id = v0.value(i);
+		double * v1id = v1.value(i);
+		
+		// evaluate result
+		T::eval(*v0id, *v1id);
+	}
+}
+
+
+// EvalmImpl with 3 operands
 template <class T, typename VecType>
 struct EvalImpl<3, T, VecType> {
-	inline static void eval(Operation op,  Workspace<VecType> &w) {
-		Vec<VecType> v0 = w.vector[op.arg[0]];
-		Vec<VecType> v1 = w.vector[op.arg[1]];
-		Vec<VecType> v2 = w.vector[op.arg[2]];
-		// std::cout << "iv0:" << uint(op.arg[0])
-		// 		<< "iv1:" << uint(op.arg[1])
-		// 		<< "iv2:" << uint(op.arg[2]) << std::endl;
-
-		//std::cout << testi++ << " * " << "\n";
-		
-		for(uint i=0; i<w.subset_size; ++i) {
-
-			//std::cout << "subset: " << i << std::endl;
-
-
-			VecType v0i;
-			v0i.load(v0.value(i));
-			VecType *v1i = v1.value(i);
-			VecType *v2i = v2.value(i);
-			T::eval(*v0i, *v1i, *v2i);
-		}
-	}
+	inline static void eval(Operation op,  Workspace<VecType> &w);
 };
 
+template <class T>
+struct EvalImpl<3, T, double> {
+	inline static void eval(Operation op,  Workspace<double> &w);
+};
 
 template <class T, typename VecType>
+inline void EvalImpl<2, T, VecType>::eval(Operation op,  Workspace<VecType> &w) {
+	Vec<VecType> v0 = w.vector[op.arg[0]];
+	Vec<VecType> v1 = w.vector[op.arg[1]];
+
+	for(uint i=0; i<w.subset_size; ++i) {
+		//std::cout << "subset: " << i << std::endl;
+
+		double * v0id = v0.value(i);
+		double * v1id = v1.value(i);
+		VecType v0i;
+		VecType v1i;
+
+		// load values into vectors
+		v0i.load(v0id);
+		v1i.load(v1id);
+
+		// print_VCL_vector(v1i, "v1i");
+
+		// evaluate result
+		T::eval(v0i, v1i);
+
+		// store result into memory at v0id
+		v0i.store(v0id); 
+
+		// print_VCL_vector(v0i, "v0i");
+		// std::cout << std::endl;
+	}
+}
+
+template <class T>
+inline void EvalImpl<2, T, double>::eval(Operation op,  Workspace<double> &w) {
+	Vec<double> v0 = w.vector[op.arg[0]];
+	Vec<double> v1 = w.vector[op.arg[1]];
+
+	for(uint i=0; i<w.subset_size; ++i) {
+		//std::cout << "subset: " << i << std::endl;
+
+		double * v0id = v0.value(i);
+		double * v1id = v1.value(i);
+		
+		// evaluate result
+		T::eval(*v0id, *v1id);
+	}
+}
+
+
+// EvalmImpl with 3 operands
+template <class T, typename VecType>
+inline void EvalImpl<3, T, VecType>::eval(Operation op,  Workspace<VecType> &w) {
+	Vec<VecType> v0 = w.vector[op.arg[0]];
+	Vec<VecType> v1 = w.vector[op.arg[1]];
+	Vec<VecType> v2 = w.vector[op.arg[2]];
+//		std::cout << "iv0:" << uint(op.arg[0])
+//				<< "iv1:" << uint(op.arg[1])
+//				<< "iv2:" << uint(op.arg[2]) << std::endl;
+	
+	for(uint i=0; i<w.subset_size; ++i) {
+		// std::cout << "subset: " << i << std::endl;
+
+		double * v0id = v0.value(i);
+		double * v1id = v1.value(i);
+		double * v2id = v2.value(i);
+		VecType v0i;
+		VecType v1i;
+		VecType v2i;
+
+		// load values into vectors
+		v0i.load(v0id);
+		v1i.load(v1id);
+		v2i.load(v2id);
+
+		// print_VCL_vector(v1i, "v1i");
+		// print_VCL_vector(v2i, "v2i");
+
+		// evaluate result
+		T::eval(v0i, v1i, v2i);
+
+		// print_VCL_vector(v0i, "v0i");
+
+		// store result into memory at v0id
+		v0i.store(v0id);
+	}
+}
+
+template <class T>
+inline void EvalImpl<3, T, double>::eval(Operation op,  Workspace<double> &w) {
+	Vec<double> v0 = w.vector[op.arg[0]];
+	Vec<double> v1 = w.vector[op.arg[1]];
+	Vec<double> v2 = w.vector[op.arg[2]];
+
+	for(uint i=0; i<w.subset_size; ++i) {
+		//std::cout << "subset: " << i << std::endl;
+
+		double * v0id = v0.value(i);
+		double * v1id = v1.value(i);
+		double * v2id = v2.value(i);
+		
+		// evaluate result
+		T::eval(*v0id, *v1id, *v2id);
+	}
+}
+
+
+// EvalmImpl with 3 operands
+template <class T, typename VecType>
 struct EvalImpl<4, T, VecType> {
-	inline static void eval(Operation op,  Workspace<VecType> &w) {
-		Vec<VecType> v0 = w.vector[op.arg[0]];
-		Vec<VecType> v1 = w.vector[op.arg[1]];
-		Vec<VecType> v2 = w.vector[op.arg[2]];
-		Vec<VecType> v3 = w.vector[op.arg[3]];
+	inline static void eval(Operation op,  Workspace<VecType> &w);
+};
+
+template <class T>
+struct EvalImpl<4, T, double> {
+	inline static void eval(Operation op,  Workspace<double> &w);
+};
+
+template <class T, typename VecType>
+inline void EvalImpl<4, T, VecType>::eval(Operation op,  Workspace<VecType> &w) {
+	Vec<VecType> v0 = w.vector[op.arg[0]];
+	Vec<VecType> v1 = w.vector[op.arg[1]];
+	Vec<VecType> v2 = w.vector[op.arg[2]];
+	Vec<VecType> v3 = w.vector[op.arg[3]];
 //		std::cout << "iv0:" << uint(op.arg[0])
 //				<< "iv1:" << uint(op.arg[1])
 //				<< "iv2:" << uint(op.arg[2])
 //				<< "iv3:" << uint(op.arg[3]) << std::endl;
-		for(uint i=0; i<w.subset_size; ++i) {
-			VecType *v0i = v0.value(i);
-			// std::cout << "In proc.hh, pointer v0i: " << v0i << ", value: " << std::endl;
-			VecType *v1i = v1.value(i);
-			// std::cout << "In proc.hh, pointer v1i: " << v1i << ", value: " << std::endl;
-			VecType *v2i = v2.value(i);
-			// std::cout << "In proc.hh, pointer v2i: " << v2i << ", value: " << std::endl;
-			VecType *v3i = v3.value(i);
-			// std::cout << "In proc.hh, pointer v3i: " << v3i << ", value: " << std::endl;
-			T::eval(*v0i, *v1i, *v2i, *v3i);
-		}
+
+	for(uint i=0; i<w.subset_size; ++i) {
+		//std::cout << "subset: " << i << std::endl;
+
+		double * v0id = v0.value(i);
+		double * v1id = v1.value(i);
+		double * v2id = v2.value(i);
+		double * v3id = v3.value(i);
+		VecType v0i;
+		VecType v1i;
+		VecType v2i;
+		VecType v3i;
+
+		// load values into vectors
+		v0i.load(v0id);
+		v1i.load(v1id);
+		v2i.load(v2id);
+		v3i.load(v3id);
+
+		// evaluate result
+		T::eval(v0i, v1i, v2i, v3i);
+
+		// store result into memory at v0id
+		v0i.store(v0id);
 	}
-};
+}
+
+template <class T>
+inline void EvalImpl<4, T, double>::eval(Operation op,  Workspace<double> &w) {
+	Vec<double> v0 = w.vector[op.arg[0]];
+	Vec<double> v1 = w.vector[op.arg[1]];
+	Vec<double> v2 = w.vector[op.arg[2]];
+	Vec<double> v3 = w.vector[op.arg[3]];
+
+	for(uint i=0; i<w.subset_size; ++i) {
+		//std::cout << "subset: " << i << std::endl;
+
+		double * v0id = v0.value(i);
+		double * v1id = v1.value(i);
+		double * v2id = v2.value(i);
+		double * v3id = v3.value(i);
+		
+		// evaluate result
+		T::eval(*v0id, *v1id, *v2id, *v3id);
+	}
+}
 
 
 
@@ -368,13 +571,20 @@ struct ProcessorBase {
 
 	virtual ~ProcessorBase() {
 	}
+
+	virtual ArenaAllocPtr get_arena(){
+		return arena_;
+	}
 	
 	inline static ProcessorBase *create_processor(ExpressionDAG &se, uint vector_size, uint simd_size = 0, ArenaAllocPtr arena = nullptr);
 
 	ArenaAllocPtr arena_;
 };
 
-
+// ProcessorBase * create_processor_SSE(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena);
+// ProcessorBase * create_processor_AVX2(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena);
+// ProcessorBase * create_processor_AVX512(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena);
+// ProcessorBase * create_processor_double(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena);
 
 /**
  * Store and execute generated "bytecode".
@@ -422,8 +632,9 @@ struct Processor : public ProcessorBase {
 		workspace_.const_subset = arena_->create_array<uint>(vec_size);
 		for(uint i=0; i<vec_size;++i) workspace_.const_subset[i] = 0;
 		workspace_.vec_subset = (uint *) arena_->allocate(sizeof(uint) * vec_size);
-		//std::cout << "&vec_subset: " << &(workspace_.vec_subset) << "\n";
-		//std::cout << "aloc vec_subset: " << workspace_.vec_subset << " size: " << vec_size << "\n";
+		
+		// std::cout << "&vec_subset: " << &(workspace_.vec_subset) << "\n";
+		// std::cout << "aloc vec_subset: " << workspace_.vec_subset << " size: " << vec_size << "\n";
 
 		// std::cout << std::endl << "In porcessor.hh: " << std::endl;
 		// std::cout << "vec_size: " << vec_size << "\nsimd_size: " << simd_size << "\nsOfVCLVec: " << sizeof(VCLVec) << "\nsOfDouble: " << sizeof(double) << std::endl;
@@ -431,19 +642,19 @@ struct Processor : public ProcessorBase {
 
 
 		workspace_.vector = (Vec<VCLVec> *) arena_->allocate(sizeof(Vec<VCLVec>) * se.temp_end);
-		VCLVec * temp_base = (VCLVec *) arena_->allocate(
+		double * temp_base = (double *) arena_->allocate(
 				sizeof(double) * vec_size * simd_size * (se.temp_end - se.values_end));
-		VCLVec * const_base = (VCLVec *) arena_->allocate(
-				sizeof(VCLVec) * se.constants_end);
+		double * const_base = (double *) arena_->allocate(
+				sizeof(double) * simd_size * se.constants_end);
 		for(uint i=0; i< se.constants_end; ++i)
-			vec_set(i, const_base + i, workspace_.const_subset);
+			vec_set(i, const_base + i * simd_size, workspace_.const_subset);
 
 		uint i_tmp = 0;
 		for(uint i=se.values_end; i< se.values_copy_end; ++i, ++i_tmp)
-			vec_set(i, temp_base + i_tmp*vec_size, workspace_.vec_subset);
+			vec_set(i, temp_base + i_tmp*vec_size*simd_size, workspace_.vec_subset);
 
 		for(uint i=se.values_copy_end; i< se.temp_end; ++i, ++i_tmp)
-			vec_set(i, temp_base + i_tmp*vec_size, workspace_.vec_subset);
+			vec_set(i, temp_base + i_tmp*vec_size*simd_size, workspace_.vec_subset);
 
 		// value vectors ... setup when processing the nodes, every value node processed exactly once
 		// we need the values pointer from these nodes.
@@ -462,42 +673,57 @@ struct Processor : public ProcessorBase {
 		 */
 		Operation *op = program_;
 		for(auto it=sorted_nodes.rbegin(); it != sorted_nodes.rend(); ++it) {
-			//se._print_node(*it);
+			// se._print_node(*it);
+			// std::cout << "op points at:" << op << std::endl;
 			ScalarNodePtr  node = *it;
 			switch (node->result_storage) {
 			case constant: {
 				double c_val = *node->get_value();
-				VCLVec * c_ptr = workspace_.vector[node->result_idx_].values;
-				c_ptr[0] = c_val;
-				break;}
-				
-				// for(uint j=0; j<simd_size; ++j)
-				// 	c_ptr[0][j] = c_val;
+				double * c_ptr = workspace_.vector[node->result_idx_].values;
+				// std::cout << "node->result_idx_ = " << node->result_idx_ << std::endl;
+				// std::cout << "c_ptr = " << c_ptr << std::endl;
+				// c_ptr[0] = c_val;
 				// break;}
+				
+				for(uint j=0; j<simd_size; ++j) {
+					// std::cout << "c_val = " << c_val << std::endl;
+					// std::cout << "c_ptr[j] = " << c_ptr[j] << std::endl;
+					// std::cout << "&c_ptr[j] = " << &c_ptr[j] << std::endl;
+					
+					c_ptr[j] = c_val;
+					// std::cout << "c_ptr[j]after = " << c_ptr[j] << std::endl;
+					// std::cout << std::endl;
+
+				}
+				break;}
 				
 			case constant_bool:
 			{
 				double c_val = *node->get_value();
-				VCLVec * c_ptr = workspace_.vector[node->result_idx_].values;
-				Vec<VCLVec> v;
+				double * c_ptr = workspace_.vector[node->result_idx_].values;
+				Vec<double> v;
 
 				if (c_val == 0.0) {
-					c_ptr[0] = v.false_value();
+					for(uint j=0; j<simd_size; ++j)
+						c_ptr[j] = v.false_value();
 				}
 				else {
-					c_ptr[0] = v.true_value();
+					for(uint j=0; j<simd_size; ++j)
+						c_ptr[j] = v.true_value();
 				}
 				break;
 			}
 			case value:
-				vec_set(node->result_idx_, (VCLVec *)node->get_value(), workspace_.vec_subset);
+				for (uint i=0; i < simd_size; i++)
+					vec_set(node->result_idx_, (double *)node->get_value(), workspace_.vec_subset);
 				break;
 			case value_copy:
 			{
 				auto val_copy_ptr = ( std::dynamic_pointer_cast<ValueCopyNode> (node) );
 				if (val_copy_ptr->values_ == nullptr) {
 					val_copy_ptr->values_ = arena_->create_array<double>(vec_size);
-					vec_set(node->result_idx_, (VCLVec *)node->get_value(), workspace_.vec_subset);
+					for (uint i=0; i < simd_size; i++)
+						vec_set(node->result_idx_, (double *)node->get_value(), workspace_.vec_subset);
 				}
 				val_copy_nodes_.push_back(val_copy_ptr);
 				break;
@@ -512,7 +738,8 @@ struct Processor : public ProcessorBase {
 				//++op;
 				break;
 			case expr_result:
-				vec_set(node->result_idx_, (VCLVec *)node->get_value(), workspace_.vec_subset);
+				for (uint i=0; i < simd_size; i++)
+					vec_set(node->result_idx_, (double *)node->get_value(), workspace_.vec_subset);
 
 				*op = make_operation(node);
 				++op;
@@ -533,16 +760,20 @@ struct Processor : public ProcessorBase {
 
 	}
 
-	void vec_set(uint ivec, VCLVec * v, uint * s) {
-		// std::cout << "Set vec: " << ivec << " ptr: " << &(workspace_.vector[ivec]) << " v: " << v << " s: " << s <<std::endl;
+	void vec_set(uint ivec, double * v, uint * s) {
+		// std::cout << "Set vec: " << ivec << " ptr: " << &(workspace_.vector[ivec]) << " v: " << v  << " &v: " << *v  << " s: " << s << " &s: " << *s <<std::endl;
 		workspace_.vector[ivec].set(v, s);
+	}
+
+	ArenaAllocPtr get_arena(){
+		return arena_;
 	}
 
 	~Processor() {
 		for (auto node : val_copy_nodes_) {
 			node->values_ = nullptr;
 		}
-		//arena_->destroy();
+		// arena_->destroy();
 	}
 
 	Operation make_operation(ScalarNodePtr  node) {
@@ -553,6 +784,16 @@ struct Processor : public ProcessorBase {
 		op.arg[i_arg++] = node->result_idx_;
 		for(uint j=0; j<node->n_inputs_; ++j)
 			op.arg[i_arg++] = node->inputs_[j]->result_idx_;
+
+		// std::cout << "Created new op: " << (int)(op.code)
+		// 	<< " ia0: " << (int)(op.arg[0])
+		// 	<< " a0: " << workspace_.vector[op.arg[0]].values
+		// 	<< " ia1: " << (int)(op.arg[1])
+		// 	<< " a1: " << workspace_.vector[op.arg[1]].values
+		// 	<< " ia2: " << (int)(op.arg[2])
+		// 	<< " a2: " << workspace_.vector[op.arg[2]].values
+		// 	<< " ia3: " << (int)(op.arg[3])
+		// 	<< " a3: " << workspace_.vector[op.arg[3]].values << "\n";
 		return op;
 	}
 
@@ -565,15 +806,17 @@ struct Processor : public ProcessorBase {
 	void run() {
 		this->copy_inputs();
 		for(Operation * op = program_;;++op) {
-			std::cout << "op: " << (int)(op->code)
-					<< " ia0: " << (int)(op->arg[0])
-					<< " a0: " << workspace_.vector[op->arg[0]].values
-					<< " ia1: " << (int)(op->arg[1])
-					<< " a1: " << workspace_.vector[op->arg[1]].values
-					<< " ia2: " << (int)(op->arg[2])
-					<< " a2: " << workspace_.vector[op->arg[2]].values
-					<< " ia3: " << (int)(op->arg[3])
-					<< " a3: " << workspace_.vector[op->arg[3]].values << "\n";
+			// std::cout << "op points at:" << op << std::endl;
+
+			// std::cout << "op: " << (int)(op->code)
+			// 		<< " ia0: " << (int)(op->arg[0])
+			// 		<< " a0: " << workspace_.vector[op->arg[0]].values
+			// 		<< " ia1: " << (int)(op->arg[1])
+			// 		<< " a1: " << workspace_.vector[op->arg[1]].values
+			// 		<< " ia2: " << (int)(op->arg[2])
+			// 		<< " a2: " << workspace_.vector[op->arg[2]].values
+			// 		<< " ia3: " << (int)(op->arg[3])
+			// 		<< " a3: " << workspace_.vector[op->arg[3]].values << "\n";
 
 			switch (op->code) {
 			CODE(_minus_);
@@ -612,54 +855,7 @@ struct Processor : public ProcessorBase {
 			CODE(_pow_);
 			CODE(_max_);
 			CODE(_min_);
-			// CODE(_copy_);
-			case 50:
-			{
-				Vec<VCLVec> v0 = workspace_.vector[op->arg[0]];
-				Vec<VCLVec> v1 = workspace_.vector[op->arg[1]];
-
-				// std::cout << "op before: " << (int)(op->code)
-				// 	<< " i0: " << (int)(op->arg[0])
-				// 	<< " v0: " << v0.values
-				// 	<< " i1: " << (int)(op->arg[1])
-				// 	<< " v1: " << v1.values << std::endl;
-
-
-				// for(uint i=0; i < workspace_.vector_size * simd_size; i++) {
-				// 		std::cout << "  " << i <<
-				// 			" res v0: " << ((double *)v0.values)[i] << ", res v1: " << ((double *)v1.values)[i] << "\n";
-				// }
-				// std::cout << "\n -memcpy- \n" << std::endl;
-
-				// memcpy(v0.values, v1.values, workspace_.vector_size * sizeof(VCLVec));
-
-				for(uint i=0; i<workspace_.subset_size; ++i) {
-
-					// std::cout << "subset: " << i << std::endl;
-
-					VCLVec * v0i = v0.value(i);
-					VCLVec * v1i = v1.value(i);
-					// memcpy(v0i, v1i, sizeof(VCLVec));
-					for (uint j = 0; j < simd_size; j++) {
-						((double *)v0i)[j] = ((double *)v1i)[j];
-					}
-				}
-
-				// for(uint i=0; i < workspace_.vector_size * simd_size; i++) {
-				// 		std::cout << "  " << i <<
-				// 			" res v0: " << ((double *)v0.values)[i] << ", res v1: " << ((double *)v1.values)[i] << "\n";
-				// }
-
-				// std::cout << "VCLVec size " << sizeof(VCLVec) << " * vector_size " << workspace_.vector_size << std::endl;
-				// std::cout << "mem copy: " << workspace_.vector_size * sizeof(VCLVec) << std::endl;
-
-
-				// std::cout << "op after : " << (int)(op->code)
-				// 	<< " i0: " << (int)(op->arg[0])
-				// 	<< " v0: " << v0.values
-				// 	<< " i1: " << (int)(op->arg[1])
-				// 	<< " v1: " << v1.values << "\n" << std::endl;
-			} break;
+			CODE(_copy_);
 			CODE(_ifelse_);
 			CODE(_log2_);
 //			CODE(__);
@@ -687,10 +883,11 @@ struct Processor : public ProcessorBase {
 	{
 		BP_ASSERT( (subset.size() <= workspace_.vector_size) );
 		workspace_.subset_size = subset.size();
-		//std::cout << "vec_subset: " << workspace_.vec_subset << "\n";
+		// std::cout << "vec_subset: " << workspace_.vec_subset << "\n";
 		for(uint i=0; i<workspace_.subset_size; ++i) {
-			//std::cout << "vec_i: " << workspace_.vec_subset + i << " " << i << "\n";
-			workspace_.vec_subset[i] = subset[i];
+			// std::cout << "subset_i: " << subset[i] << " i=" << i << "\n";
+			workspace_.vec_subset[i] = subset[i] * simd_size;									//set po simd_size 0, 4, 8,....
+			// std::cout << "subsetvec_i: " << workspace_.vec_subset[i]<< " i=" << i << "\n";
 		}
 		// std::cout << "subset: " << workspace_.vec_subset << std::endl;
 	}
@@ -712,11 +909,12 @@ struct Processor : public ProcessorBase {
 
 
 template <class VCLVec> 
-ProcessorBase * create_processor_(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena) {
+ProcessorBase * create_processor_(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena)
+{
     uint simd_bytes = sizeof(double) * simd_size;
     ExpressionDAG::NodeVec & sorted_nodes = se.sort_nodes();
     uint simd_bytes1 = sizeof(VCLVec);
-    std::cout << simd_bytes1 << "!=" << simd_bytes << "\n";
+    // std::cout << simd_bytes1 << "!=" << simd_bytes << "\n";
     BP_ASSERT(simd_bytes1 == simd_bytes);
     uint vec_size = (vector_size / simd_size);
     uint est = 
@@ -728,8 +926,7 @@ ProcessorBase * create_processor_(ExpressionDAG &se, uint vector_size,  uint sim
             align_size(simd_bytes, sizeof(VCLVec) * se.constants_end ) +
             align_size(simd_bytes, sizeof(Operation) * (sorted_nodes.size() + 64) );
 
-	est *= 2;
-	std::cout << "Estimated allocation of memory in processor: " << est << std::endl;
+	// std::cout << "Estimated memory in processor: " << est << std::endl;
 
     if (arena == nullptr)
         arena = std::make_shared<ArenaAlloc>(simd_bytes, est);
@@ -739,31 +936,30 @@ ProcessorBase * create_processor_(ExpressionDAG &se, uint vector_size,  uint sim
 }
 
 
-inline ProcessorBase * ProcessorBase::create_processor(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena) {
-	if (simd_size == 0) {
-		simd_size = get_simd_size();
-	}
-	//std::cout << "n_nodes: " << sorted_nodes.size() << " n_vec: " << se.n_vectors() << "\n";
+// ProcessorBase * ProcessorBase::create_processor(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena) {
+// 	if (simd_size == 0) {
+// 		simd_size = get_simd_size();
+// 	}
 
-	switch (simd_size) {
-		case 2:
-		{
-			return create_processor_<Vec2d>(se, vector_size, simd_size, arena);
-		} break;
-		case 4:
-		{
-			return create_processor_<Vec4d>(se, vector_size, simd_size, arena);
-		} break;
-		case 8:
-		{
-			return create_processor_<Vec8d>(se, vector_size, simd_size, arena);
-		} break;
-		// default:
-		// {
-		// 	return create_processor_<double>(se, vector_size, 1, arena);
-		// } break;
-	}
-}
+// 	switch (simd_size) {
+// 		case 2:
+// 		{
+// 			return create_processor_<Vec2d>(se, vector_size, simd_size, arena);
+// 		} break;
+// 		case 4:
+// 		{ 
+// 			return create_processor_<Vec4d>(se, vector_size, simd_size, arena);
+// 		} break;
+// 		case 8:
+// 		{
+// 			return create_processor_<Vec8d>(se, vector_size, simd_size, arena);
+// 		} break;
+// 		default:
+// 		{
+// 			return create_processor_<double>(se, vector_size, 1, arena);
+// 		} break;
+// 	}
+// }
 
 
 } // bparser namespace

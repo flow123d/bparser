@@ -31,7 +31,7 @@ struct ExprData {
 	{
 		uint simd_bytes = sizeof(double) * simd_size;
 
-		arena = std::make_shared<bparser::ArenaAlloc>(simd_bytes, 256 * 1012);
+		arena = std::make_shared<bparser::ArenaAlloc>(simd_bytes, 512 * 1012);
 		v1 = arena->create_array<double>(vec_size * 3);
 		fill_seq(v1, 100, 100 + 3 * vec_size);
 		v2 = arena->create_array<double>(vec_size * 3);
@@ -69,8 +69,8 @@ struct ExprData {
 // Unoptimized structure, holds data in separated arrays, copies data to arenas
 struct ExprData2 {
 	ExprData2(uint vec_size, uint simd_size)
-	: arena_1(32, 32 * 1012), arena_2(32, 32 * 1012), arena_3(32, 32 * 1012), arena_4(32, 32 * 1012),
-	  arena_res(32, 32 * 1012), arena_subs(32, 32 * 1012), vec_size(vec_size), simd_size(simd_size)
+	: arena_1(sizeof(double)*simd_size, 512 * 1012), arena_2(sizeof(double)*simd_size, 512 * 1012), arena_3(sizeof(double)*simd_size, 512 * 1012), arena_4(sizeof(double)*simd_size, 512 * 1012),
+	  arena_res(sizeof(double)*simd_size, 512 * 1012), arena_subs(sizeof(double)*simd_size, 512 * 1012), vec_size(vec_size), simd_size(simd_size)
 	{
 		d1 = new double[3 * vec_size];
 		fill_seq(d1, 100, 100 + 3 * vec_size);
@@ -219,11 +219,12 @@ void test_expr(std::string expr, uint block_size, void (* func)(ExprData&)) {
 	// e.g. p.set_variable could return pointer to that pointer
 	// not so easy for vector and tensor variables, there are many pointers to set
 	// Rather modify the test to fill the
-	uint n_repeats = (1024 / block_size) * 1000;	//100 000
+	uint n_repeats = (1024 / block_size) * 1000000;	//100 000
 
 	ExprData  data1(vec_size, simd_size);
 	ExprData2 data2(vec_size, simd_size);
 	ExprData  data3(vec_size, simd_size);
+	ExprData  data4(2*vec_size, simd_size);
 
 	double parser_time_optim, parser_time_shared_arena, parser_time_copy, parser_time_noopt, cpp_time;
 
@@ -277,30 +278,30 @@ void test_expr(std::string expr, uint block_size, void (* func)(ExprData&)) {
 		parser_time_shared_arena = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time).count();
 	}
 
-	{ // one allocation in common arena, use set_var_copy
-		Parser p(block_size);
-		p.parse(expr);
-		p.set_constant("cs1", {}, 	{data1.cs1});
-		p.set_constant("cv1", {3}, 	std::vector<double>(data1.cv1, data1.cv1+3));
-		p.set_var_copy("v1", {3}, data1.v1);
-		p.set_var_copy("v2", {3}, data1.v2);
-		p.set_var_copy("v3", {3}, data1.v3);
-		p.set_var_copy("v4", {3}, data1.v4);
-		p.set_variable("_result_", {3}, data1.vres);
-		//std::cout << "vres: " << vres << ", " << vres + block_size << ", " << vres + 2*vec_size << "\n";
-		//std::cout << "Symbols: " << print_vector(p.symbols()) << "\n";
-		//std::cout.flush();
-		p.compile();
+	// { // one allocation in common arena, use set_var_copy
+	// 	Parser p(block_size);
+	// 	p.parse(expr);
+	// 	p.set_constant("cs1", {}, 	{data4.cs1});
+	// 	p.set_constant("cv1", {3}, 	std::vector<double>(data4.cv1, data4.cv1+3));
+	// 	p.set_var_copy("v1", {3}, data4.v1);
+	// 	p.set_var_copy("v2", {3}, data4.v2);
+	// 	p.set_var_copy("v3", {3}, data4.v3);
+	// 	p.set_var_copy("v4", {3}, data4.v4);
+	// 	p.set_variable("_result_", {3}, data4.vres);
+	// 	//std::cout << "vres: " << vres << ", " << vres + block_size << ", " << vres + 2*vec_size << "\n";
+	// 	//std::cout << "Symbols: " << print_vector(p.symbols()) << "\n";
+	// 	//std::cout.flush();
+	// 	p.compile();
 
-		std::vector<uint> ss = std::vector<uint>(data1.subset, data1.subset+vec_size/simd_size);
-		p.set_subset(ss);
-		auto start_time = std::chrono::high_resolution_clock::now();
-		for(uint i_rep=0; i_rep < n_repeats; i_rep++) {
-			p.run();
-		}
-		auto end_time = std::chrono::high_resolution_clock::now();
-		parser_time_copy = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time).count();
-	}
+	// 	std::vector<uint> ss = std::vector<uint>(data4.subset, data4.subset+vec_size/simd_size);
+	// 	p.set_subset(ss);
+	// 	auto start_time = std::chrono::high_resolution_clock::now();
+	// 	for(uint i_rep=0; i_rep < n_repeats; i_rep++) {
+	// 		p.run();
+	// 	}
+	// 	auto end_time = std::chrono::high_resolution_clock::now();
+	// 	parser_time_copy = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time).count();
+	// }
 
 	{ // unoptimized allocation in separated arenas
 		Parser p(block_size);

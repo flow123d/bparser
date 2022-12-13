@@ -669,7 +669,11 @@ struct _sgn_ : public ScalarNode {
 };
 template<typename VecType>
 inline void _sgn_::eval(VecType &res, VecType a) {
-	res = as_double(sign_bit(a));
+	VecType positive(1.0);
+	VecType zero(0.0);
+	VecType negative(-1.0);
+
+	res = select(a > zero, positive, select(a < zero, negative, zero));
 }
 template<>
 inline void _sgn_::eval<double>(double &res, double a) {

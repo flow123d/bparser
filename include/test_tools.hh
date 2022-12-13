@@ -88,6 +88,7 @@ std::string print_vector(std::vector<T> x) {
 	return s.str();
 }
 
+
 template<typename VecType>
 static void print_VCL_vector(const VecType & v, const char * prefix);
 
@@ -114,6 +115,8 @@ void print_VCL_vector(const VecType & v, const char * prefix)
 // {
 //     std::cout << prefix << "(" << v << ")";
 // }
+
+// #pragma GCC diagnostic pop
 
 
 template< class T>

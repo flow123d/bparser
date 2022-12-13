@@ -19,6 +19,9 @@
 #include "processor.hh"
 #include "grammar.hh"
 
+#include "create_processor.hh"
+
+
 namespace bparser {
 
 /// @brief Parse a mathematical expression
@@ -71,6 +74,8 @@ public:
 
     void destroy_processor() {
     	if (processor != nullptr) {
+            // ArenaAllocPtr arena = processor->get_arena();
+            // arena->destroy();
             processor->~ProcessorBase();
         }
     	processor = nullptr;
@@ -193,9 +198,6 @@ public:
 		ExpressionDAG se(result_array_.elements());
 		//se.print_in_dot();
 		processor = ProcessorBase::create_processor(se, max_vec_size, simd_size, arena);
-
-        // tmp_result[0] = 1;
-        // std::cout << "&tmp_result[0] again " << &tmp_result[0] << std::endl;
     }
 
     Array result_array() {
