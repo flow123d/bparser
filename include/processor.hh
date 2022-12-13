@@ -162,22 +162,22 @@ T get_true_value()
 	T x = 0;
 	return as_double(x == x);
 }
-// template<>
-// double get_true_value<double>()
-// {
-// 	return double_true();
-// }
+template<>
+double get_true_value<double>()
+{
+	return double_true();
+}
 
 template<typename T>
 T get_false_value() {
 	T x = 0;
 	return as_double(x != x);
 }
-// template<>
-// double get_false_value<double>()
-// {
-// 	return double_false();
-// }
+template<>
+double get_false_value<double>()
+{
+	return double_false();
+}
 
 typedef std::shared_ptr<ArenaAlloc> ArenaAllocPtr;
 
