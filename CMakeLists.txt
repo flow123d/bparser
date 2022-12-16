@@ -11,8 +11,6 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 # TODO: Try -Winline to be detect possibly non inlined functions.
 
-
-
 set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG  -fsanitize=address -static-libasan -fno-omit-frame-pointer")
 
 # valgrind setting - valgrind is not compatible with sanitizers
