@@ -63,15 +63,16 @@ public:
 	: max_vec_size(max_vec_size), simd_size(simd_size), processor(nullptr), tmp_result()
 	{}
 
+
     /// @brief Destructor
     ~Parser() {
     	destroy_processor();
     }
 
     void destroy_processor() {
-    	// if (tmp_result != nullptr) delete [] tmp_result; // Now it is a vector
+    	// if (tmp_result != nullptr) delete [] tmp_result; // Now it is a vector    	
+
     	if (processor != nullptr) {
-            // ArenaAllocPtr arena = processor->get_arena();
             // arena->destroy();
             processor->~ProcessorBase();
         }
@@ -183,7 +184,7 @@ public:
 		if (res_it == symbols_.end()) {
 			// TODO: replace by storing result in the temporary variable of the processor
 			// tmp_result = new double[shape_size(result_shape) * max_vec_size];
-            tmp_result.resize(shape_size(result_shape) * max_vec_size);
+			tmp_result.resize(shape_size(result_shape) * max_vec_size);
 			result_array_ = Array::value(&tmp_result[0], max_vec_size, result_shape);
 			result_array_ = array.make_result(result_array_);
 		} else {
@@ -191,7 +192,7 @@ public:
 		}
 
 		details::ExpressionDAG se(result_array_.elements());
-        // return se;
+
 		//se.print_in_dot();
 		processor = ProcessorBase::create_processor(se, max_vec_size, simd_size, arena);
     }

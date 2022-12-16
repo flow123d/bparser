@@ -241,7 +241,7 @@ struct Operation {
 };
 
 
-//static uint testi = 0;
+// static uint testi = 0;
 
 template<uint NParams, class T, typename VecType>
 struct EvalImpl;
@@ -369,7 +369,7 @@ inline void EvalImpl<3, T, VecType>::eval(Operation op,  Workspace<VecType> &w) 
 		// std::cout << "iv0:" << uint(op.arg[0])
 		// 		<< "iv1:" << uint(op.arg[1])
 		// 		<< "iv2:" << uint(op.arg[2]) << std::endl;
-	
+
 	for(uint i=0; i<w.subset_size; ++i) {
 		// std::cout << "subset: " << i << std::endl;
 
@@ -517,6 +517,7 @@ struct ProcessorBase {
 };
 
 
+
 /**
  * Store and execute generated "bytecode".
  */
@@ -540,7 +541,7 @@ struct Processor : public ProcessorBase {
 	typedef typename VecType::MyVCLVec VCLVec;
 	static const uint simd_size = sizeof(VCLVec) / sizeof(double);
 
-    
+
 
 // 	static Processor *create(std::vector<ScalarNodePtr > results, uint vector_size) {
 // 		ExpressionDAG se(results);
@@ -548,7 +549,7 @@ struct Processor : public ProcessorBase {
 // 		return create_processor_(se, vector_size);
 // 	}
 
-	
+
 
 	/**
 	 * Do not create processor directly, use the static 'create' method
@@ -603,7 +604,7 @@ struct Processor : public ProcessorBase {
 		 * from composition of operations - top sort but no dep. on result_idx_
 		 */
 		Operation *op = program_;
-		
+
 		for(auto it=sorted_nodes.rbegin(); it != sorted_nodes.rend(); ++it) {
 			// se._print_node(*it);
 			// std::cout << "op points at:" << op << std::endl;
@@ -619,7 +620,7 @@ struct Processor : public ProcessorBase {
 					c_ptr[j] = c_val;
 				}
 				break;}
-				
+
 			case constant_bool:
 			{
 				double c_val = *node->get_value();
@@ -814,7 +815,7 @@ struct Processor : public ProcessorBase {
 		}
 		// std::cout << "subset: " << workspace_.vec_subset << std::endl;
 	}
-	
+
 	// Copy data of ValueCopyNode objects to arena_
 	void copy_inputs()
 	{

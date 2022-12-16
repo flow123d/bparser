@@ -15,6 +15,7 @@
 bool test_fv(std::string expr, std::vector<std::string> ref_vars) {
 	using namespace bparser;
 	Parser p(4);
+	Parser p(4);
 	p.parse(expr);
 	auto vars = p.free_symbols();
 
@@ -154,7 +155,7 @@ std::vector<double> eval_bool_expr_(std::string expr) {
 	double * vres = p.tmp_result_ptr();
 	uint result_size = shape_size(p.result_array().shape());
 	fill_const(vres, vec_size * result_size, -1e100); // undefined value
-	
+
 	std::vector<uint> ss = std::vector<uint>(vec_size/simd_size);
 	for (uint i = 0; i < vec_size/simd_size; i++){
 		ss[i] = i;
@@ -263,6 +264,7 @@ void test_expression() {
 
 	BP_ASSERT(test_expr("3 if cs3 < 4.5 else 4", {3}));
 	BP_ASSERT(test_expr("3 if cs3 > 4.5 else 4", {4}));
+
 	BP_ASSERT(test_expr("0 if cv4 > 4.5 else 1", {1, 0, 0}));
 
 	BP_ASSERT(test_expr("5 if True else 6", {5}));

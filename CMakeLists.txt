@@ -6,6 +6,7 @@ message(STATUS "CMakeLists.txt - BParser")
 
 # CLANG
 #set(CMAKE_CXX_FLAGS     "-std=c++14 -finline-hint-functions -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION")
+#set(CMAKE_CXX_FLAGS     "-std=c++14 -fPIC -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION")
 set(CMAKE_CXX_FLAGS     "-std=c++17 -finline-functions -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-unused-function -Wno-unused-variable -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
@@ -13,8 +14,12 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG  -fsanitize=address -static-libasan -fno-omit-frame-pointer")
 
-# valgrind setting - valgrind is not compatible with sanitizers
-set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG -fno-omit-frame-pointer") 
+# valgrind setting
+set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG  -fsanitize=address -static-libasan -fno-omit-frame-pointer")  #
+
+if(FLOW_BUILD_TYPE STREQUAL "debug")
+    set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG -fno-omit-frame-pointer")  #
+endif()
 
 #ASAN_OPT         := -g -fsanitize=address -static-libasan -fno-omit-frame-pointer
 #MSAN_OPT         := -g -fsanitize=memory    -fno-omit-frame-pointer
@@ -34,7 +39,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
       STRING "Choose the type of build." FORCE)
   # Set the possible values of build type for cmake-gui
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
-    "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+    "Debug" "Release" "MinSizeRel" "RelWithDebInfo" "Sanitizer")
 endif()
 
 # TODO: modify makefile to call cmake
@@ -139,7 +144,7 @@ if (NOT Boost_FOUND)
   unset(Boost_VERSION CACHE)
   
   set(BOOST_ROOT ${EXTERNAL_BOOST_DIR})    
-  find_package( Boost 1.58.0 REQUIRED)  #1.58.0 minimum
+  find_package( Boost 1.58.0 REQUIRED)
 endif()
 
 message(STATUS "-------------------------------------------------------")
@@ -163,7 +168,7 @@ set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/include/processor_SSE.cc
 set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/include/processor_AVX2.cc -ffast-math -mfpmath=sse -mfma -mavx2)
 set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/include/processor_AVX512.cc -ffast-math -mfpmath=sse -mfma -mavx512f)
 
-add_library(bparser 
+add_library(bparser SHARED
     ${CMAKE_CURRENT_SOURCE_DIR}/include/grammar.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/include/processor_SSE.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/include/processor_AVX2.cc
@@ -230,5 +235,5 @@ define_test(test_parser bparser)
 define_test(test_array)
 define_test(test_grammar bparser)
 define_test(test_processor)
-define_test(test_speed bparser)
+define_test(test_speed bparser)  
 define_test(test_simd)

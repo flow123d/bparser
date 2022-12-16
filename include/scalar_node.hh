@@ -17,7 +17,7 @@
 #include "assert.hh"
 #include "VCL_v2_include.hh"
 #include "arena_alloc.hh"
-#include "test_tools.hh"
+
 
 
 namespace bparser {
@@ -178,7 +178,7 @@ struct ValueCopyNode : public ScalarNode {
 		op_name_ = "ValueCopy";
 		source_ptr_ = ptr;
 		result_storage = value_copy;
-		values_ = nullptr; // Is set automatically by Processor.
+		values_ = nullptr;
 	}
 
 	~ValueCopyNode() override {
@@ -197,6 +197,7 @@ struct ResultNode : public ScalarNode {
 		result_storage = expr_result; // use slot of the result of value, i.e. inputs[0]
 	}
 };
+
 
 
 
@@ -410,7 +411,6 @@ struct _sub_ : public ScalarNode {
  		res = a - b;
 	}
 };
-
 
 struct _mul_ : public ScalarNode {
 	static const char op_code = 4;
@@ -700,20 +700,14 @@ struct _ifelse_ : public ScalarNode {
 };
 template<typename VecType>
 inline void _ifelse_::eval(VecType &res, VecType a, VecType b, VecType c) {
-	// std::cout << "In select: " << std::endl;
-	// print_VCL_vector<VecType>(a, "a");
-	// print_VCL_vector<VecType>(b, "b");
-	// print_VCL_vector<VecType>(c, "c");
-	
 	res = select(as_bool(b), a, c);	// we use bit masks for bool values
-
-	// print_VCL_vector<VecType>(res, "res");
 }
 template<>
 inline void _ifelse_::eval<double>(double &res, double a, double b, double c) {
 	res = as_bool(b) ? a : c;		// we use bit masks for bool values
 }
 UNARY_FN(_log2_, 	52, log2);
+
 
 /***********************
  * Construction Nodes.
