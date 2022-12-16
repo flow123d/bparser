@@ -41,7 +41,7 @@ void test_free_variables() {
 }
 
 constexpr uint vec_size = 8;
-const uint simd_size = bparser::get_simd_size();
+uint simd_size = bparser::get_simd_size();
 
 std::vector<double> eval_expr_(std::string expr, bparser::Shape ref_shape = {}) {
 	std::cout << "parser test : " << expr << "\n";
@@ -77,6 +77,7 @@ std::vector<double> eval_expr_(std::string expr, bparser::Shape ref_shape = {}) 
 
 	uint result_size = shape_size(p.result_array().shape());
 	fill_const(vres, vec_size * result_size, -1e100); // undefined value
+
 	std::vector<uint> ss = std::vector<uint>(vec_size/simd_size);
 	for (uint i = 0; i < vec_size/simd_size; i++){
 		ss[i] = i;
@@ -128,7 +129,6 @@ std::vector<double> eval_bool_expr_(std::string expr) {
 	std::cout << "parser test : " << expr << "\n";
 	using namespace bparser;
 
-	uint simd_size = get_simd_size();
 	uint simd_bytes = sizeof(double) * simd_size;
 	std::shared_ptr<bparser::ArenaAlloc> arena = std::make_shared<bparser::ArenaAlloc>(simd_bytes, 6 * vec_size * sizeof(double));
 
@@ -154,6 +154,7 @@ std::vector<double> eval_bool_expr_(std::string expr) {
 	double * vres = p.tmp_result_ptr();
 	uint result_size = shape_size(p.result_array().shape());
 	fill_const(vres, vec_size * result_size, -1e100); // undefined value
+	
 	std::vector<uint> ss = std::vector<uint>(vec_size/simd_size);
 	for (uint i = 0; i < vec_size/simd_size; i++){
 		ss[i] = i;
@@ -236,11 +237,11 @@ void test_expression() {
 	BP_ASSERT(test_expr("cv4[:2] ** 2", {16, 25}));
 	BP_ASSERT(test_expr("cv4[[0,1]] ** 2", {16, 25}));
 	BP_ASSERT(test_expr("cv4[[0]] ** 2", {16}));
-	//BP_ASSERT(test_expr("m=[cv4, av2]; m[[0,0,1], [0, 2, 0]]", {4, 6, 2}, {3}));
+	// BP_ASSERT(test_expr("m=[cv4, av2]; m[[0,0,1], [0, 2, 0]]", {4, 6, 2}, {3}));
 
 	BP_ASSERT(fail_expr("cs3[0]", "Too many indices")); // ?fail
 	BP_ASSERT(test_expr("cv4[0, None] * cv4[None, 1]", {})); // ?? matrix
-	//BP_ASSERT(test_expr("[]", {0}));
+	// BP_ASSERT(test_expr("[]", {0}));
 	BP_ASSERT(fail_expr("[]", "Empty Array"));
 	BP_ASSERT(fail_expr("[1,cv4,av2]", "stack: all input arrays must have the same shape"));
 	BP_ASSERT(test_expr("[1,1]", {1, 1}));
@@ -281,8 +282,8 @@ void test_expression() {
 	BP_ASSERT(test_expr("floor(-3.5)", {-4}, {}));
 	BP_ASSERT(test_expr("ceil(-3.5)", {-3}, {}));
 	BP_ASSERT(test_expr("-sgn(-2) + sgn(2) + sgn(0)", {2}, {}));
-	//BP_ASSERT(test_expr("rad2deg(pi)", {180}));
-	//BP_ASSERT(test_expr("deg2rad(90)", {M_PI/2}));
+	// BP_ASSERT(test_expr("rad2deg(pi)", {180}));
+	// BP_ASSERT(test_expr("deg2rad(90)", {M_PI/2}));
 
 	BP_ASSERT(test_expr("acos(0.5)", {M_PI/3}));
 	BP_ASSERT(test_expr("asin(0.5)", {M_PI/6}));
@@ -308,8 +309,8 @@ void test_expression() {
 	BP_ASSERT(test_expr("flatten(eye(3))", {1, 0, 0, 0, 1, 0, 0, 0, 1}));
 	BP_ASSERT(test_expr("zeros([2,3])", {0, 0, 0, 0, 0, 0}, {2,3}));
 	BP_ASSERT(test_expr("ones([2,3])", {1, 1, 1, 1, 1, 1}, {2,3}));
-	//BP_ASSERT(test_expr("full([2,3], 5)", {5, 5, 5, 5, 5, 5}, {2,3}));
-	//BP_ASSERT(test_expr("norm([2, 3])", {5}));
+	// BP_ASSERT(test_expr("full([2,3], 5)", {5, 5, 5, 5, 5, 5}, {2,3}));
+	// BP_ASSERT(test_expr("norm([2, 3])", {5}));
 	BP_ASSERT(test_expr("minimum([1,2,3], [0,4,3])", {0,2,3}));
 	BP_ASSERT(test_expr("maximum([1,2,3], [0,4,3])", {1,4,3}));
 
@@ -322,14 +323,10 @@ void test_speed_cases() {
 
 int main()
 {
-	// test_free_variables();
+	test_free_variables();
 	test_expression();
 	test_bool_expression();
 #ifdef NDEBUG
 	test_speed_cases();
 #endif
 }
-
-
-
-

@@ -366,29 +366,6 @@ inline double double_bool(bool x) {
 	return x ? double_true() : double_false();
 }
 
-// template<typename T>
-// T get_true_value()
-// {
-// 	T x = 0;
-// 	return as_double(x == x);
-// }
-// template<>
-// double get_true_value<double>()
-// {
-// 	return double_true();
-// }
-
-// template<typename T>
-// T get_false_value() {
-// 	T x = 0;
-// 	return as_double(x != x);
-// }
-// template<>
-// double get_false_value<double>()
-// {
-// 	return double_false();
-// }
-
 
 /***
  * Declaration of particular scalar nodes for distinct operations.
@@ -507,14 +484,7 @@ struct _lt_ : public ScalarNode {
 };
 template<typename VecType>
 inline void _lt_::eval(VecType &res, VecType a, VecType b) {
-	// std::cout << "In lt: " << std::endl;
-	// print_VCL_vector<VecType>(a, "a");
-	// print_VCL_vector<VecType>(b, "b");
-
 	res = as_double(a < b);
-
-	// std::cout << "res pointer: " << &res << std::endl;
-	// print_VCL_vector<VecType>(res, "res");
 }
 template<>
 inline void _lt_::eval<double>(double &res, double a, double b) {
@@ -627,7 +597,11 @@ struct _sgn_ : public ScalarNode {
 };
 template<typename VecType>
 inline void _sgn_::eval(VecType &res, VecType a) {
-	res = as_double(sign_bit(a));
+	VecType positive(1.0);
+	VecType zero(0.0);
+	VecType negative(-1.0);
+
+	res = select(a > zero, positive, select(a < zero, negative, zero));
 }
 template<>
 inline void _sgn_::eval<double>(double &res, double a) {

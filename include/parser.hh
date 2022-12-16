@@ -18,6 +18,7 @@
 #include "ast.hh"
 #include "processor.hh"
 #include "grammar.hh"
+#include "create_processor.hh"
 
 namespace bparser {
 
@@ -70,6 +71,8 @@ public:
     void destroy_processor() {
     	// if (tmp_result != nullptr) delete [] tmp_result; // Now it is a vector
     	if (processor != nullptr) {
+            // ArenaAllocPtr arena = processor->get_arena();
+            // arena->destroy();
             processor->~ProcessorBase();
         }
     	processor = nullptr;
@@ -187,7 +190,7 @@ public:
 			result_array_ = array.make_result(res_it->second);
 		}
 
-		ExpressionDAG se(result_array_.elements());
+		details::ExpressionDAG se(result_array_.elements());
         // return se;
 		//se.print_in_dot();
 		processor = ProcessorBase::create_processor(se, max_vec_size, simd_size, arena);

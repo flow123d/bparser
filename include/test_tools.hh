@@ -13,8 +13,6 @@
 #include <vector>
 
 
-
-
 #define ASSERT_THROW(expression, msg) {				            \
 	bool success = false;										\
     try {                                                       \
@@ -88,6 +86,10 @@ std::string print_vector(std::vector<T> x) {
 	return s.str();
 }
 
+
+template<typename VecType>
+static void print_VCL_vector(const VecType & v, const char * prefix);
+
 template<typename VecType>
 void print_VCL_vector(const VecType & v, const char * prefix)
 {
@@ -106,6 +108,12 @@ void print_VCL_vector(const VecType & v, const char * prefix)
     }
     std::cout << ")" << std::endl;
 }
+template<>
+void print_VCL_vector<double>(const double & v, const char * prefix)
+{
+    std::cout << prefix << "(" << v << ")";
+}
+
 
 template< class T>
 bool vec_eq(std::vector<T> a, std::vector<T> b) {
