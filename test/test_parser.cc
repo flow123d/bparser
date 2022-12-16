@@ -15,7 +15,6 @@
 bool test_fv(std::string expr, std::vector<std::string> ref_vars) {
 	using namespace bparser;
 	Parser p(4);
-	Parser p(4);
 	p.parse(expr);
 	auto vars = p.free_symbols();
 
