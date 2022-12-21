@@ -22,9 +22,9 @@ jobs:
         # See https://help.github.com/en/articles/workflow-syntax-for-github-actions.
         name: [
           # ubuntu-18.04-gcc-4.8, # uncomplete support of C++14
-          ubuntu-18.04-gcc-4.9,
-          ubuntu-18.04-gcc-5,
-          ubuntu-18.04-gcc-6,
+          # ubuntu-18.04-gcc-4.9,
+          # ubuntu-18.04-gcc-5,
+          # ubuntu-18.04-gcc-6,
           ubuntu-18.04-gcc-7,
           ubuntu-18.04-gcc-8,
           ubuntu-18.04-gcc-9,
@@ -60,20 +60,20 @@ jobs:
             #compiler: gcc
             #version: "4.8"
 
-          - name: ubuntu-18.04-gcc-4.9
-            os: ubuntu-18.04
-            compiler: gcc
-            version: "4.9"
+          #- name: ubuntu-18.04-gcc-4.9
+            #os: ubuntu-18.04
+            #compiler: gcc
+            #version: "4.9"
 
-          - name: ubuntu-18.04-gcc-5
-            os: ubuntu-18.04
-            compiler: gcc
-            version: "5"
+          #- name: ubuntu-18.04-gcc-5
+            #os: ubuntu-18.04
+            #compiler: gcc
+            #version: "5"
 
-          - name: ubuntu-18.04-gcc-6
-            os: ubuntu-18.04
-            compiler: gcc
-            version: "6"
+          #- name: ubuntu-18.04-gcc-6
+            #os: ubuntu-18.04
+            #compiler: gcc
+            #version: "6"
 
           - name: ubuntu-18.04-gcc-7
             os: ubuntu-18.04
@@ -506,8 +506,8 @@ jobs:
       - name: make test_array_dbg
         run: make test_array
       
-      - name: make test_processor_dbg
-        run: make test_processor
+      #- name: make test_processor_dbg
+        #run: make test_processor
       
       - name: make test_parser_dbg
         run: make test_parser
@@ -533,8 +533,8 @@ jobs:
       - name: make test_array_rel
         run: make test_array
       
-      - name: make test_processor_rel
-        run: make test_processor
+      #- name: make test_processor_rel
+        #run: make test_processor
       
       - name: make test_parser_rel
         run: make test_parser
