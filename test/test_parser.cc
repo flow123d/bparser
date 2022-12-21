@@ -21,6 +21,7 @@ public:
 	}
 };
 
+
 bool test_fv(std::string expr, std::vector<std::string> ref_vars) {
 	using namespace bparser;
 	Parser p(4);
@@ -51,7 +52,6 @@ void test_free_variables() {
 
 constexpr uint vec_size = 8;
 uint simd_size = bparser::get_simd_size();
-// uint simd_size = 1;
 
 std::vector<double> eval_expr_(std::string expr, bparser::Shape ref_shape = {}) {
 	std::cout << "parser test : " << expr << "\n";
@@ -212,7 +212,7 @@ void test_expression() {
 
 	BP_ASSERT(test_expr("3 >= cs3", vec_true));
 	BP_ASSERT(test_expr("3 == cs3", vec_true));
-	BP_ASSERT(test_expr("not (3 == cs3)", vec_false));
+	BP_ASSERT(test_expr("not (3 != cs3)", vec_true));
 
 	BP_ASSERT(test_expr("3 if cs3 < 4.5 else 4", {3}));
 	BP_ASSERT(test_expr("3 if cs3 > 4.5 else 4", {4}));
