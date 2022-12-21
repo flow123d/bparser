@@ -11,6 +11,15 @@
 #include "assert.hh"
 #include "parser.hh"
 
+class ParserTest
+: public bparser::Parser {
+public:
+	ParserTest(uint max_vec_size, uint simd_size_)
+	: Parser(max_vec_size)
+	{
+		simd_size = simd_size_;
+	}
+};
 
 bool test_fv(std::string expr, std::vector<std::string> ref_vars) {
 	using namespace bparser;
@@ -42,6 +51,7 @@ void test_free_variables() {
 
 constexpr uint vec_size = 8;
 uint simd_size = bparser::get_simd_size();
+// uint simd_size = 1;
 
 std::vector<double> eval_expr_(std::string expr, bparser::Shape ref_shape = {}) {
 	std::cout << "parser test : " << expr << "\n";
@@ -58,7 +68,7 @@ std::vector<double> eval_expr_(std::string expr, bparser::Shape ref_shape = {}) 
 	auto bv6 = arena->create_array<double>(vec_size * 3);
 	fill_seq(bv6, 100, 100 + 3 * vec_size);
 
-	Parser p(vec_size);
+	ParserTest p(vec_size, simd_size);
 	p.parse(expr);
 	std::cout << "  AST: " << p.print_ast() << "\n";
 	p.set_variable("as1", {}, &(as1[0]));
@@ -195,8 +205,16 @@ void test_expression() {
 	BP_ASSERT(test_expr("2 < cs3 < 4.5", vec_true));
 	BP_ASSERT(test_expr("(2 < cs3) < 2", vec_true));
 
+	BP_ASSERT(test_expr("(2 < cs3) and (cs3 < 4.5)", vec_true));
+	BP_ASSERT(test_expr("(2 < cs3) or (cs3 > 4.5)", vec_true));
+	BP_ASSERT(test_expr("(2 < cs3) and (cs3 > 4.5)", vec_false));
+	BP_ASSERT(test_expr("(2 > cs3) or (cs3 > 4.5)", vec_false));
+
 	BP_ASSERT(test_expr("3 >= cs3", vec_true));
 	BP_ASSERT(test_expr("3 == cs3", vec_true));
+
+	BP_ASSERT(test_expr("not (3 == cs3)", vec_false));
+	BP_ASSERT(test_expr("not cs3", vec_false));
 
 	BP_ASSERT(test_expr("3 if cs3 < 4.5 else 4", {3}));
 	BP_ASSERT(test_expr("3 if cs3 > 4.5 else 4", {4}));
@@ -205,6 +223,8 @@ void test_expression() {
 
 	BP_ASSERT(test_expr("5 if True else 6", {5}));
 	BP_ASSERT(test_expr("5 if False else 6", {6}));
+
+	BP_ASSERT(test_expr("25 % cs3", {1}));
 
 	BP_ASSERT(test_expr("[3, 4] @ [[1], [2]]", {11}, {1}));
 	BP_ASSERT(test_expr("[3, 4, 1] @ [[1], [2], [3]]", {14}, {1}));
