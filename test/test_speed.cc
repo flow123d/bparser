@@ -229,7 +229,7 @@ void test_expr(std::string expr, uint block_size, void (* func)(ExprData&)) {
 	double parser_time_optim, parser_time_shared_arena, parser_time_copy, parser_time_noopt, cpp_time;
 
 	{ // one allocation in common arena
-		Parser p(block_size, simd_size);
+		Parser p(block_size);
 		p.parse(expr);
 		p.set_constant("cs1", {}, 	{data1.cs1});
 		p.set_constant("cv1", {3}, 	std::vector<double>(data1.cv1, data1.cv1+3));
