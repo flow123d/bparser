@@ -15,7 +15,7 @@
 #include <memory>
 #include "config.hh"
 #include "assert.hh"
-#include "VCL_v2_include.hh"
+#include "VCL_v2_math.hh"
 #include "arena_alloc.hh"
 
 
@@ -207,6 +207,11 @@ struct ResultNode : public ScalarNode {
 
 template<typename bool_type> struct b_to_d;
 
+// template<>
+// struct b_to_d<bool> {
+//     typedef double double_type;
+// };
+
 template<>
 struct b_to_d<int64_t> {
     typedef double double_type;
@@ -228,6 +233,12 @@ struct b_to_d<Vec8db> {
 };
 
 template<typename bool_type> union b_to_d_mask;
+
+// template<>
+// union b_to_d_mask<bool> {
+// 	bool	mask;
+// 	double  value;
+// };
 
 template<>
 union b_to_d_mask<int64_t> {
@@ -254,12 +265,25 @@ union b_to_d_mask<Vec8db> {
 };
 
 template<typename bool_type>
+inline typename b_to_d<bool_type>::double_type as_double(bool_type in);
+
+template<typename bool_type>
 inline typename b_to_d<bool_type>::double_type as_double(bool_type in) {
     b_to_d_mask<bool_type> x = {in};
     return x.value;
 }
+// template<>
+// inline b_to_d<int64_t>::double_type as_double<bool>(bool in) {
+//     b_to_d_mask<int64_t> x = {int64_t(in)};
+//     return x.value;
+// }
 
 template<typename double_type> struct d_to_b;
+
+// template<>
+// struct d_to_b<double> {
+//     typedef bool bool_type;
+// };
 
 template<>
 struct d_to_b<double> {
@@ -282,6 +306,12 @@ struct d_to_b<Vec8d> {
 };
 
 template<typename double_type> union d_to_b_mask;
+
+// template<>
+// union d_to_b_mask<double> {
+// 	double  value;
+// 	bool	mask;
+// };
 
 template<>
 union d_to_b_mask<double> {
@@ -344,15 +374,27 @@ inline typename d_to_b<double_type>::bool_type as_bool(double_type in) {
 // 	return m.mask;
 // }
 
-static const int64_t double_true_value = 0xFFFFFFFFFFFFFFFFLL;
-static const int64_t double_false_value = 0x0000000000000000LL;
+
+
+// static const int64_t double_true_value = 0xFFFFFFFFFFFFFFFFLL;
+// static const int64_t double_false_value = 0x0000000000000000LL;
+
+// inline int64_t bitmask_false() {
+// 	return double_false_value;
+// }
+
+// inline int64_t bitmask_true() {
+// 	return double_true_value;
+// }
 
 inline int64_t bitmask_false() {
-	return double_false_value;
+	// std::cout << "F: " << int64_t(false) << std::endl;
+	return int64_t(false);
 }
 
 inline int64_t bitmask_true() {
-	return double_true_value;
+	// std::cout << "T: " << -int64_t(true) << std::endl;
+	return -int64_t(true);
 }
 
 inline double double_false() {
@@ -367,6 +409,58 @@ inline double double_bool(bool x) {
 	return x ? double_true() : double_false();
 }
 
+
+template<typename T>
+static T get_true_value();
+
+template<typename T>
+static T get_false_value();
+
+template<typename T>
+T get_true_value()
+{
+	T x = 0;
+	return as_double(x == x);
+}
+template<>
+double get_true_value<double>()
+{
+	return double_true();
+}
+
+template<typename T>
+T get_false_value() {
+	T x = 0;
+	return as_double(x != x);
+}
+template<>
+double get_false_value<double>()
+{
+	return double_false();
+}
+
+
+// inline double double_false() {
+// 	return as_double(false);
+// }
+
+// inline double double_true() {
+// 	return as_double(true);
+// }
+
+
+// template<typename T>
+// static T get_true_value()
+// {
+// 	T x = 0;
+// 	return as_double(x == x);
+// }
+
+// template<typename T>
+// static T get_false_value() {
+// 	T x = 0;
+// 	return as_double(x != x);
+// }
 
 /***
  * Declaration of particular scalar nodes for distinct operations.
@@ -439,7 +533,7 @@ struct _mod_ : public ScalarNode {
 };
 template<typename VecType>
 inline void _mod_::eval(VecType &res, VecType a, VecType b) {
-	res = a - b * truncate(a / b);
+	res = a - b * truncate(a / b);	//str 53, ale modulo fci VCL nemá
 }
 template<>
 inline void _mod_::eval<double>(double &res, double a, double b) {
@@ -460,6 +554,14 @@ template<>
 inline void _eq_::eval<double>(double &res, double a, double b) {
 	res = double_bool(a == b);
 }
+// struct _eq_ : public ScalarNode {
+// 	static const char op_code = 7;
+// 	static const char n_eval_args = 3;
+// 	template<typename VecType>
+// 	inline static void eval(VecType &res, VecType a, VecType b) {
+// 		res = as_double<VecType>(a == b);
+// 	}
+// };
 
 struct _ne_ : public ScalarNode {
 	static const char op_code = 8;
@@ -475,6 +577,14 @@ template<>
 inline void _ne_::eval<double>(double &res, double a, double b) {
 	res = double_bool(a != b);
 }
+// struct _ne_ : public ScalarNode {
+// 	static const char op_code = 8;
+// 	static const char n_eval_args = 3;
+// 	template<typename VecType>
+// 	inline static void eval(VecType &res, VecType a, VecType b) {
+// 		res = as_double(a != b);
+// 	}
+// };
 
 struct _lt_ : public ScalarNode {
 	static const char op_code = 9;
@@ -485,11 +595,25 @@ struct _lt_ : public ScalarNode {
 template<typename VecType>
 inline void _lt_::eval(VecType &res, VecType a, VecType b) {
 	res = as_double(a < b);
+	print_VCL_vector(a, "a_lt");
+	print_VCL_vector(b, "b_lt");
+	print_VCL_vector(res, "res_lt");
 }
 template<>
 inline void _lt_::eval<double>(double &res, double a, double b) {
 	res = double_bool(a < b);
 }
+// struct _lt_ : public ScalarNode {
+// 	static const char op_code = 9;
+// 	static const char n_eval_args = 3;
+// 	template <typename VecType>
+// 	inline static void eval(VecType &res, VecType a, VecType b) {
+// 		res = as_double(a < b);
+// 		print_VCL_vector(a, "a_lt");
+// 		print_VCL_vector(b, "b_lt");
+// 		print_VCL_vector(res, "res_lt");
+// 	}
+// };
 
 struct _le_ : public ScalarNode {
 	static const char op_code = 10;
@@ -505,6 +629,14 @@ template<>
 inline void _le_::eval<double>(double &res, double a, double b) {
 	res = double_bool(a <= b);
 }
+// struct _le_ : public ScalarNode {
+// 	static const char op_code = 10;
+// 	static const char n_eval_args = 3;
+// 	template <typename VecType>
+// 	inline static void eval(VecType &res, VecType a, VecType b) {
+// 		res = as_double(a <= b);
+// 	}
+// };
 
 struct _neg_ : public ScalarNode {
 	static const char op_code = 11;
@@ -514,12 +646,21 @@ struct _neg_ : public ScalarNode {
 };
 template<typename VecType>
 inline void _neg_::eval(VecType &res, VecType a) {
-	res = as_double(!a);
+	res = as_double(!a);	//str VCL_manual 22, umí true i z jiných hodnot než -1
+	// res = as_double(!(as_bool(a)));	//stranka VCl manual 43, pak not 3 hodi blbost
 }
 template<>
 inline void _neg_::eval<double>(double &res, double a) {
 	res =  (a == double_true()) ? double_false() : double_true();	// we use bit masks for bool values
 }
+// struct _neg_ : public ScalarNode {
+// 	static const char op_code = 11;
+// 	static const char n_eval_args = 2;
+// 	template <typename VecType>
+// 	inline static void eval(VecType &res, VecType a) {
+// 		res = as_double(!a);
+// 	}
+// };
 
 struct _or_ : public ScalarNode {
 	static const char op_code = 12;
@@ -701,6 +842,12 @@ struct _ifelse_ : public ScalarNode {
 template<typename VecType>
 inline void _ifelse_::eval(VecType &res, VecType a, VecType b, VecType c) {
 	res = select(as_bool(b), a, c);	// we use bit masks for bool values
+
+	print_VCL_vector(a, "a");
+	print_VCL_vector(b, "b");
+	print_VCL_vector(as_bool(b), "asb_b");
+	print_VCL_vector(c, "c");
+	print_VCL_vector(res, "res");
 }
 template<>
 inline void _ifelse_::eval<double>(double &res, double a, double b, double c) {
