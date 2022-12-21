@@ -111,7 +111,7 @@ void print_VCL_vector(const VecType & v, const char * prefix)
 template<>
 void print_VCL_vector<double>(const double & v, const char * prefix)
 {
-    std::cout << prefix << "(" << v << ")";
+    std::cout << prefix << "(" << v << ")" << std::endl;
 }
 
 
