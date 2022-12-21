@@ -1,5 +1,18 @@
 #include "processor.hh"
-#include "VCL_v2_include_AVX2.hh"
+
+// save diagnostic state
+#pragma GCC diagnostic push 
+
+// turn off the specific warning.
+#pragma GCC diagnostic ignored "-Wunused-but-set-parameter"
+
+#undef MAX_VECTOR_SIZE
+#define MAX_VECTOR_SIZE 256
+
+#include "vectorclass.h"
+
+// turn the warnings back on
+#pragma GCC diagnostic pop
 
 namespace bparser{
 
