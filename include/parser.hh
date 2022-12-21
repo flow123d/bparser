@@ -43,6 +43,7 @@ namespace bparser {
 
 class Parser {
 
+protected:
 	ast::operand ast;
 	uint max_vec_size;
     uint simd_size;
@@ -58,11 +59,6 @@ public:
     Parser(uint max_vec_size)
 	: max_vec_size(max_vec_size), simd_size(0), processor(nullptr), tmp_result()
 	{}
-
-    Parser(uint max_vec_size, uint simd_size)
-	: max_vec_size(max_vec_size), simd_size(simd_size), processor(nullptr), tmp_result()
-	{}
-
 
     /// @brief Destructor
     ~Parser() {
