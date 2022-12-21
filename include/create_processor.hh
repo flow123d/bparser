@@ -1,10 +1,31 @@
 #include "processor.hh"
-#include <stdint.h>
 #include "expression_dag.hh"
+#include "instrset_detect.cpp"
 
 namespace bparser{
 
-    ProcessorBase * ProcessorBase::create_processor(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena) {
+    uint get_simd_size() {
+        int i_set = instrset_detect();
+
+        if (i_set >= 9)      // min AVX512F
+        {
+            return 8;
+        }
+        else if (i_set >= 8) // min AVX2
+        {
+            return 4;
+        }
+        else if (i_set >= 5) // min SSE4.1
+        {
+            return 2;
+        }
+        else                // no vectorization
+        {
+            return 1;
+        }
+    }
+
+    ProcessorBase * ProcessorBase::create_processor(ExpressionDAG &se, uint vector_size, uint simd_size, ArenaAllocPtr arena) {
         if (simd_size == 0) {
             simd_size = get_simd_size();
         }
@@ -28,4 +49,5 @@ namespace bparser{
             } break;
         }
     }
-}
+
+} // bparser namespace
