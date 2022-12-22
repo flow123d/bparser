@@ -223,6 +223,7 @@ void test_expression() {
 	BP_ASSERT(test_expr("5 if False else 6", {6}));
 
 	BP_ASSERT(test_expr("25 % cs3", {1}));
+	BP_ASSERT(test_expr("25 % cv4", {1, 0, 1}));
 
 	BP_ASSERT(test_expr("[3, 4] @ [[1], [2]]", {11}, {1}));
 	BP_ASSERT(test_expr("[3, 4, 1] @ [[1], [2], [3]]", {14}, {1}));
