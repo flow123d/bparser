@@ -2,6 +2,7 @@
 
 //test if gnuc
 #ifdef __GNUC__
+#if (__GNUC__ > 6)
 
 // save diagnostic state
 #pragma GCC diagnostic push 
@@ -12,6 +13,7 @@
 
 // end if
 #endif
+#endif
 
 #undef MAX_VECTOR_SIZE
 #define MAX_VECTOR_SIZE 128
@@ -20,11 +22,13 @@
 
 //test if gnuc
 #ifdef __GNUC__
+#if (__GNUC__ > 6)
 
 // turn the warnings back on
 #pragma GCC diagnostic pop
 
 // end if
+#endif
 #endif
 
 

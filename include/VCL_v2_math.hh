@@ -1,5 +1,6 @@
 //test if gnuc
 #ifdef __GNUC__
+#if (__GNUC__ > 6)
 
 // save diagnostic state
 #pragma GCC diagnostic push 
@@ -10,6 +11,7 @@
 
 // end if
 #endif
+#endif
 
 // #include "vectorclass.h"
 
@@ -19,9 +21,11 @@
 
 //test if gnuc
 #ifdef __GNUC__
+#if (__GNUC__ > 6)
 
 // turn the warnings back on
 #pragma GCC diagnostic pop
 
 // end if
+#endif
 #endif
