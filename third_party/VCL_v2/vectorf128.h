@@ -2098,6 +2098,14 @@ static inline Vec2d round(Vec2d const a) {
 }
 #else
 
+// preventing gcc 7.x.x and 8.x.x bug
+#ifdef __GNUC__
+#if (__GNUC__ > 6 && __GNUC__ < 9)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wattributes"
+#endif
+#endif
+
 // avoid unsafe optimization in function round
 #if defined(__GNUC__) && !defined(__INTEL_COMPILER) && !defined(__clang__) && INSTRSET < 5
 static inline Vec2d round(Vec2d const a) __attribute__((optimize("-fno-unsafe-math-optimizations")));
@@ -2107,6 +2115,13 @@ static inline Vec2d round(Vec2d const a) __attribute__((optnone));
 #pragma float_control(push)
 #pragma float_control(precise,on)
 #endif
+
+#ifdef __GNUC__
+#if (__GNUC__ > 6 && __GNUC__ < 9)
+#pragma GCC diagnostic pop
+#endif
+#endif
+
 // function round: round to nearest integer (even). (result as double vector)
 static inline Vec2d round(Vec2d const a) {
     // Note: assume MXCSR control register is set to rounding
