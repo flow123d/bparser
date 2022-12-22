@@ -104,7 +104,7 @@ jobs:
             compiler: gcc
             version: "11"
 
-            - name: ubuntu-20.04-gcc-12
+          - name: ubuntu-20.04-gcc-12
             os: ubuntu-20.04
             compiler: gcc
             version: "12"
