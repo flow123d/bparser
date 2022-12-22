@@ -3,6 +3,7 @@
 
 // turn off the specific warning.
 #pragma GCC diagnostic ignored "-Wunused-but-set-parameter"
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 
 // #include "vectorclass.h"
 
