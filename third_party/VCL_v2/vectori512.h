@@ -1,8 +1,8 @@
 /****************************  vectori512.h   *******************************
 * Author:        Agner Fog
 * Date created:  2014-07-23
-* Last modified: 2020-03-26
-* Version:       2.01.02
+* Last modified: 2022-07-20
+* Version:       2.02.00
 * Project:       vector class library
 * Description:
 * Header file defining 512-bit integer vector classes for 32 and 64 bit integers.
@@ -22,7 +22,7 @@
 * Each vector object is represented internally in the CPU as a 512-bit register.
 * This header file defines operators and functions for these vectors.
 *
-* (c) Copyright 2012-2020 Agner Fog.
+* (c) Copyright 2012-2022 Agner Fog.
 * Apache License version 2.0 or later.
 *****************************************************************************/
 
@@ -33,7 +33,7 @@
 #include "vectorclass.h"
 #endif
 
-#if VECTORCLASS_H < 20100
+#if VECTORCLASS_H < 20200
 #error Incompatible versions of vector class library mixed
 #endif
 
@@ -85,8 +85,7 @@ protected:
     __m512i zmm; // Integer vector
 public:
     // Default constructor:
-    Vec512b() {
-    }
+    Vec512b() = default;
     // Constructor to build from two Vec256b:
     Vec512b(Vec256b const a0, Vec256b const a1) {
         zmm = _mm512_inserti64x4(_mm512_castsi256_si512(a0), a1, 1);
@@ -210,8 +209,7 @@ static inline Vec512b andnot (Vec512b const a, Vec512b const b) {
 class Vec16i: public Vec512b {
 public:
     // Default constructor:
-    Vec16i() {
-    }
+    Vec16i() = default;
     // Constructor to broadcast the same value into all elements:
     Vec16i(int i) {
         zmm = _mm512_set1_epi32(i);
@@ -540,8 +538,7 @@ static inline Vec16i rotate_left(Vec16i const a, int b) {
 class Vec16ui : public Vec16i {
 public:
     // Default constructor:
-    Vec16ui() {
-    }
+    Vec16ui() = default;
     // Constructor to broadcast the same value into all elements:
     Vec16ui(uint32_t i) {
         zmm = _mm512_set1_epi32((int32_t)i);
@@ -754,8 +751,7 @@ static inline Vec16ui min(Vec16ui const a, Vec16ui const b) {
 class Vec8q : public Vec512b {
 public:
     // Default constructor:
-    Vec8q() {
-    }
+    Vec8q() = default;
     // Constructor to broadcast the same value into all elements:
     Vec8q(int64_t i) {
         zmm = _mm512_set1_epi64(i);
@@ -1093,8 +1089,7 @@ static inline Vec8q rotate_left(Vec8q const a, int b) {
 class Vec8uq : public Vec8q {
 public:
     // Default constructor:
-    Vec8uq() {
-    }
+    Vec8uq() = default;
     // Constructor to broadcast the same value into all elements:
     Vec8uq(uint64_t i) {
         zmm = Vec8q((int64_t)i);
@@ -1157,7 +1152,7 @@ public:
         return Vec4uq(Vec8q::get_high());
     }
     static constexpr int elementtype() {
-        return 10;
+        return 11;
     }
 };
 
@@ -1346,7 +1341,7 @@ static inline Vec8q permute8(Vec8q const a) {
                 if constexpr ((flags & perm_addz2) == 0) return y;
             }
             else if constexpr ((flags & perm_cross_lane) == 0) {  // no lane crossing. Use pshufb
-                const EList <int8_t, 64> bm = pshufb_mask<Vec8q>(indexs);
+                constexpr EList <int8_t, 64> bm = pshufb_mask<Vec8q>(indexs);
                 return _mm512_shuffle_epi8(y, Vec8q().load(bm.a));
             }
             else {
@@ -1426,7 +1421,7 @@ static inline Vec16i permute16(Vec16i const a) {
                 if constexpr ((flags & perm_addz2) == 0) return y;
             }
             else if constexpr ((flags & perm_cross_lane) == 0) { // no lane crossing. Use pshufb
-                const EList <int8_t, 64> bm = pshufb_mask<Vec16i>(indexs);
+                constexpr EList <int8_t, 64> bm = pshufb_mask<Vec16i>(indexs);
                 return _mm512_shuffle_epi8(a, Vec16i().load(bm.a));
             }
             else {
@@ -1497,7 +1492,7 @@ static inline Vec8q blend8(Vec8q const a, Vec8q const b) {
             y = _mm512_shuffle_i64x2(b, a, shuf);
         }
         else {
-            const EList <int64_t, 8> bm = perm_mask_broad<Vec8q>(indexs);   // full permute
+            constexpr EList <int64_t, 8> bm = perm_mask_broad<Vec8q>(indexs);   // full permute
             y = _mm512_permutex2var_epi64(a, Vec8q().load(bm.a), b);
         }
     }
@@ -1525,7 +1520,7 @@ static inline Vec8q blend8(Vec8q const a, Vec8q const b) {
     // we might use 2 x _mm512_mask(z)_shuffle_epi32 like in blend16 below
 #endif
     else { // No special cases
-        const EList <int64_t, 8> bm = perm_mask_broad<Vec8q>(indexs);   // full permute
+        constexpr EList <int64_t, 8> bm = perm_mask_broad<Vec8q>(indexs);   // full permute
         y = _mm512_permutex2var_epi64(a, Vec8q().load(bm.a), b);
     }
     if constexpr ((flags & blend_zeroing) != 0) {          // additional zeroing needed
@@ -1626,7 +1621,7 @@ static inline Vec16i blend16(Vec16i const a, Vec16i const b) {
     }
 
     else { // No special cases
-        const EList <int32_t, 16> bm = perm_mask_broad<Vec16i>(indexs);   // full permute
+        constexpr EList <int32_t, 16> bm = perm_mask_broad<Vec16i>(indexs);   // full permute
         y = _mm512_permutex2var_epi32(a, Vec16i().load(bm.a), b);
     }
     if constexpr ((flags & blend_zeroing) != 0) {          // additional zeroing needed
@@ -1880,7 +1875,7 @@ static inline void scatter(Vec8i const index, uint32_t limit, Vec8q const data, 
 
 /*****************************************************************************
 *
-*          Functions for conversion between integer sizes
+*          Functions for conversion between integer sizes and vector types
 *
 *****************************************************************************/
 
@@ -1934,6 +1929,42 @@ static inline Vec16ui compress_saturated (Vec8uq const low, Vec8uq const high) {
     Vec8ui high2  = _mm512_cvtusepi64_epi32(high);
     return Vec16ui(low2, high2);
 }
+
+#ifdef ZEXT_MISSING
+// GCC v. 9 and earlier are missing the _mm512_zextsi256_si512 intrinsic
+// extend vectors to double size by adding zeroes
+static inline Vec16i extend_z(Vec8i a) {
+    return Vec16i(a, Vec8i(0));
+}
+static inline Vec16ui extend_z(Vec8ui a) {
+    return Vec16ui(a, Vec8ui(0));
+}
+static inline Vec8q extend_z(Vec4q a) {
+    return Vec8q(a, Vec4q(0));
+}
+static inline Vec8uq extend_z(Vec4uq a) {
+    return Vec8uq(a, Vec4uq(0));
+}
+#else
+// extend vectors to double size by adding zeroes
+static inline Vec16i extend_z(Vec8i a) {
+    return _mm512_zextsi256_si512(a);
+}
+static inline Vec16ui extend_z(Vec8ui a) {
+    return _mm512_zextsi256_si512(a);
+}
+static inline Vec8q extend_z(Vec4q a) {
+    return _mm512_zextsi256_si512(a);
+}
+static inline Vec8uq extend_z(Vec4uq a) {
+    return _mm512_zextsi256_si512(a);
+}
+#endif
+
+// compact boolean vectors
+
+//static inline Vec16ib extend_z(Vec8ib a); // same as Vec16is extend_z(Vec8is)
+//static inline Vec8qb extend_z(Vec4qb a);  // same as Vec8ib extend_z(Vec4ib)
 
 
 /*****************************************************************************

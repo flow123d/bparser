@@ -1,8 +1,8 @@
 /****************************  vectorf128.h   *******************************
 * Author:        Agner Fog
 * Date created:  2012-05-30
-* Last modified: 2020-11-04
-* Version:       2.01.03
+* Last modified: 2022-07-20
+* Version:       2.02.00
 * Project:       vector class library
 * Description:
 * Header file defining 128-bit floating point vector classes
@@ -18,7 +18,7 @@
 * Each vector object is represented internally in the CPU as a 128-bit register.
 * This header file defines operators and functions for these vectors.
 *
-* (c) Copyright 2012-2020 Agner Fog.
+* (c) Copyright 2012-2022 Agner Fog.
 * Apache License version 2.0 or later.
 *****************************************************************************/
 
@@ -29,7 +29,7 @@
 #include "vectorclass.h"
 #endif
 
-#if VECTORCLASS_H < 20100
+#if VECTORCLASS_H < 20200
 #error Incompatible versions of vector class library mixed
 #endif
 
@@ -93,8 +93,7 @@ protected:
     __m128 xmm; // Float vector
 public:
     // Default constructor:
-    Vec4fb() {
-    }
+    Vec4fb() = default;
     // Constructor to build from all elements:
     Vec4fb(bool b0, bool b1, bool b2, bool b3) {
         xmm = _mm_castsi128_ps(_mm_setr_epi32(-(int)b0, -(int)b1, -(int)b2, -(int)b3));
@@ -297,8 +296,7 @@ protected:
     __m128d xmm; // Double vector
 public:
     // Default constructor:
-    Vec2db() {
-    }
+    Vec2db() = default;
     // Constructor to broadcast scalar value:
     Vec2db(bool b) {
         xmm = _mm_castsi128_pd(_mm_set1_epi32(-int32_t(b)));
@@ -485,8 +483,7 @@ protected:
     __m128 xmm; // Float vector
 public:
     // Default constructor:
-    Vec4f() {
-    }
+    Vec4f() = default;
     // Constructor to broadcast the same value into all elements:
     Vec4f(float f) {
         xmm = _mm_set1_ps(f);
@@ -546,20 +543,19 @@ public:
 #if INSTRSET >= 10  // AVX512VL
         xmm = _mm_maskz_loadu_ps(__mmask8((1u << n) - 1), p);
 #else
-        __m128 t1, t2;
         switch (n) {
+        case 0:
+            *this = 0.f;  break;
         case 1:
             xmm = _mm_load_ss(p); break;
         case 2:
-            xmm = _mm_castpd_ps(_mm_load_sd((double const*)p)); break;
+            xmm = _mm_setr_ps(p[0], p[1], 0.f, 0.f);  break;
         case 3:
-            t1 = _mm_castpd_ps(_mm_load_sd((double const*)p));
-            t2 = _mm_load_ss(p + 2);
-            xmm = _mm_movelh_ps(t1, t2); break;
+            xmm = _mm_setr_ps(p[0], p[1], p[2], 0.f);  break;
         case 4:
-            load(p); break;
+            load(p);  break;
         default:
-            xmm = _mm_setzero_ps();
+            break;
         }
 #endif
         return *this;
@@ -568,20 +564,13 @@ public:
     void store_partial(int n, float * p) const {
 #if INSTRSET >= 10  // AVX512VL
         _mm_mask_storeu_ps(p, __mmask8((1u << n) - 1), xmm);
-#else
-        __m128 t1;
-        switch (n) {
-        case 1:
-            _mm_store_ss(p, xmm); break;
-        case 2:
-            _mm_store_sd((double*)p, _mm_castps_pd(xmm)); break;
-        case 3:
-            _mm_store_sd((double*)p, _mm_castps_pd(xmm));
-            t1 = _mm_movehl_ps(xmm, xmm);
-            _mm_store_ss(p + 2, t1); break;
-        case 4:
-            store(p); break;
-        default:;
+#else   // storing in bigger blocks may unsafe unless compiler option -fno-strict-aliasing is specified,
+        // therefore we have to rely on the compiler to optimize this
+        float d[4];
+        store(d);
+        if (uint32_t(n) > 4) n = 4;
+        for (int i = 0; i < n; i++) {
+            p[i] = d[i];
         }
 #endif
     }
@@ -594,7 +583,7 @@ public:
         const union {
             int32_t i[8];
             float   f[8];
-        } mask = { {1,-1,-1,-1,0,0,0,0} };
+        } mask = { {-1,-1,-1,-1,0,0,0,0} };
         xmm = _mm_and_ps(xmm, Vec4f().load(mask.f + 4 - n));
 #endif
         return *this;
@@ -801,7 +790,7 @@ static inline Vec4fb operator <= (Vec4f const a, Vec4f const b) {
 // vector operator > : returns true for elements for which a > b
 static inline Vec4fb operator > (Vec4f const a, Vec4f const b) {
 #if INSTRSET >= 10  // compact boolean vectors
-    return _mm_cmp_ps_mask(a, b, 6);
+    return _mm_cmp_ps_mask(a, b, 6+8);
 #else
     return b < a;
 #endif
@@ -810,7 +799,7 @@ static inline Vec4fb operator > (Vec4f const a, Vec4f const b) {
 // vector operator >= : returns true for elements for which a >= b
 static inline Vec4fb operator >= (Vec4f const a, Vec4f const b) {
 #if INSTRSET >= 10  // compact boolean vectors
-    return _mm_cmp_ps_mask(a, b, 5);
+    return _mm_cmp_ps_mask(a, b, 5+8);
 #else
     return b <= a;
 #endif
@@ -950,7 +939,7 @@ static inline Vec4f sign_combine(Vec4f const a, Vec4f const b) {
 
 // Categorization functions
 
-// Function is_finite: gives true for elements that are normal, denormal or zero,
+// Function is_finite: gives true for elements that are normal, subnormal or zero,
 // false for INF and NAN
 // (the underscore in the name avoids a conflict with a macro in Intel's mathimf.h)
 static inline Vec4fb is_finite(Vec4f const a) {
@@ -1008,7 +997,7 @@ return a != a; // This is not safe with -ffinite-math-only, -ffast-math, or /fp:
 }
 
 
-// Function is_subnormal: gives true for elements that are denormal (subnormal)
+// Function is_subnormal: gives true for elements that are subnormal
 // false for finite numbers, zero, NAN and INF
 static inline Vec4fb is_subnormal(Vec4f const a) {
 #if INSTRSET >= 10
@@ -1023,7 +1012,7 @@ static inline Vec4fb is_subnormal(Vec4f const a) {
 #endif
 }
 
-// Function is_zero_or_subnormal: gives true for elements that are zero or subnormal (denormal)
+// Function is_zero_or_subnormal: gives true for elements that are zero or subnormal
 // false for finite numbers, NAN and INF
 static inline Vec4fb is_zero_or_subnormal(Vec4f const a) {
 #if INSTRSET >= 10
@@ -1403,7 +1392,7 @@ static inline Vec4f fraction(Vec4f const a) {
 // n  =    0 gives 1.0f
 // n >=  128 gives +INF
 // n <= -127 gives 0.0f
-// This function will never produce denormals, and never raise exceptions
+// This function will never produce subnormals, and never raise exceptions
 static inline Vec4f exp2(Vec4i const n) {
     Vec4i t1 = max(n, -0x7F);         // limit to allowed range
     Vec4i t2 = min(t1, 0x80);
@@ -1451,7 +1440,7 @@ static inline void set_control_word(uint32_t w) {
 
 // Function no_subnormals:
 // Set "Denormals Are Zeros" and "Flush to Zero" mode to avoid the extremely
-// time-consuming denormals in case of underflow
+// time-consuming subnormals in case of underflow
 static inline void no_subnormals() {
     uint32_t t1 = get_control_word();
     t1 |= (1 << 6) | (1 << 15);     // set bit 6 and 15 in MXCSR
@@ -1461,7 +1450,7 @@ static inline void no_subnormals() {
 // Function reset_control_word:
 // Set the MXCSR control word to the default value 0x1F80.
 // This will mask floating point exceptions, set rounding mode to nearest (or even),
-// and allow denormals.
+// and allow subnormals.
 static inline void reset_control_word() {
     set_control_word(0x1F80);
 }
@@ -1488,8 +1477,7 @@ protected:
     __m128d xmm; // double vector
 public:
     // Default constructor:
-    Vec2d() {
-    }
+    Vec2d() = default;
     // Constructor to broadcast the same value into all elements:
     Vec2d(double d) {
         xmm = _mm_set1_pd(d);
@@ -1569,7 +1557,7 @@ public:
         if (n == 1) {
             _mm_store_sd(p, xmm);
         }
-        else if (n == 2) {
+        else if (n > 1) {
             store(p);
         }
 #endif
@@ -1778,7 +1766,7 @@ static inline Vec2db operator <= (Vec2d const a, Vec2d const b) {
 // vector operator > : returns true for elements for which a > b
 static inline Vec2db operator > (Vec2d const a, Vec2d const b) {
 #if INSTRSET >= 10  // compact boolean vectors
-    return _mm_cmp_pd_mask(a, b, 6);
+    return _mm_cmp_pd_mask(a, b, 6+8);
 #else
     return b < a;
 #endif
@@ -1787,7 +1775,7 @@ static inline Vec2db operator > (Vec2d const a, Vec2d const b) {
 // vector operator >= : returns true for elements for which a >= b
 static inline Vec2db operator >= (Vec2d const a, Vec2d const b) {
 #if INSTRSET >= 10  // compact boolean vectors
-    return _mm_cmp_pd_mask(a, b, 5);
+    return _mm_cmp_pd_mask(a, b, 5+8);
 #else
     return b <= a;
 #endif
@@ -1937,7 +1925,7 @@ static inline Vec2d sign_combine(Vec2d const a, Vec2d const b) {
 
 // Categorization functions
 
-// Function is_finite: gives true for elements that are normal, denormal or zero,
+// Function is_finite: gives true for elements that are normal, subnormal or zero,
 // false for INF and NAN
 static inline Vec2db is_finite(Vec2d const a) {
 #if INSTRSET >= 10
@@ -1995,7 +1983,7 @@ static inline Vec2db is_nan(Vec2d const a) {
 }
 
 
-// Function is_subnormal: gives true for elements that are subnormal (denormal)
+// Function is_subnormal: gives true for elements that are subnormal
 // false for finite numbers, zero, NAN and INF
 static inline Vec2db is_subnormal(Vec2d const a) {
 #if INSTRSET >= 10
@@ -2010,7 +1998,7 @@ static inline Vec2db is_subnormal(Vec2d const a) {
 #endif
 }
 
-// Function is_zero_or_subnormal: gives true for elements that are zero or subnormal (denormal)
+// Function is_zero_or_subnormal: gives true for elements that are zero or subnormal
 // false for finite numbers, NAN and INF
 static inline Vec2db is_zero_or_subnormal(Vec2d const a) {
 #if INSTRSET >= 10
@@ -2110,14 +2098,6 @@ static inline Vec2d round(Vec2d const a) {
 }
 #else
 
-// preventing gcc 7.x.x and 8.x.x bug
-#ifdef __GNUC__
-#if (__GNUC__ > 6 && __GNUC__ < 9)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wattributes"
-#endif
-#endif
-
 // avoid unsafe optimization in function round
 #if defined(__GNUC__) && !defined(__INTEL_COMPILER) && !defined(__clang__) && INSTRSET < 5
 static inline Vec2d round(Vec2d const a) __attribute__((optimize("-fno-unsafe-math-optimizations")));
@@ -2127,14 +2107,6 @@ static inline Vec2d round(Vec2d const a) __attribute__((optnone));
 #pragma float_control(push)
 #pragma float_control(precise,on)
 #endif
-
-#ifdef __GNUC__
-#if (__GNUC__ > 6 && __GNUC__ < 9)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wattributes"
-#endif
-#endif
-
 // function round: round to nearest integer (even). (result as double vector)
 static inline Vec2d round(Vec2d const a) {
     // Note: assume MXCSR control register is set to rounding
@@ -2391,7 +2363,7 @@ static inline Vec2d fraction(Vec2d const a) {
 // n  =     0 gives 1.0
 // n >=  1024 gives +INF
 // n <= -1023 gives 0.0
-// This function will never produce denormals, and never raise exceptions
+// This function will never produce subnormals, and never raise exceptions
 static inline Vec2d exp2(Vec2q const n) {
     Vec2q t1 = max(n, -0x3FF);        // limit to allowed range
     Vec2q t2 = min(t1, 0x400);
@@ -2544,7 +2516,7 @@ static inline Vec4f permute4(Vec4f const a) {
 #if  INSTRSET >= 4 && INSTRSET < 10 // SSSE3, but no compact mask
         else if constexpr ((flags & perm_zeroing) != 0) {
             // Do both permutation and zeroing with PSHUFB instruction
-            const EList <int8_t, 16> bm = pshufb_mask<Vec4i>(indexs);
+            constexpr EList <int8_t, 16> bm = pshufb_mask<Vec4i>(indexs);
             return _mm_castsi128_ps(_mm_shuffle_epi8(_mm_castps_si128(a), Vec4i().load(bm.a)));
         }
 #endif
@@ -2582,7 +2554,7 @@ static inline Vec4f permute4(Vec4f const a) {
         // I don't want to clutter all the branches above with this
         y = _mm_maskz_mov_ps (zero_mask<4>(indexs), y);
 #else  // use broad mask
-        const EList <int32_t, 4> bm = zero_mask_broad<Vec4i>(indexs);
+        constexpr EList <int32_t, 4> bm = zero_mask_broad<Vec4i>(indexs);
         y = _mm_and_ps(_mm_castsi128_ps(Vec4i().load(bm.a)), y);
 #endif
     }
@@ -2619,7 +2591,7 @@ static inline Vec2d blend2(Vec2d const a, Vec2d const b) {
 #elif INSTRSET >= 5  // SSE4.1
         y = _mm_blend_pd (a, b, ((i0 & 2) ? 0x01 : 0) | ((i1 & 2) ? 0x02 : 0));
 #else  // SSE2
-        const EList <int64_t, 2> bm = make_broad_mask<Vec2d>(make_bit_mask<2, 0x301>(indexs));
+        constexpr EList <int64_t, 2> bm = make_broad_mask<Vec2d>(make_bit_mask<2, 0x301>(indexs));
         y = selectd(_mm_castsi128_pd(Vec2q().load(bm.a)), b, a);
 #endif
     }
@@ -2664,7 +2636,7 @@ static inline Vec2d blend2(Vec2d const a, Vec2d const b) {
 #if INSTRSET >= 10  // use compact mask
         y = _mm_maskz_mov_pd(zero_mask<2>(indexs), y);
 #else  // use broad mask
-        const EList <int64_t, 2> bm = zero_mask_broad<Vec2q>(indexs);
+        constexpr EList <int64_t, 2> bm = zero_mask_broad<Vec2q>(indexs);
         y = _mm_and_pd(_mm_castsi128_pd(Vec2q().load(bm.a)), y);
 #endif
     }
@@ -2756,7 +2728,7 @@ static inline Vec4f blend4(Vec4f const a, Vec4f const b) {
 #if INSTRSET >= 10  // use compact mask
         y = _mm_maskz_mov_ps(zero_mask<4>(indexs), y);
 #else  // use broad mask
-        const EList <int32_t, 4> bm = zero_mask_broad<Vec4i>(indexs);
+        constexpr EList <int32_t, 4> bm = zero_mask_broad<Vec4i>(indexs);
         y = _mm_and_ps(_mm_castsi128_ps(Vec4i().load(bm.a)), y);
 #endif
     }
