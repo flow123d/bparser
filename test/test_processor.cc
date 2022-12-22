@@ -67,13 +67,17 @@ void test_simple_expr() {
 
 
 	std::vector<uint> subset = {1, 3, 4};
+	// std::vector<uint> subset = std::vector<uint>(vec_size/simd_size);
+	// for (uint i = 0; i < vec_size/simd_size; i++){
+	// 	subset[i] = i;
+	// }
 	processor->set_subset(subset);
 	processor->run();
 	// v1 active: [ -6, -5, -4, -3; 2, 3, 4, 5; 6, 7, 8, 9 ]
 	// r1, e1     [  6   5   4   3  2  3  4  5  6  7  8  9 ]
 	// r2, e2     [  6   5   4   3  2  3  4  5  6  7  8  9 ]  + 100
-//	for(uint i=0;i < vec_size; ++i)
-//		std::cout << "i: " << i << " v2: " << v2_values[i]  << " v3: " <<v3_values[i] << "\n";
+	// for(uint i=0;i < vec_size; ++i)
+	// 	std::cout << "i: " << i << " v2: " << v2_values[i]  << " v3: " <<v3_values[i] << "\n";
 
 	BP_ASSERT(v2_values[0] == -100);
 	BP_ASSERT(v2_values[3] == -100);
