@@ -488,6 +488,7 @@ struct _mod_ : public ScalarNode {
 };
 template<typename VecType>
 inline void _mod_::eval(VecType &res, VecType a, VecType b) {
+	// res = fmodulo(a, b[0]);
 	res = a - b * truncate(a / b);
 }
 template<>
