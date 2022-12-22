@@ -12,10 +12,8 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 # TODO: Try -Winline to be detect possibly non inlined functions.
 
-set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG  -fsanitize=address -static-libasan -fno-omit-frame-pointer")
-
 # valgrind setting
-set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG  -fsanitize=address -static-libasan -fno-omit-frame-pointer")  #
+set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG  -fsanitize=address -fno-omit-frame-pointer")  #-static-libasan
 
 if(FLOW_BUILD_TYPE STREQUAL "debug")
     set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG -fno-omit-frame-pointer")  #
