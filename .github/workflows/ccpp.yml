@@ -28,6 +28,8 @@ jobs:
           ubuntu-18.04-gcc-7,
           ubuntu-18.04-gcc-8,
           ubuntu-18.04-gcc-9,
+          ubuntu-20.04-gcc-10,
+          ubuntu-22.04-gcc-12,
           
           # CLang do not allow passing elements of SIMD vectors as non-const references, need to 
           # wait until we implement SIMD operations via appropriate library.
@@ -89,6 +91,16 @@ jobs:
             os: ubuntu-18.04
             compiler: gcc
             version: "9"
+            
+          - name: ubuntu-20.04-gcc-10
+            os: ubuntu-20.04
+            compiler: gcc
+            version: "10"
+            
+          - name: ubuntu-22.04-gcc-12
+            os: ubuntu-22.04
+            compiler: gcc
+            version: "12"
 
           #- name: ubuntu-18.04-clang-3.5
             #os: ubuntu-18.04
@@ -512,8 +524,8 @@ jobs:
       - name: make test_parser_dbg
         run: make test_parser
       
-      - name: make test_speed_dbg
-        run: make test_speed
+      #- name: make test_speed_dbg
+        #run: make test_speed
           
       - name: make clean
         run: make clean
