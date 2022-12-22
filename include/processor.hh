@@ -17,6 +17,7 @@
 #include "arena_alloc.hh"
 #include "expression_dag.hh"
 #include "scalar_node.hh"
+#include "eval_impl.hh"
 
 namespace bparser {
 using namespace details;
@@ -29,7 +30,7 @@ using namespace details;
 //	// Size of the single vector operation. E.g. 4 doubles for AVX2.
 //	static const uint simd_block_size = 4;
 //
-//	Workspace(uint vec_size, uint n_vectors, uint n_constants)
+//	Workspace(uint vec_n_blocks, uint n_vectors, uint n_constants)
 //	: Vec_size_(0)
 //	{
 //		workspace_size_ = 64;
@@ -124,133 +125,8 @@ using namespace details;
 //	double *next_slot_;
 //};
 
-const uint simd_size = 4;
-typedef double double4 __attribute__((__vector_size__(32)));
 
-
-struct Vec {
-	double4 *values;
-	uint *subset;
-
-	void set(double4 * v, uint * s) {
-		values = v;
-		subset = s;
-	}
-
-	inline double4 * value(uint i) {
-//		std::cout << "self: " << this << std::endl;
-//		std::cout << "v: " << values << "s: " << subset << std::endl;
-//		std::cout << "i: " << i << "j: " << j << std::endl;
-//		std::cout << " si: " << subset[i] << std::endl;
-//		std::cout << " v: " << values[subset[i]][j] << "\n";
-		return &(values[subset[i]]);
-	}
-};
-
-/**
- * Processor's storage.
- */
-struct Workspace {
-	uint vector_size;
-
-	// Array of vectors. Temporaries, input vectors and result vectors.
-	Vec *vector;
-
-	uint subset_size;
-	uint *const_subset;
-	uint *vec_subset;
-
-};
-
-
-/**
- * Memory aligned representation of single operation.
- */
-struct Operation {
-	// Op code. See scalar_expr.hh: XYZNode::op_code;
-	unsigned char code;
-	// index of arguments in the Processors's workspace
-	unsigned char arg[4];
-};
-
-
-
-template<uint NParams, class T>
-struct EvalImpl;
-//{
-//	static inline void eval(Operation op, Workspace &w) {};
-//};
-
-template <class T>
-struct EvalImpl<1, T> {
-	inline static void eval(Operation op,  Workspace &w) {
-		Vec v0 = w.vector[op.arg[0]];
-		for(uint i=0; i<w.subset_size; ++i) {
-			double4 * v0i = v0.value(i);
-			for(uint j=0; j<simd_size; ++j) {
-				T::eval((*v0i)[j]);
-			}
-		}
-	}
-};
-
-
-template <class T>
-struct EvalImpl<2, T> {
-	inline static void eval(Operation op,  Workspace &w) {
-		Vec v0 = w.vector[op.arg[0]];
-		Vec v1 = w.vector[op.arg[1]];
-		for(uint i=0; i<w.subset_size; ++i) {
-			double4 * v0i = v0.value(i);
-			double4 * v1i = v1.value(i);
-			for(uint j=0; j<simd_size; ++j) {
-				T::eval((*v0i)[j], (*v1i)[j]);
-			}
-		}
-	}
-};
-
-
-template <class T>
-struct EvalImpl<3, T> {
-	inline static void eval(Operation op,  Workspace &w) {
-		Vec v0 = w.vector[op.arg[0]];
-		Vec v1 = w.vector[op.arg[1]];
-		Vec v2 = w.vector[op.arg[2]];
-//		std::cout << "iv0:" << uint(op.arg[0])
-//				<< "iv1:" << uint(op.arg[1])
-//				<< "iv2:" << uint(op.arg[2]) << std::endl;
-		for(uint i=0; i<w.subset_size; ++i) {
-			double4 *v0i = v0.value(i);
-			double4 *v1i = v1.value(i);
-			double4 *v2i = v2.value(i);
-			for(uint j=0; j<simd_size; ++j)
-				T::eval((*v0i)[j], (*v1i)[j], (*v2i)[j]);
-		}
-	}
-};
-
-template <class T>
-struct EvalImpl<4, T> {
-	inline static void eval(Operation op,  Workspace &w) {
-		Vec v0 = w.vector[op.arg[0]];
-		Vec v1 = w.vector[op.arg[1]];
-		Vec v2 = w.vector[op.arg[2]];
-		Vec v3 = w.vector[op.arg[3]];
-//		std::cout << "iv0:" << uint(op.arg[0])
-//				<< "iv1:" << uint(op.arg[1])
-//				<< "iv2:" << uint(op.arg[2]) << std::endl;
-		for(uint i=0; i<w.subset_size; ++i) {
-			double4 *v0i = v0.value(i);
-			double4 *v1i = v1.value(i);
-			double4 *v2i = v2.value(i);
-			double4 *v3i = v3.value(i);
-			for(uint j=0; j<simd_size; ++j)
-				T::eval((*v0i)[j], (*v1i)[j], (*v2i)[j], (*v3i)[j]);
-		}
-	}
-};
-
+typedef std::shared_ptr<ArenaAlloc> ArenaAllocPtr;
 
 
 #define CODE(OP_NAME) \
@@ -259,10 +135,32 @@ struct EvalImpl<4, T> {
 // Note: Internal operations are at most binary, N-ary operations are decomposed into simpler.
 
 struct ProcessorSetup {
-	uint vector_size;
+	uint vec_n_blocks;
 	uint n_operations;
 	uint n_vectors;
 	uint n_constants;
+};
+
+
+struct ProcessorBase {
+	virtual void run() = 0;
+	virtual void set_subset(std::vector<uint> const &subset) = 0;
+
+	ProcessorBase(ArenaAllocPtr arena)
+	: arena_(arena) {
+		
+	}
+
+	virtual ~ProcessorBase() {
+	}
+
+	ArenaAllocPtr get_arena(){
+		return arena_;
+	}
+	
+	inline static ProcessorBase *create_processor(ExpressionDAG &se, uint vec_n_blocks, uint simd_size = 0, ArenaAllocPtr arena = nullptr);
+
+	ArenaAllocPtr arena_;
 };
 
 
@@ -270,7 +168,9 @@ struct ProcessorSetup {
 /**
  * Store and execute generated "bytecode".
  */
-struct Processor {
+
+template <typename VecType>
+struct Processor : public ProcessorBase {
 	/**
 	 *hh
 	 * vector_size: maximum vector size in doubles
@@ -285,66 +185,55 @@ struct Processor {
 	 * - assigne result ids
 	 * - create processor
 	 */
-	static Processor *create(std::vector<ScalarNodePtr > results, uint vector_size) {
-		ExpressionDAG se(results);
-
-		return create_processor_(se, vector_size);
-	}
+	typedef typename VecType::MyVCLVec VCLVec;
+	static const uint simd_size = sizeof(VCLVec) / sizeof(double);
 
 
-	static Processor *create_processor_(ExpressionDAG &se, uint vector_size, std::shared_ptr<ArenaAlloc> arena = nullptr) {
-		vector_size = (vector_size / simd_size) * simd_size;
-		uint simd_bytes = sizeof(double) * simd_size;
-		ExpressionDAG::NodeVec & sorted_nodes = se.sort_nodes();
-		//std::cout << "n_nodes: " << sorted_nodes.size() << " n_vec: " << se.n_vectors() << "\n";
-		uint memory_est =
-				align_size(simd_bytes, sizeof(Processor)) +
-				align_size(simd_bytes, sizeof(uint) * vector_size) +
-				align_size(simd_bytes, se.temp_end * sizeof(Vec)) +
-				sizeof(double) * vector_size * (se.temp_end - se.values_copy_end) +
-				sizeof(double4) * vector_size * (se.values_copy_end - se.values_end) +
-				align_size(simd_bytes, sizeof(double4) * se.constants_end ) +
-				align_size(simd_bytes, sizeof(Operation) * (sorted_nodes.size() + 64) )
+
+// 	static Processor *create(std::vector<ScalarNodePtr > results, uint vector_size) {
+// 		ExpressionDAG se(results);
+// 			
+// 		return create_processor_(se, vector_size);
+// 	}
 
 
-				;
-		if (arena == nullptr)
-			arena = std::make_shared<ArenaAlloc>(simd_bytes, memory_est);
-		else
-			BP_ASSERT(arena->size_ >= memory_est);
-		return arena->create<Processor>(arena, se, vector_size / simd_size);
-	}
 
 	/**
 	 * Do not create processor directly, use the static 'create' method
 	 *
-	 * vec_size : number of simd blocks (double4).
+	 * vec_n_blocks : number of simd blocks (double4).
 	 */
-	Processor(std::shared_ptr<ArenaAlloc> arena, ExpressionDAG &se, uint vec_size)
-	: arena_(arena)
+	Processor(ArenaAllocPtr arena, ExpressionDAG &se, uint vec_n_blocks)
+	: ProcessorBase(arena)
 	{
-		workspace_.vector_size = vec_size;
+		workspace_.vec_n_blocks = vec_n_blocks;
 		workspace_.subset_size = 0;
-		workspace_.const_subset = arena_->create_array<uint>(vec_size);
-		for(uint i=0; i<vec_size;++i) workspace_.const_subset[i] = 0;
-		workspace_.vec_subset = (uint *) arena_->allocate(sizeof(uint) * vec_size);
-		//std::cout << "&vec_subset: " << &(workspace_.vec_subset) << "\n";
-		//std::cout << "aloc vec_subset: " << workspace_.vec_subset << " size: " << vec_size << "\n";
+		workspace_.const_subset = arena_->create_array<uint>(vec_n_blocks);
+		for(uint i=0; i<vec_n_blocks;++i) workspace_.const_subset[i] = 0;
+		workspace_.vec_subset = (uint *) arena_->allocate(sizeof(uint) * vec_n_blocks);
+		
+		// std::cout << "&vec_subset: " << &(workspace_.vec_subset) << "\n";
+		// std::cout << "aloc vec_subset: " << workspace_.vec_subset << " size: " << vec_n_blocks << "\n";
 
-		workspace_.vector = (Vec *) arena_->allocate(sizeof(Vec) * se.temp_end);
-		double4 * temp_base = (double4 *) arena_->allocate(
-				sizeof(double) * vec_size * simd_size * (se.temp_end - se.values_end));
-		double4 * const_base = (double4 *) arena_->allocate(
-				sizeof(double4) * se.constants_end);
+		// std::cout << std::endl << "In porcessor.hh: " << std::endl;
+		// std::cout << "vec_n_blocks: " << vec_n_blocks << "\nsimd_size: " << simd_size << "\nsOfVCLVec: " << sizeof(VCLVec) << "\nsOfDouble: " << sizeof(double) << std::endl;
+		// std::cout << "se.temp_end: " << se.temp_end << "\nse.values_end: " << se.values_end << "\nse.constants_end: " << se.constants_end << std::endl;
+
+
+		workspace_.vector = (Vec<VCLVec> *) arena_->allocate(sizeof(Vec<VCLVec>) * se.temp_end);
+		double * temp_base = (double *) arena_->allocate(
+				sizeof(double) * vec_n_blocks * simd_size * (se.temp_end - se.values_end));
+		double * const_base = (double *) arena_->allocate(
+				sizeof(double) * simd_size * se.constants_end);
 		for(uint i=0; i< se.constants_end; ++i)
-			vec_set(i, const_base + i, workspace_.const_subset);
+			vec_set(i, const_base + i * simd_size, workspace_.const_subset);
 
 		uint i_tmp = 0;
 		for(uint i=se.values_end; i< se.values_copy_end; ++i, ++i_tmp)
-			vec_set(i, temp_base + i_tmp*vec_size, workspace_.vec_subset);
+			vec_set(i, temp_base + i_tmp*vec_n_blocks*simd_size, workspace_.vec_subset);
 
 		for(uint i=se.values_copy_end; i< se.temp_end; ++i, ++i_tmp)
-			vec_set(i, temp_base + i_tmp*vec_size, workspace_.vec_subset);
+			vec_set(i, temp_base + i_tmp*vec_n_blocks*simd_size, workspace_.vec_subset);
 
 		// value vectors ... setup when processing the nodes, every value node processed exactly once
 		// we need the values pointer from these nodes.
@@ -362,25 +251,50 @@ struct Processor {
 		 * from composition of operations - top sort but no dep. on result_idx_
 		 */
 		Operation *op = program_;
+
 		for(auto it=sorted_nodes.rbegin(); it != sorted_nodes.rend(); ++it) {
-			//se._print_node(*it);
+			// se._print_node(*it);
+			// std::cout << "op points at:" << op << std::endl;
 			ScalarNodePtr  node = *it;
 			switch (node->result_storage) {
 			case constant: {
 				double c_val = *node->get_value();
-				double4 * c_ptr = workspace_.vector[node->result_idx_].values;
-				for(uint j=0; j<simd_size; ++j)
-					c_ptr[0][j] = c_val;
+				double * c_ptr = workspace_.vector[node->result_idx_].values;
+				// std::cout << "node->result_idx_ = " << node->result_idx_ << std::endl;
+				// std::cout << "c_ptr = " << c_ptr << std::endl;
+				
+				for(uint j=0; j<simd_size; ++j) {
+					c_ptr[j] = c_val;
+				}
 				break;}
+
+			case constant_bool:
+			{
+				double c_val = *node->get_value();
+				double * c_ptr = workspace_.vector[node->result_idx_].values;
+				Vec<double> v;
+
+				if (c_val == 0.0) {
+					for(uint j=0; j<simd_size; ++j)
+						c_ptr[j] = v.false_value();
+				}
+				else {
+					for(uint j=0; j<simd_size; ++j)
+						c_ptr[j] = v.true_value();
+				}
+				break;
+			}
 			case value:
-				vec_set(node->result_idx_, (double4 *)node->get_value(), workspace_.vec_subset);
+				// for (uint i=0; i < simd_size; i++)
+					vec_set(node->result_idx_, (double *)node->get_value(), workspace_.vec_subset);
 				break;
 			case value_copy:
 			{
 				auto val_copy_ptr = ( std::dynamic_pointer_cast<ValueCopyNode> (node) );
 				if (val_copy_ptr->values_ == nullptr) {
-					val_copy_ptr->values_ = arena_->create_array<double>(vec_size);
-					vec_set(node->result_idx_, (double4 *)node->get_value(), workspace_.vec_subset);
+					val_copy_ptr->values_ = arena_->create_array<double>(vec_n_blocks);
+					// for (uint i=0; i < simd_size; i++)
+						vec_set(node->result_idx_, (double *)node->get_value(), workspace_.vec_subset);
 				}
 				val_copy_nodes_.push_back(val_copy_ptr);
 				break;
@@ -391,22 +305,23 @@ struct Processor {
 				break;
 			case none:
 				BP_ASSERT(false);
-				//*op = make_operation(node);
-				//++op;
+				// *op = make_operation(node);
+				// ++op;
 				break;
 			case expr_result:
-				vec_set(node->result_idx_, (double4 *)node->get_value(), workspace_.vec_subset);
+				// for (uint i=0; i < simd_size; i++)
+					vec_set(node->result_idx_, (double *)node->get_value(), workspace_.vec_subset);
 
 				*op = make_operation(node);
 				++op;
 
-				//ASSERT(node->n_inputs_ == 1);
-				//ScalarNodePtr  prev_node = node->inputs_[0];
-				//ASSERT(prev_node->result_storage == temporary);
-				//workspace_.vector[prev_node->result_idx_].set((double4 *)node->get_value(), workspace_.vec_subset);
-//				std::cout << " ir: " << node->result_idx_ << " a0: "
-//						<< workspace_.vector[node->result_idx_].values
-//						<< "\n";
+				// ASSERT(node->n_inputs_ == 1);
+				// ScalarNodePtr  prev_node = node->inputs_[0];
+				// ASSERT(prev_node->result_storage == temporary);
+				// workspace_.vector[prev_node->result_idx_].set((double4 *)node->get_value(), workspace_.vec_subset);
+				// std::cout << " ir: " << node->result_idx_ << " a0: "
+				// 		<< workspace_.vector[node->result_idx_].values
+				// 		<< "\n";
 				break;
 			}
 			BP_ASSERT(op < program_ + n_operations);
@@ -416,45 +331,63 @@ struct Processor {
 
 	}
 
-	void vec_set(uint ivec, double4 * v, uint * s) {
-		// std::cout << "Set vec: " << ivec << " ptr: " << &(workspace_.vector[ivec]) << " v: " << v << " s: " << s <<std::endl;
+	void vec_set(uint ivec, double * v, uint * s) {
+		// std::cout << "Set vec: " << ivec << " ptr: " << &(workspace_.vector[ivec]) << " v: " << v  << " &v: " << *v  << " s: " << s << " &s: " << *s <<std::endl;
 		workspace_.vector[ivec].set(v, s);
+	}
+
+	ArenaAllocPtr get_arena(){
+		return arena_;
 	}
 
 	~Processor() {
 		for (auto node : val_copy_nodes_) {
 			node->values_ = nullptr;
 		}
-		//arena_->destroy();
+		// arena_->destroy();
 	}
 
 	Operation make_operation(ScalarNodePtr  node) {
-		Operation op = {(unsigned char)0xff, {0,0,0}}  ;
+		Operation op = {(unsigned char)0xff, {0,0,0,0}}  ;
 		op.code = node->op_code_;
 		uint i_arg = 0;
 		//if (node->result_storage == temporary)
 		op.arg[i_arg++] = node->result_idx_;
 		for(uint j=0; j<node->n_inputs_; ++j)
 			op.arg[i_arg++] = node->inputs_[j]->result_idx_;
+
+		// std::cout << "Created new op: " << (int)(op.code)
+		// 	<< " ia0: " << (int)(op.arg[0])
+		// 	<< " a0: " << workspace_.vector[op.arg[0]].values
+		// 	<< " ia1: " << (int)(op.arg[1])
+		// 	<< " a1: " << workspace_.vector[op.arg[1]].values
+		// 	<< " ia2: " << (int)(op.arg[2])
+		// 	<< " a2: " << workspace_.vector[op.arg[2]].values
+		// 	<< " ia3: " << (int)(op.arg[3])
+		// 	<< " a3: " << workspace_.vector[op.arg[3]].values << "\n";
 		return op;
 	}
 
 
 	template<class T>
 	inline void operation_eval(Operation op) {
-		EvalImpl<T::n_eval_args, T>::eval(op, workspace_);
+		EvalImpl<T::n_eval_args, T, VCLVec>::eval(op, workspace_);
 	}
 
 	void run() {
 		this->copy_inputs();
 		for(Operation * op = program_;;++op) {
-//			std::cout << "op: " << (int)(op->code)
-//					<< " ia0: " << (int)(op->arg[0])
-//					<< " a0: " << workspace_.vector[op->arg[0]].values
-//					<< " ia1: " << (int)(op->arg[1])
-//					<< " a1: " << workspace_.vector[op->arg[1]].values
-//					<< " ia2: " << (int)(op->arg[2])
-//					<< " a2: " << workspace_.vector[op->arg[2]].values << "\n";
+			// std::cout << "op points at:" << op << std::endl;
+
+			// std::cout << "op: " << (int)(op->code)
+			// 		<< " ia0: " << (int)(op->arg[0])
+			// 		<< " a0: " << workspace_.vector[op->arg[0]].values
+			// 		<< " ia1: " << (int)(op->arg[1])
+			// 		<< " a1: " << workspace_.vector[op->arg[1]].values
+			// 		<< " ia2: " << (int)(op->arg[2])
+			// 		<< " a2: " << workspace_.vector[op->arg[2]].values
+			// 		<< " ia3: " << (int)(op->arg[3])
+			// 		<< " a3: " << workspace_.vector[op->arg[3]].values << "\n";
 
 			switch (op->code) {
 			CODE(_minus_);
@@ -519,12 +452,13 @@ struct Processor {
 	// fill it (some where), can be passed together with fixed size as std::span
 	void set_subset(std::vector<uint> const &subset)
 	{
-		BP_ASSERT( (subset.size() <= workspace_.vector_size) );
+		BP_ASSERT( (subset.size() <= workspace_.vec_n_blocks) );
 		workspace_.subset_size = subset.size();
-		//std::cout << "vec_subset: " << workspace_.vec_subset << "\n";
+		// std::cout << "vec_subset: " << workspace_.vec_subset << "\n";
 		for(uint i=0; i<workspace_.subset_size; ++i) {
-			//std::cout << "vec_i: " << workspace_.vec_subset + i << " " << i << "\n";
-			workspace_.vec_subset[i] = subset[i];
+			// std::cout << "subset_i: " << subset[i] << " i=" << i << "\n";
+			workspace_.vec_subset[i] = subset[i] * simd_size;
+			// std::cout << "subsetvec_i: " << workspace_.vec_subset[i]<< " i=" << i << "\n";
 		}
 		// std::cout << "subset: " << workspace_.vec_subset << std::endl;
 	}
@@ -532,21 +466,48 @@ struct Processor {
 	// Copy data of ValueCopyNode objects to arena_
 	void copy_inputs()
 	{
+
 		for (auto node : val_copy_nodes_) {
-			memcpy(node->values_, node->source_ptr_, workspace_.vector_size * sizeof *node->values_);
+			memcpy(node->values_, node->source_ptr_, workspace_.vec_n_blocks * sizeof *node->values_);
 		}
 	}
 
-	std::shared_ptr<ArenaAlloc> arena_;
-	Workspace workspace_;
+	// ArenaAlloc arena_;
+	Workspace<VCLVec> workspace_;
 	Operation * program_;
 	std::vector< std::shared_ptr<ValueCopyNode> > val_copy_nodes_;
 };
 
 
+template <class VCLVec> 
+ProcessorBase * create_processor_(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena)
+{
+    uint simd_bytes = sizeof(double) * simd_size;
+    ExpressionDAG::NodeVec & sorted_nodes = se.sort_nodes();
+    uint simd_bytes1 = sizeof(VCLVec);
+    // std::cout << simd_bytes1 << "!=" << simd_bytes << "\n";
+    BP_ASSERT(simd_bytes1 == simd_bytes);
+    uint vec_n_blocks = (vector_size / simd_size);
+    uint est = 
+            align_size(simd_bytes, sizeof(Processor<Vec<VCLVec>>)) +
+            align_size(simd_bytes, sizeof(uint) * vector_size) +
+            align_size(simd_bytes, se.temp_end * sizeof(Vec<VCLVec>)) +
+            align_size(simd_bytes, sizeof(VCLVec) * vec_n_blocks * (se.temp_end - se.values_copy_end)) +  // vec_copy, same as temporaries
+            align_size(simd_bytes, sizeof(VCLVec) * vec_n_blocks * (se.values_copy_end - se.values_end)) + // vector values (probably not neccessary to allocate)
+            align_size(simd_bytes, sizeof(VCLVec) * se.constants_end ) +
+            align_size(simd_bytes, sizeof(Operation) * (sorted_nodes.size() + 64) );
+
+	// std::cout << "Estimated memory in processor: " << est << std::endl;
+
+    if (arena == nullptr)
+        arena = std::make_shared<ArenaAlloc>(simd_bytes, est);
+    else
+        BP_ASSERT(arena->size_ >= est);
+    return arena->create<Processor<Vec<VCLVec>>>(arena, se, vec_n_blocks);
+}
+
 
 } // bparser namespace
-
 
 
 #endif /* INCLUDE_PROCESSOR_HH_ */

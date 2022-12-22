@@ -22,12 +22,15 @@ jobs:
         # See https://help.github.com/en/articles/workflow-syntax-for-github-actions.
         name: [
           # ubuntu-18.04-gcc-4.8, # uncomplete support of C++14
-          ubuntu-18.04-gcc-4.9,
-          ubuntu-18.04-gcc-5,
-          ubuntu-18.04-gcc-6,
+          # ubuntu-18.04-gcc-4.9,
+          # ubuntu-18.04-gcc-5,
+          # ubuntu-18.04-gcc-6,
           ubuntu-18.04-gcc-7,
           ubuntu-18.04-gcc-8,
           ubuntu-18.04-gcc-9,
+          ubuntu-20.04-gcc-10,
+          ubuntu-20.04-gcc-11,
+          #ubuntu-22.04-gcc-12, # no PUBkey
           
           # CLang do not allow passing elements of SIMD vectors as non-const references, need to 
           # wait until we implement SIMD operations via appropriate library.
@@ -37,11 +40,11 @@ jobs:
           #ubuntu-18.04-clang-3.8,
           ##ubuntu-18.04-clang-3.9,
           #ubuntu-18.04-clang-4.0,
-          #ubuntu-18.04-clang-5.0,
-          #ubuntu-18.04-clang-6.0,
-          #ubuntu-18.04-clang-7,
-          #ubuntu-18.04-clang-8,
-          #ubuntu-18.04-clang-9,
+          ubuntu-18.04-clang-5.0,
+          ubuntu-18.04-clang-6.0,
+          ubuntu-18.04-clang-7,
+          ubuntu-18.04-clang-8,
+          #ubuntu-18.04-clang-9, # no PUB key
           #windows-2016-cl,
           #windows-2016-clang-cl,
           #windows-2016-clang,
@@ -60,20 +63,20 @@ jobs:
             #compiler: gcc
             #version: "4.8"
 
-          - name: ubuntu-18.04-gcc-4.9
-            os: ubuntu-18.04
-            compiler: gcc
-            version: "4.9"
+          #- name: ubuntu-18.04-gcc-4.9
+            #os: ubuntu-18.04
+            #compiler: gcc
+            #version: "4.9"
 
-          - name: ubuntu-18.04-gcc-5
-            os: ubuntu-18.04
-            compiler: gcc
-            version: "5"
+          #- name: ubuntu-18.04-gcc-5
+            #os: ubuntu-18.04
+            #compiler: gcc
+            #version: "5"
 
-          - name: ubuntu-18.04-gcc-6
-            os: ubuntu-18.04
-            compiler: gcc
-            version: "6"
+          #- name: ubuntu-18.04-gcc-6
+            #os: ubuntu-18.04
+            #compiler: gcc
+            #version: "6"
 
           - name: ubuntu-18.04-gcc-7
             os: ubuntu-18.04
@@ -89,6 +92,21 @@ jobs:
             os: ubuntu-18.04
             compiler: gcc
             version: "9"
+
+          - name: ubuntu-20.04-gcc-10
+            os: ubuntu-20.04
+            compiler: gcc
+            version: "10"
+
+          - name: ubuntu-20.04-gcc-11
+            os: ubuntu-20.04
+            compiler: gcc
+            version: "11"
+
+          #- name: ubuntu-22.04-gcc-12
+            #os: ubuntu-22.04
+            #compiler: gcc
+            #version: "12"
 
           #- name: ubuntu-18.04-clang-3.5
             #os: ubuntu-18.04
@@ -120,25 +138,25 @@ jobs:
             #compiler: clang
             #version: "4.0"
 
-          #- name: ubuntu-18.04-clang-5.0
-            #os: ubuntu-18.04
-            #compiler: clang
-            #version: "5.0"
+          - name: ubuntu-18.04-clang-5.0
+            os: ubuntu-18.04
+            compiler: clang
+            version: "5.0"
 
-          #- name: ubuntu-18.04-clang-6.0
-            #os: ubuntu-18.04
-            #compiler: clang
-            #version: "6.0"
+          - name: ubuntu-18.04-clang-6.0
+            os: ubuntu-18.04
+            compiler: clang
+            version: "6.0"
 
-          #- name: ubuntu-18.04-clang-7
-            #os: ubuntu-18.04
-            #compiler: clang
-            #version: "7"
+          - name: ubuntu-18.04-clang-7
+            os: ubuntu-18.04
+            compiler: clang
+            version: "7"
 
-          #- name: ubuntu-18.04-clang-8
-            #os: ubuntu-18.04
-            #compiler: clang
-            #version: "8"
+          - name: ubuntu-18.04-clang-8
+            os: ubuntu-18.04
+            compiler: clang
+            version: "8"
 
           #- name: ubuntu-18.04-clang-9
             #os: ubuntu-18.04
@@ -506,14 +524,14 @@ jobs:
       - name: make test_array_dbg
         run: make test_array
       
-      - name: make test_processor_dbg
-        run: make test_processor
+      #- name: make test_processor_dbg
+        #run: make test_processor
       
       - name: make test_parser_dbg
         run: make test_parser
       
-      - name: make test_speed_dbg
-        run: make test_speed
+      #- name: make test_speed_dbg
+        #run: make test_speed
           
       - name: make clean
         run: make clean
@@ -533,8 +551,8 @@ jobs:
       - name: make test_array_rel
         run: make test_array
       
-      - name: make test_processor_rel
-        run: make test_processor
+      #- name: make test_processor_rel
+        #run: make test_processor
       
       - name: make test_parser_rel
         run: make test_parser

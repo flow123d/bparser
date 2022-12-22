@@ -6,12 +6,14 @@ message(STATUS "CMakeLists.txt - BParser")
 
 # CLANG
 #set(CMAKE_CXX_FLAGS     "-std=c++14 -finline-hint-functions -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION")
-set(CMAKE_CXX_FLAGS     "-std=c++14 -fPIC -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -mavx2")
-#set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG -rdynamic -lSegFault -fsanitize=address -static-libasan -fno-omit-frame-pointer")  #
+#set(CMAKE_CXX_FLAGS     "-std=c++14 -fPIC -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION")
+set(CMAKE_CXX_FLAGS     "-std=c++17 -finline-functions -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-unused-function -Wno-unused-variable -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+
+# TODO: Try -Winline to be detect possibly non inlined functions.
 
 # valgrind setting
-set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG  -fsanitize=address -static-libasan -fno-omit-frame-pointer")  #
+set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG  -fsanitize=address -fno-omit-frame-pointer")  #-static-libasan
 
 if(FLOW_BUILD_TYPE STREQUAL "debug")
     set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG -fno-omit-frame-pointer")  #
@@ -155,12 +157,21 @@ message(STATUS "=======================================================\n\n")
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${Boost_INCLUDE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/VCL_v2
 )
 
 # add tager for libbparser
 
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/include/processor_SSE.cc -ffast-math -mfpmath=sse -msse4)
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/include/processor_AVX2.cc -ffast-math -mfpmath=sse -mfma -mavx2)
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/include/processor_AVX512.cc -ffast-math -mfpmath=sse -mfma -mavx512f)
+
 add_library(bparser SHARED
     ${CMAKE_CURRENT_SOURCE_DIR}/include/grammar.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/processor_SSE.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/processor_AVX2.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/processor_AVX512.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/processor_double.cc
 )
 
 

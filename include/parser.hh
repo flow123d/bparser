@@ -13,10 +13,12 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 #include "array.hh"
 #include "ast.hh"
 #include "processor.hh"
 #include "grammar.hh"
+#include "create_processor.hh"
 
 namespace bparser {
 
@@ -41,19 +43,21 @@ namespace bparser {
 
 class Parser {
 
+protected:
 	ast::operand ast;
 	uint max_vec_size;
+    uint simd_size;
 	std::map<std::string, Array> symbols_;
 	Array result_array_;
-	Processor * processor;
-	double * tmp_result;
+	ProcessorBase * processor;
+	std::vector<double> tmp_result;
 
 public:
     /** @brief Constructor
      * max_vec_size - size of single array component in doubles
      */
     Parser(uint max_vec_size)
-	: max_vec_size(max_vec_size), processor(nullptr), tmp_result(nullptr)
+	: max_vec_size(max_vec_size), simd_size(0), processor(nullptr), tmp_result()
 	{}
 
     /// @brief Destructor
@@ -62,9 +66,12 @@ public:
     }
 
     void destroy_processor() {
-    	if (tmp_result != nullptr) delete [] tmp_result;
-    	tmp_result = nullptr;
-    	if (processor != nullptr) processor->~Processor();
+    	// if (tmp_result != nullptr) delete [] tmp_result; // Now it is a vector    	
+
+    	if (processor != nullptr) {
+            // arena->destroy();
+            processor->~ProcessorBase();
+        }
     	processor = nullptr;
     }
     /// @brief Parse the mathematical expression into an abstract syntax tree
@@ -172,17 +179,18 @@ public:
 		auto res_it = symbols_.find("_result_");
 		if (res_it == symbols_.end()) {
 			// TODO: replace by storing result in the temporary variable of the processor
-			tmp_result = new double[shape_size(result_shape) * max_vec_size];
-			result_array_ = Array::value(tmp_result, max_vec_size, result_shape);
+			// tmp_result = new double[shape_size(result_shape) * max_vec_size];
+			tmp_result.resize(shape_size(result_shape) * max_vec_size);
+			result_array_ = Array::value(&tmp_result[0], max_vec_size, result_shape);
 			result_array_ = array.make_result(result_array_);
 		} else {
 			result_array_ = array.make_result(res_it->second);
 		}
 
-		ExpressionDAG se(result_array_.elements());
+		details::ExpressionDAG se(result_array_.elements());
 
 		//se.print_in_dot();
-		processor = Processor::create_processor_(se, max_vec_size, arena);
+		processor = ProcessorBase::create_processor(se, max_vec_size, simd_size, arena);
     }
 
     Array result_array() {
@@ -190,7 +198,7 @@ public:
     }
 
     double * tmp_result_ptr() {
-    	return tmp_result;
+    	return &tmp_result[0];
     }
 
     /// @brief Set new subset of the 'max_vec_size' vectors.

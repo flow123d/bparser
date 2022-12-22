@@ -20,8 +20,6 @@
 #endif
 #endif
 
-#define SIMD_OPERATION_SIZE 4
-
 
 // common declarations
 

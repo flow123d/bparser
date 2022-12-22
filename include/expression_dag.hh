@@ -128,7 +128,7 @@ public:
 	}
 
 	void _print_node(ScalarNodePtr  node) {
-		std::cout << node->op_name_ <<  "_" << node->result_idx_;
+		std::cout << "Node: " << node->op_name_ <<  "_" << node->result_idx_ << " " << node->result_storage << std::endl;
 	}
 
 
@@ -171,7 +171,7 @@ private:
 		// set result_idx_ of constant nodes
 		uint i_storage = 0;
 		for(ScalarNodePtr  node : nodes)
-			if (node->result_storage == constant)
+			if (node->result_storage == constant || node->result_storage == constant_bool)
 				node->result_idx_ = i_storage++;
 		constants_end = i_storage;
 		// set result_idx_ of value/result nodes

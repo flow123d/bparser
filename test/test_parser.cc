@@ -11,6 +11,15 @@
 #include "assert.hh"
 #include "parser.hh"
 
+class ParserTest
+: public bparser::Parser {
+public:
+	ParserTest(uint max_vec_size, uint simd_size_)
+	: Parser(max_vec_size)
+	{
+		simd_size = simd_size_;
+	}
+};
 
 
 bool test_fv(std::string expr, std::vector<std::string> ref_vars) {
@@ -42,6 +51,7 @@ void test_free_variables() {
 }
 
 constexpr uint vec_size = 8;
+uint simd_size = bparser::get_simd_size();
 
 std::vector<double> eval_expr_(std::string expr, bparser::Shape ref_shape = {}) {
 	std::cout << "parser test : " << expr << "\n";
@@ -51,7 +61,14 @@ std::vector<double> eval_expr_(std::string expr, bparser::Shape ref_shape = {}) 
 	std::vector<double> as1(vec_size, 1);
 	std::vector<double> av2(3*vec_size, 2);
 
-	Parser p(vec_size);
+	uint simd_bytes = sizeof(double) * simd_size;
+	std::shared_ptr<bparser::ArenaAlloc> arena = std::make_shared<bparser::ArenaAlloc>(simd_bytes, 6 * vec_size * sizeof(double));
+	auto bv5 = arena->create_array<double>(vec_size * 3);
+	fill_seq(bv5, 88, 100 + 3 * vec_size * 2, 2.0);
+	auto bv6 = arena->create_array<double>(vec_size * 3);
+	fill_seq(bv6, 100, 100 + 3 * vec_size);
+
+	ParserTest p(vec_size, simd_size);
 	p.parse(expr);
 	std::cout << "  AST: " << p.print_ast() << "\n";
 	p.set_variable("as1", {}, &(as1[0]));
@@ -62,6 +79,9 @@ std::vector<double> eval_expr_(std::string expr, bparser::Shape ref_shape = {}) 
         
 	p.set_constant("cs3", {}, 	{3});
 	p.set_constant("cv4", {3}, 	{4, 5, 6});
+
+	p.set_variable("bv5", {3}, bv5);
+	p.set_variable("bv6", {3}, bv6);
 	//p.set_variable("_result_", {result_size}, vres);
 //	std::cout << "vres: " << vres << ", " << vres + vec_size << ", " << vres + 2*vec_size << "\n";
 //	std::cout << "Symbols: " << print_vector(p.symbols()) << "\n";
@@ -77,7 +97,12 @@ std::vector<double> eval_expr_(std::string expr, bparser::Shape ref_shape = {}) 
 
 	uint result_size = shape_size(p.result_array().shape());
 	fill_const(vres, vec_size * result_size, -1e100); // undefined value
-	p.set_subset({0, 1});
+
+	std::vector<uint> ss = std::vector<uint>(vec_size/simd_size);
+	for (uint i = 0; i < vec_size/simd_size; i++){
+		ss[i] = i;
+	}
+	p.set_subset(ss);
 	p.run();
 
 	std::vector<double> res(result_size * vec_size);
@@ -120,7 +145,6 @@ bool fail_expr(std::string expr, std::string ref_msg) {
 	return false;
 }
 
-
 void test_expression() {
 	/**
 	 * All tests have defined:
@@ -160,19 +184,18 @@ void test_expression() {
 	BP_ASSERT(test_expr("cv4[:2] ** 2", {16, 25}));
 	BP_ASSERT(test_expr("cv4[[0,1]] ** 2", {16, 25}));
 	BP_ASSERT(test_expr("cv4[[0]] ** 2", {16}));
-	//BP_ASSERT(test_expr("m=[cv4, av2]; m[[0,0,1], [0, 2, 0]]", {4, 6, 2}, {3}));
+	// BP_ASSERT(test_expr("m=[cv4, av2]; m[[0,0,1], [0, 2, 0]]", {4, 6, 2}, {3}));
 
 	BP_ASSERT(fail_expr("cs3[0]", "Too many indices")); // ?fail
 	BP_ASSERT(test_expr("cv4[0, None] * cv4[None, 1]", {})); // ?? matrix
-	//BP_ASSERT(test_expr("[]", {0}));
+	// BP_ASSERT(test_expr("[]", {0}));
 	BP_ASSERT(fail_expr("[]", "Empty Array"));
 	BP_ASSERT(fail_expr("[1,cv4,av2]", "stack: all input arrays must have the same shape"));
 	BP_ASSERT(test_expr("[1,1]", {1, 1}));
 	BP_ASSERT(test_expr("a=[[1,1,1], cv4, av2]; a[:, 0]", {1, 4, 2}));
 	BP_ASSERT(test_expr("[[1,2], [3,4]]", {1, 2, 3, 4}, {2,2}));
 
-	//BP_ASSERT(test_expr("cv4[2] ** av2", {25, 25, 25}));
-	//BP_ASSERT(test_expr("cv4[2] ** av2", {25, 25, 25}));
+	BP_ASSERT(test_expr("cv4[2] ** av2", {36, 36, 36}));
 
 	auto vec_false = std::vector<double>(1, bparser::details::double_false());
 	auto vec_true = std::vector<double>(1, bparser::details::double_true());
@@ -182,9 +205,25 @@ void test_expression() {
 	BP_ASSERT(test_expr("2 < cs3 < 4.5", vec_true));
 	BP_ASSERT(test_expr("(2 < cs3) < 2", vec_true));
 
+	BP_ASSERT(test_expr("(2 < cs3) and (cs3 < 4.5)", vec_true));
+	BP_ASSERT(test_expr("(2 < cs3) or (cs3 > 4.5)", vec_true));
+	BP_ASSERT(test_expr("(2 < cs3) and (cs3 > 4.5)", vec_false));
+	BP_ASSERT(test_expr("(2 > cs3) or (cs3 > 4.5)", vec_false));
+
+	BP_ASSERT(test_expr("3 >= cs3", vec_true));
+	BP_ASSERT(test_expr("3 == cs3", vec_true));
+	BP_ASSERT(test_expr("not (3 != cs3)", vec_true));
+
 	BP_ASSERT(test_expr("3 if cs3 < 4.5 else 4", {3}));
 	BP_ASSERT(test_expr("3 if cs3 > 4.5 else 4", {4}));
 
+	BP_ASSERT(test_expr("0 if cv4 > 4.5 else 1", {1, 0, 0}));
+
+	BP_ASSERT(test_expr("5 if True else 6", {5}));
+	BP_ASSERT(test_expr("5 if False else 6", {6}));
+
+	BP_ASSERT(test_expr("25 % cs3", {1}));
+	BP_ASSERT(test_expr("25 % cv4", {1, 0, 1}));
 
 	BP_ASSERT(test_expr("[3, 4] @ [[1], [2]]", {11}, {1}));
 	BP_ASSERT(test_expr("[3, 4, 1] @ [[1], [2], [3]]", {14}, {1}));
@@ -194,15 +233,14 @@ void test_expression() {
 	BP_ASSERT(test_expr("[[1, 2], [2, 3], [3, 4]] @ [1, 2]", {5, 8, 11}, {3}));
 	BP_ASSERT(test_expr("[[1],[2],[3]] @ [[1,2,3]]", {1, 2, 3, 2, 4, 6, 3, 6, 9}, {3,3}));
 	BP_ASSERT(test_expr("a=[1,2,3]; a[:, None] @ a[None,:]", {1, 2, 3, 2, 4, 6, 3, 6, 9}, {3,3}));
-	//BP_ASSERT(test_expr("0 if cv4 > 4.5 else 1", {1, 0, 0}));
 
 
 	BP_ASSERT(test_expr("abs(-1)+abs(0)+abs(1)", {2}));
 	BP_ASSERT(test_expr("floor(-3.5)", {-4}, {}));
 	BP_ASSERT(test_expr("ceil(-3.5)", {-3}, {}));
 	BP_ASSERT(test_expr("-sgn(-2) + sgn(2) + sgn(0)", {2}, {}));
-	//BP_ASSERT(test_expr("rad2deg(pi)", {180}));
-	//BP_ASSERT(test_expr("deg2rad(90)", {M_PI/2}));
+	// BP_ASSERT(test_expr("rad2deg(pi)", {180}));
+	// BP_ASSERT(test_expr("deg2rad(90)", {M_PI/2}));
 
 	BP_ASSERT(test_expr("acos(0.5)", {M_PI/3}));
 	BP_ASSERT(test_expr("asin(0.5)", {M_PI/6}));
@@ -228,11 +266,18 @@ void test_expression() {
 	BP_ASSERT(test_expr("flatten(eye(3))", {1, 0, 0, 0, 1, 0, 0, 0, 1}));
 	BP_ASSERT(test_expr("zeros([2,3])", {0, 0, 0, 0, 0, 0}, {2,3}));
 	BP_ASSERT(test_expr("ones([2,3])", {1, 1, 1, 1, 1, 1}, {2,3}));
-	//BP_ASSERT(test_expr("full([2,3], 5)", {5, 5, 5, 5, 5, 5}, {2,3}));
-	//BP_ASSERT(test_expr("norm([2, 3])", {5}));
+	// BP_ASSERT(test_expr("full([2,3], 5)", {5, 5, 5, 5, 5, 5}, {2,3}));
+	// BP_ASSERT(test_expr("norm([2, 3])", {5}));
 	BP_ASSERT(test_expr("minimum([1,2,3], [0,4,3])", {0,2,3}));
 	BP_ASSERT(test_expr("maximum([1,2,3], [0,4,3])", {1,4,3}));
 
+	/**
+	 * All bool tests have defined:
+	 * v1 - scalar array == [88..134]
+	 * v2 - vector array == [100..123]
+	 */
+	std::cout << std::endl << "** test bool expression" << std::endl;
+	BP_ASSERT(test_expr("bv5 < bv6", {0,0,0}));
 }
 
 
@@ -248,7 +293,3 @@ int main()
 	test_speed_cases();
 #endif
 }
-
-
-
-

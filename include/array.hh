@@ -599,11 +599,11 @@ public:
 	}
 
 	static Array true_array(const Array &UNUSED(a)) {
-		return constant({1});
+		return constant_bool({1});
 	}
 
 	static Array false_array(const Array &UNUSED(a)) {
-		return constant({0});
+		return constant_bool({0});
 	}
 
 	template <class T>
@@ -685,6 +685,18 @@ public:
 		Array res(shape);
 		for(uint i_el=0; i_el < res.elements_.size(); ++i_el) {
 			res.elements_[i_el] = details::ScalarNode::create_const(values[i_el]);
+		}
+		BP_ASSERT(values.size() == shape_size(res.shape()));
+		return res;
+	}
+
+	static Array constant_bool(const std::vector<double> &values, Shape shape = {}) {
+		if (values.size() == 1 && values[0] == none_value())
+			return Array();
+
+		Array res(shape);
+		for(uint i_el=0; i_el < res.elements_.size(); ++i_el) {
+			res.elements_[i_el] = details::ScalarNode::create_const_bool(values[i_el]);
 		}
 		BP_ASSERT(values.size() == shape_size(res.shape()));
 		return res;
