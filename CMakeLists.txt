@@ -153,11 +153,14 @@ message(STATUS "Boost_LIBRARY_DIRS = ${Boost_LIBRARY_DIRS}")
 message(STATUS "Boost_INCLUDE_DIR = ${Boost_INCLUDE_DIR}")
 message(STATUS "=======================================================\n\n")
 
+message(STATUS "VCL2_INCLUDE_DIR = ${CMAKE_CURRENT_SOURCE_DIR}/third_party/VCL_v2")
+
+set(BPARSER_INCLUDES   ${CMAKE_CURRENT_SOURCE_DIR}/include     ${Boost_INCLUDE_DIR}     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/VCL_v2)
+set(BPARSER_INCLUDES ${BPARSER_INCLUDES} PARENT_SCOPE)
+
 
 include_directories(
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${Boost_INCLUDE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/VCL_v2
+    ${BPARSER_INCLUDES}
 )
 
 # add tager for libbparser

@@ -29,7 +29,7 @@
 	if ( ! success) throw;								\
 }
 
-
+[[maybe_unused]]
 inline bool failed_expect(bool failed) {
 	static bool any_failed = false;
 	any_failed = any_failed || failed;
@@ -62,6 +62,7 @@ inline void fill_seq(double *ptr, double a, double b, double st = 1) {
 	for(uint i=0; a<b; a+=st, ++i) ptr[i] = a;
 }
 
+[[maybe_unused]]
 inline std::string print_vec(double *ptr, uint size) {
 	std::stringstream s;
 	s << "[";
@@ -70,6 +71,7 @@ inline std::string print_vec(double *ptr, uint size) {
 	s << "]";
 	return s.str();
 }
+
 
 template< class T>
 std::string print_vector(std::vector<T> x) {
@@ -85,7 +87,6 @@ std::string print_vector(std::vector<T> x) {
 	}
 	return s.str();
 }
-
 
 template<typename VecType>
 static void print_VCL_vector(const VecType & v, const char * prefix);
@@ -108,7 +109,10 @@ void print_VCL_vector(const VecType & v, const char * prefix)
     }
     std::cout << ")" << std::endl;
 }
+
+
 template<>
+[[maybe_unused]]
 void print_VCL_vector<double>(const double & v, const char * prefix)
 {
     std::cout << prefix << "(" << v << ")" << std::endl;

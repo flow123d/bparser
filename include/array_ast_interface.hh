@@ -14,7 +14,7 @@
 #include <vector>
 #include <typeinfo>
 #include "array.hh"
-
+#include "test_tools.hh"
 
 namespace bparser {
 
