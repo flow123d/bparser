@@ -170,6 +170,7 @@ set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/include/processor_AVX2.c
 set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/include/processor_AVX512.cc -ffast-math -mfpmath=sse -mfma -mavx512f)
 
 add_library(bparser SHARED
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/VCL_v2/instrset_detect.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/grammar.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/include/processor_SSE.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/include/processor_AVX2.cc

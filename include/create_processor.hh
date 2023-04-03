@@ -1,10 +1,10 @@
 #include "processor.hh"
 #include "expression_dag.hh"
-#include "instrset_detect.cpp"
+#include "instrset.h"
 
 namespace bparser{
 
-    uint get_simd_size() {
+    inline uint get_simd_size() {
         int i_set = instrset_detect();
 
         if (i_set >= 9)      // min AVX512F
