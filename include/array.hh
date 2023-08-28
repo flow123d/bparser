@@ -1135,6 +1135,7 @@ public:
 
 	/// Create a result array from *this using storage of 'variable'.
 	Array make_result(const Array &variable) {
+		if ( !same_shape(this->shape_, variable.shape_) ) Throw() << "Invalid result shape! Must be: " << print_shape(this->shape_);
 		Array res(shape_);
 		for(uint i=0; i<elements_.size(); ++i)
 			res.elements_[i] = details::ScalarNode::create_result(elements_[i], variable.elements_[i]->values_);
