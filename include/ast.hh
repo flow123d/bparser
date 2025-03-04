@@ -6,7 +6,7 @@
 #include <algorithm>
 
 #include <boost/variant.hpp>
-#include <boost/phoenix/phoenix.hpp>
+#include <boost/phoenix.hpp>
 #include <boost/spirit/home/support/attributes.hpp>
 #include <boost/spirit/home/qi/domain.hpp>
 
