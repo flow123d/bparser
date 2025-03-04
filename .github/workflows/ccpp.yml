@@ -28,8 +28,8 @@ jobs:
           #ubuntu-18.04-gcc-7,
           #ubuntu-18.04-gcc-8,
           #ubuntu-18.04-gcc-9,
-          ubuntu-20.04-gcc-10,
-          ubuntu-20.04-gcc-11,
+          # ubuntu-20.04-gcc-10,
+          # ubuntu-20.04-gcc-11,
           ubuntu-22.04-gcc-11,
           ubuntu-22.04-gcc-12,
           ubuntu-24.04-gcc-13,
@@ -102,16 +102,16 @@ jobs:
           #   os: ubuntu-18.04
           #   compiler: gcc
           #   version: "9"
-
-          - name: ubuntu-20.04-gcc-10
-            os: ubuntu-20.04
-            compiler: gcc
-            version: "10"
-
-          - name: ubuntu-20.04-gcc-11
-            os: ubuntu-20.04
-            compiler: gcc
-            version: "11"
+          # 
+          # - name: ubuntu-20.04-gcc-10
+          #   os: ubuntu-20.04
+          #   compiler: gcc
+          #   version: "10"
+          # 
+          # - name: ubuntu-20.04-gcc-11
+          #   os: ubuntu-20.04
+          #   compiler: gcc
+          #   version: "11"
 
           - name: ubuntu-22.04-gcc-11
             os: ubuntu-22.04
