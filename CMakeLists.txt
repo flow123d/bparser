@@ -1,23 +1,46 @@
 
-project(BParser)
 cmake_minimum_required(VERSION 3.5.1)
+project(BParser)
 
 message(STATUS "CMakeLists.txt - BParser")
 
 # CLANG
-#set(CMAKE_CXX_FLAGS     "-std=c++14 -finline-hint-functions -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION")
-#set(CMAKE_CXX_FLAGS     "-std=c++14 -fPIC -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION")
-set(CMAKE_CXX_FLAGS     "-std=c++17 -finline-functions -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-unused-function -Wno-unused-variable -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION")
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC") #clang-cl
+  message(STATUS "Compiler: clang-cl")
+  string(CONCAT CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} " /std:c++17 /Wall "
+  "/WX " #missing "/clang:-Wno-*" or "-Xclang -Wno-*"
+  "-DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION") 
+  #https://clang.llvm.org/docs/UsersManual.html#the-clang-option
+  #https://learn.microsoft.com/en-us/cpp/build/reference/compiler-options?view=msvc-170#find-a-compiler-option
+
+  string(CONCAT CMAKE_CXX_FLAGS_DEBUG  ${CMAKE_CXX_FLAGS_DEBUG} " -gcodeview /Zi ")# /MT /fsanitize=address /clang:-shared-libasan") #linker issues with asan => unsupported
+
+else()
+  message(STATUS "Compiler: clang/gnu") #other compilers will likely fail
+  #set(CMAKE_CXX_FLAGS     "-std=c++14 -finline-hint-functions -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION")
+  #set(CMAKE_CXX_FLAGS     "-std=c++14 -fPIC -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION")
+  string(CONCAT CMAKE_CXX_FLAGS  ${CMAKE_CXX_FLAGS} " -std=c++17 -finline-functions -pedantic-errors -Werror=pedantic -Wall -Wextra "
+  "-Werror -Wno-unused-function -Wno-unused-variable -Wno-long-long -Wno-strict-aliasing "
+  "-Wno-microsoft-cpp-macro -Wno-microsoft-enum-value "
+  "-DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION ")
+
+  if(ON) # use sanitizer
+      # valgrind setting
+      string(CONCAT CMAKE_CXX_FLAGS_DEBUG  ${CMAKE_CXX_FLAGS_DEBUG}  " -g -Og -DDEBUG  -fsanitize=address -fno-omit-frame-pointer")  #-static-libasan
+      if(WIN32) 
+        string(CONCAT CMAKE_CXX_FLAGS_DEBUG  ${CMAKE_CXX_FLAGS_DEBUG} " -shared-libasan")
+      endif()
+  endif()
+
+  if(FLOW_BUILD_TYPE STREQUAL "debug")
+    set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG -fno-omit-frame-pointer")  #
+  endif()
+endif()
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+
 
 # TODO: Try -Winline to be detect possibly non inlined functions.
 
-# valgrind setting
-set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG  -fsanitize=address -fno-omit-frame-pointer")  #-static-libasan
-
-if(FLOW_BUILD_TYPE STREQUAL "debug")
-    set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG -fno-omit-frame-pointer")  #
-endif()
 
 #ASAN_OPT         := -g -fsanitize=address -static-libasan -fno-omit-frame-pointer
 #MSAN_OPT         := -g -fsanitize=memory    -fno-omit-frame-pointer
@@ -142,6 +165,9 @@ if (NOT Boost_FOUND)
   unset(Boost_VERSION CACHE)
   
   set(BOOST_ROOT ${EXTERNAL_BOOST_DIR})    
+  if (NOT EXTERNAL_PROJECT_DIR)
+   unset(BOOST_ROOT)
+  endif()
   find_package( Boost 1.58.0 REQUIRED)
 endif()
 
@@ -156,7 +182,9 @@ message(STATUS "=======================================================\n\n")
 message(STATUS "VCL2_INCLUDE_DIR = ${CMAKE_CURRENT_SOURCE_DIR}/third_party/VCL_v2")
 
 set(BPARSER_INCLUDES   ${CMAKE_CURRENT_SOURCE_DIR}/include     ${Boost_INCLUDE_DIR}     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/VCL_v2)
-set(BPARSER_INCLUDES ${BPARSER_INCLUDES} PARENT_SCOPE)
+if(NOT PROJECT_IS_TOP_LEVEL)
+    set(BPARSER_INCLUDES ${BPARSER_INCLUDES} PARENT_SCOPE)
+endif()
 
 
 include_directories(
@@ -212,7 +240,11 @@ macro(define_test src_name)
 
   # executable rule
   add_executable(${test_binary} EXCLUDE_FROM_ALL  ${test_source} )
-  set_target_properties(${test_binary} PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error")
+  if(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC") #CL interface (Clang-cl)
+    set_target_properties(${test_binary} PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} /WX-")
+  else()
+    set_target_properties(${test_binary} PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error")
+  endif()
   set(test_dependencies ${ARGN})
   if (test_dependencies) 
         add_dependencies(${test_binary} ${test_dependencies}) # all additional macro arguments are the test dependencies
@@ -221,7 +253,7 @@ macro(define_test src_name)
   
   # rule to run the test
   add_custom_target(${test_name}
-      COMMAND "${CMAKE_CURRENT_BINARY_DIR}/${test_binary}"
+      COMMAND "$<TARGET_FILE:${test_binary}>"
       DEPENDS ${test_binary}
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 

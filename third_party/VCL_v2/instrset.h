@@ -23,6 +23,8 @@
 #ifndef INSTRSET_H
 #define INSTRSET_H 20200
 
+#include "config.hh"
+
 // check if compiled for C++17
 #if defined(_MSVC_LANG)  // MS compiler has its own version of __cplusplus with different value
 #if _MSVC_LANG < 201703
@@ -117,7 +119,7 @@
 #ifdef VCL_NAMESPACE
 namespace VCL_NAMESPACE {
 #endif
-    int  instrset_detect(void);        // tells which instruction sets are supported
+    EXPORT int  instrset_detect(void);        // tells which instruction sets are supported //Had to support .dll exports -LV
     bool hasFMA3(void);                // true if FMA3 instructions supported
     bool hasFMA4(void);                // true if FMA4 instructions supported
     bool hasXOP(void);                 // true if XOP  instructions supported

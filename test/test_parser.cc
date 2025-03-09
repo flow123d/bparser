@@ -5,6 +5,9 @@
  *      Author: jb
  */
 
+#define _USE_MATH_DEFINES
+#include <cmath>
+#include "config.hh"
 #include <string>
 
 #include "test_tools.hh"

@@ -40,8 +40,8 @@ int main() {
 	for(uint i=0; i<2; ++i)
 		for(uint j = 0; j < simd_block_size; ++j)
 			base[i][j] = 3;
-
-	base = (double4 *)memalign(sizeof(double) * simd_block_size, sizeof(double) * simd_block_size * 4);
+	//https://learn.microsoft.com/en-us/cpp/overview/visual-cpp-language-conformance?view=msvc-170&viewFallbackFrom=vs-2019#note_M
+	base = (double4 *)_aligned_malloc(sizeof(double) * simd_block_size * 4, sizeof(double) * simd_block_size); //no free? - LV
 	base[0][0] = 1.2;
 
 //	for(uint i=0; i<4; ++i)
