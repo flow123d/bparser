@@ -5,10 +5,7 @@
  *      Author: jb
  */
 
-#if defined(_WIN32)
-#define _USE_MATH_DEFINES
-#include <cmath>
-#endif
+
 #include "config.hh"
 #include <string>
 

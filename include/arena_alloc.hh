@@ -11,7 +11,7 @@
 #include <cstdlib>
 #include <utility>
 #include <malloc.h>
-#include "crosscompile.hh"
+#include "aligned_alloc.hh"
 
 namespace bparser {
 

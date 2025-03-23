@@ -1,5 +1,16 @@
-#ifndef INCLUDE_CROSSCOMPILE_HH
-#define INCLUDE_CROSSCOMPILE_HH
+/*
+ * aligned_alloc.hh
+ *
+ *  Created on: Mar 23, 2025
+ *      Author: LV
+ */
+
+/*
+* Abstracts the memory allocation and deallocation functions for crosscompile reasons (Windows / Linux)
+*/
+
+#ifndef INCLUDE_ALIGNED_ALLOC_HH
+#define INCLUDE_ALIGNED_ALLOC_HH
 
 
 #include <cstdlib>
@@ -25,4 +36,4 @@ namespace bparser {
 }
 
 
-#endif // !INCLUDE_CROSSCOMPILE_HH
+#endif // !INCLUDE_ALIGNED_ALLOC_HH

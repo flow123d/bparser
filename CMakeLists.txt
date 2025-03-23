@@ -1,6 +1,7 @@
 
 cmake_minimum_required(VERSION 3.5.1)
 project(BParser)
+option(SANITIZER_ON "Whether to use AddressSanitizer (asan) in the DEBUG configuration" ON)
 
 message(STATUS "CMakeLists.txt - BParser")
 
@@ -24,7 +25,7 @@ else()
   "-Wno-microsoft-cpp-macro -Wno-microsoft-enum-value "
   "-DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION ")
 
-  if(ON) # use sanitizer
+  if(SANITIZER_ON) # use sanitizer
       # valgrind setting
       string(CONCAT CMAKE_CXX_FLAGS_DEBUG  ${CMAKE_CXX_FLAGS_DEBUG}  " -g -Og -DDEBUG  -fsanitize=address -fno-omit-frame-pointer")  #-static-libasan
       if(WIN32) 
@@ -200,6 +201,7 @@ set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/include/processor_AVX512
 add_library(bparser SHARED
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/VCL_v2/instrset_detect.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/grammar.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/instrset_detect.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/include/processor_SSE.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/include/processor_AVX2.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/include/processor_AVX512.cc

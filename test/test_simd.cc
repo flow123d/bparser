@@ -15,7 +15,7 @@
 #include <malloc.h>
 #include "assert.hh"
 #include "config.hh"
-#include "crosscompile.hh"
+#include "aligned_alloc.hh"
 
 typedef unsigned int uint;
 const uint simd_block_size=4;

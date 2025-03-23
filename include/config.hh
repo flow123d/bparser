@@ -38,5 +38,9 @@ typedef unsigned int uint;
 #define EXPORT
 #endif
 
+#if defined(_WIN32)
+#define _USE_MATH_DEFINES
+#include <cmath>
+#endif
 
 #endif /* INCLUDE_CONFIG_HH_ */
