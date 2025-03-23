@@ -25,13 +25,15 @@ else()
   "-Wno-microsoft-cpp-macro -Wno-microsoft-enum-value "
   "-DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION ")
 
-  if(SANITIZER_ON) # use sanitizer
-      # valgrind setting
-      string(CONCAT CMAKE_CXX_FLAGS_DEBUG  ${CMAKE_CXX_FLAGS_DEBUG}  " -g -Og -DDEBUG  -fsanitize=address -fno-omit-frame-pointer")  #-static-libasan
-      if(WIN32) 
+string(CONCAT CMAKE_CXX_FLAGS_DEBUG  ${CMAKE_CXX_FLAGS_DEBUG}  " -g -Og -DDEBUG ")
+
+if(SANITIZER_ON) # use sanitizer
+    # valgrind setting
+    string(CONCAT CMAKE_CXX_FLAGS_DEBUG  ${CMAKE_CXX_FLAGS_DEBUG}  " -fsanitize=address -fno-omit-frame-pointer")  #-static-libasan
+    if(WIN32) 
         string(CONCAT CMAKE_CXX_FLAGS_DEBUG  ${CMAKE_CXX_FLAGS_DEBUG} " -shared-libasan")
-      endif()
-  endif()
+    endif()
+endif()
 
   if(FLOW_BUILD_TYPE STREQUAL "debug")
     set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG -fno-omit-frame-pointer")  #
