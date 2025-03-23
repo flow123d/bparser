@@ -8,14 +8,14 @@ message(STATUS "CMakeLists.txt - BParser")
 # CLANG
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC") #clang-cl
   message(STATUS "Compiler: clang-cl")
-  string(CONCAT CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} " /std:c++17 /Wall "
+  string(CONCAT CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} " /std:c++17 /Wall " #TODO: Figure out what compile flags to use
   "/WX " #missing "/clang:-Wno-*" or "-Xclang -Wno-*"
   "-DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION") 
   #https://clang.llvm.org/docs/UsersManual.html#the-clang-option
   #https://learn.microsoft.com/en-us/cpp/build/reference/compiler-options?view=msvc-170#find-a-compiler-option
 
   string(CONCAT CMAKE_CXX_FLAGS_DEBUG  ${CMAKE_CXX_FLAGS_DEBUG} " -gcodeview /Zi ")# /MT /fsanitize=address /clang:-shared-libasan") #linker issues with asan => unsupported
-
+                                                                                    #TODO: Make this work
 else()
   message(STATUS "Compiler: clang/gnu") #other compilers will likely fail
   #set(CMAKE_CXX_FLAGS     "-std=c++14 -finline-hint-functions -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION")
