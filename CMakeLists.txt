@@ -6,37 +6,28 @@ option(SANITIZER_ON "Whether to use AddressSanitizer (asan) in the DEBUG configu
 message(STATUS "CMakeLists.txt - BParser")
 
 # CLANG
-if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC") #clang-cl
-  message(STATUS "Compiler: clang-cl")
-  string(CONCAT CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} " /std:c++17 /Wall "
-  "/WX " #missing "/clang:-Wno-*" or "-Xclang -Wno-*"
-  "-DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION") 
-  #https://clang.llvm.org/docs/UsersManual.html#the-clang-option
-  #https://learn.microsoft.com/en-us/cpp/build/reference/compiler-options?view=msvc-170#find-a-compiler-option
 
-  string(CONCAT CMAKE_CXX_FLAGS_DEBUG  ${CMAKE_CXX_FLAGS_DEBUG} " -gcodeview /Zi ")# /MT /fsanitize=address /clang:-shared-libasan") #linker issues with asan => unsupported
+#set(CMAKE_CXX_FLAGS     "-std=c++14 -finline-hint-functions -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION")
+#set(CMAKE_CXX_FLAGS     "-std=c++14 -fPIC -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION")
+string(CONCAT CMAKE_CXX_FLAGS  ${CMAKE_CXX_FLAGS} " -std=c++17 -finline-functions -pedantic-errors -Werror=pedantic -Wall -Wextra "
+"-Werror -Wno-unused-function -Wno-unused-variable -Wno-long-long -Wno-strict-aliasing "
+"-Wno-microsoft-cpp-macro -Wno-microsoft-enum-value "
+"-DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION ")
 
-else()
-  message(STATUS "Compiler: clang/gnu") #other compilers will likely fail
-  #set(CMAKE_CXX_FLAGS     "-std=c++14 -finline-hint-functions -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION")
-  #set(CMAKE_CXX_FLAGS     "-std=c++14 -fPIC -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION")
-  string(CONCAT CMAKE_CXX_FLAGS  ${CMAKE_CXX_FLAGS} " -std=c++17 -finline-functions -pedantic-errors -Werror=pedantic -Wall -Wextra "
-  "-Werror -Wno-unused-function -Wno-unused-variable -Wno-long-long -Wno-strict-aliasing "
-  "-Wno-microsoft-cpp-macro -Wno-microsoft-enum-value "
-  "-DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION ")
+string(CONCAT CMAKE_CXX_FLAGS_DEBUG  ${CMAKE_CXX_FLAGS_DEBUG}  " -g -Og -DDEBUG ")
 
-  if(SANITIZER_ON) # use sanitizer
-      # valgrind setting
-      string(CONCAT CMAKE_CXX_FLAGS_DEBUG  ${CMAKE_CXX_FLAGS_DEBUG}  " -g -Og -DDEBUG  -fsanitize=address -fno-omit-frame-pointer")  #-static-libasan
-      if(WIN32) 
+if(SANITIZER_ON) # use sanitizer
+    # valgrind setting
+    string(CONCAT CMAKE_CXX_FLAGS_DEBUG  ${CMAKE_CXX_FLAGS_DEBUG}  " -fsanitize=address -fno-omit-frame-pointer")  #-static-libasan
+    if(WIN32) 
         string(CONCAT CMAKE_CXX_FLAGS_DEBUG  ${CMAKE_CXX_FLAGS_DEBUG} " -shared-libasan")
-      endif()
-  endif()
-
-  if(FLOW_BUILD_TYPE STREQUAL "debug")
-    set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG -fno-omit-frame-pointer")  #
-  endif()
+    endif()
 endif()
+
+if(FLOW_BUILD_TYPE STREQUAL "debug")
+set(CMAKE_CXX_FLAGS_DEBUG   "-g -DDEBUG -fno-omit-frame-pointer")  #
+endif()
+
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 
@@ -242,11 +233,9 @@ macro(define_test src_name)
 
   # executable rule
   add_executable(${test_binary} EXCLUDE_FROM_ALL  ${test_source} )
-  if(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC") #CL interface (Clang-cl)
-    set_target_properties(${test_binary} PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} /WX-")
-  else()
-    set_target_properties(${test_binary} PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error")
-  endif()
+
+  set_target_properties(${test_binary} PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error")
+
   set(test_dependencies ${ARGN})
   if (test_dependencies) 
         add_dependencies(${test_binary} ${test_dependencies}) # all additional macro arguments are the test dependencies
