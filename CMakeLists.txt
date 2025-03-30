@@ -260,6 +260,6 @@ endmacro()
 define_test(test_parser bparser)
 define_test(test_array)
 define_test(test_grammar bparser)
-define_test(test_processor bparser)
+define_test(test_processor bparser) #is it broken? -LV
 define_test(test_speed bparser)  
 define_test(test_simd)
