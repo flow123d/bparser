@@ -160,7 +160,7 @@ if (NOT Boost_FOUND)
   if (NOT EXTERNAL_PROJECT_DIR)
    unset(BOOST_ROOT)
   endif()
-  find_package( Boost 1.58.0 REQUIRED)
+  find_package( Boost 1.58.0 REQUIRED) #since Boost 1.70.0 it should be find_package( Boost CONFIG REQUIRED)
 endif()
 
 message(STATUS "-------------------------------------------------------")
@@ -198,6 +198,7 @@ add_library(bparser SHARED
     ${CMAKE_CURRENT_SOURCE_DIR}/include/processor_AVX512.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/include/processor_double.cc
 )
+set_target_properties(bparser PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -DBPARSER_DLL")
 
 
 
@@ -259,6 +260,6 @@ endmacro()
 define_test(test_parser bparser)
 define_test(test_array)
 define_test(test_grammar bparser)
-define_test(test_processor)
+define_test(test_processor bparser)
 define_test(test_speed bparser)  
 define_test(test_simd)
