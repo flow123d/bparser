@@ -15,7 +15,7 @@
 
 #include "config.hh"
 #include "instrset.h"
-
-EXPORT int b_instrset_detect(void);
-
+namespace bparser {
+	EXPORT int b_instrset_detect(void);
+}
 #endif
