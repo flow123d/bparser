@@ -18,7 +18,7 @@
 
 namespace bparser {
 	//https://learn.microsoft.com/en-us/cpp/overview/visual-cpp-language-conformance?view=msvc-170&viewFallbackFrom=vs-2019#note_M
-	inline void* align_alloc(size_t size, size_t alignment) {
+	inline void* align_alloc(size_t alignment, size_t size) {
 #if defined(_WIN32)
 		return _aligned_malloc(size, alignment);
 #else

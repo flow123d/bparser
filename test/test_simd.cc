@@ -43,7 +43,7 @@ int main() {
 		for(uint j = 0; j < simd_block_size; ++j)
 			base[i][j] = 3;
 	
-	base = (double4 *)align_alloc(sizeof(double) * simd_block_size * 4, sizeof(double) * simd_block_size); //no free? - LV
+	base = (double4 *)bparser::align_alloc(sizeof(double) * simd_block_size, sizeof(double) * simd_block_size * 4); //no free? - LV
 	base[0][0] = 1.2;
 
 //	for(uint i=0; i<4; ++i)

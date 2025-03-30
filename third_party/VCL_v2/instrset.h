@@ -23,7 +23,6 @@
 #ifndef INSTRSET_H
 #define INSTRSET_H 20200
 
-
 // check if compiled for C++17
 #if defined(_MSVC_LANG)  // MS compiler has its own version of __cplusplus with different value
 #if _MSVC_LANG < 201703

@@ -26,7 +26,7 @@ struct ArenaAlloc {
 	  size_(0)
 	{
 		size_ = align_size(alignment_, size);
-		base_ = (char *)align_alloc(size_, alignment_); //https://learn.microsoft.com/en-us/cpp/overview/visual-cpp-language-conformance?view=msvc-170&viewFallbackFrom=vs-2019#note_M
+		base_ = (char*)align_alloc(alignment_, size_);
 		BP_ASSERT(base_ != nullptr);
 		ptr_ = base_;
 		//std::cout << "arena begin: " << (void *)base_ << " end: " << end() << std::endl;
