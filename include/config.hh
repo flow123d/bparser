@@ -26,11 +26,21 @@
 typedef unsigned int uint;
 
 // Denoting unused function parameters.
-#ifdef __GNUC__
+#if defined(__GNUC__) || defined(__clang__)
 #  define UNUSED(x) UNUSED_ ## x __attribute__((__unused__))
 #else
 #  define UNUSED(x) UNUSED_ ## x
 #endif
 
+#if defined(_WIN32)
+# define EXPORT __declspec(dllexport)
+#else
+#define EXPORT
+#endif
+
+#if defined(_WIN32)
+#define _USE_MATH_DEFINES
+#include <cmath>
+#endif
 
 #endif /* INCLUDE_CONFIG_HH_ */

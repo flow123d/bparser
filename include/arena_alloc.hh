@@ -11,6 +11,7 @@
 #include <cstdlib>
 #include <utility>
 #include <malloc.h>
+#include "aligned_alloc.hh"
 
 namespace bparser {
 
@@ -25,7 +26,7 @@ struct ArenaAlloc {
 	  size_(0)
 	{
 		size_ = align_size(alignment_, size);
-		base_ = (char *)memalign(alignment_, size_);
+		base_ = (char*)align_alloc(alignment_, size_);
 		BP_ASSERT(base_ != nullptr);
 		ptr_ = base_;
 		//std::cout << "arena begin: " << (void *)base_ << " end: " << end() << std::endl;
@@ -36,7 +37,7 @@ struct ArenaAlloc {
     }
 
 	void destroy() {
-		free(base_);
+		align_free(base_);
 	}
 
 	void *end() {

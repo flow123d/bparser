@@ -14,6 +14,8 @@
 #include <string>
 #include <malloc.h>
 #include "assert.hh"
+#include "config.hh"
+#include "aligned_alloc.hh"
 
 typedef unsigned int uint;
 const uint simd_block_size=4;
@@ -40,8 +42,8 @@ int main() {
 	for(uint i=0; i<2; ++i)
 		for(uint j = 0; j < simd_block_size; ++j)
 			base[i][j] = 3;
-
-	base = (double4 *)memalign(sizeof(double) * simd_block_size, sizeof(double) * simd_block_size * 4);
+	
+	base = (double4 *)bparser::align_alloc(sizeof(double) * simd_block_size, sizeof(double) * simd_block_size * 4); //no free? - LV
 	base[0][0] = 1.2;
 
 //	for(uint i=0; i<4; ++i)

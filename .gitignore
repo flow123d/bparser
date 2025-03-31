@@ -38,3 +38,5 @@ build/*
 # IDE Projects
 .cproject
 .project
+.vs
+CMakeSettings.json

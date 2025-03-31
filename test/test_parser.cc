@@ -5,6 +5,8 @@
  *      Author: jb
  */
 
+
+#include "config.hh"
 #include <string>
 
 #include "test_tools.hh"

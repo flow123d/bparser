@@ -357,7 +357,7 @@ void test_expr(std::string expr, uint block_size, void (* func)(ExprData&)) {
 	std::cout << "Diff: " << diff << " parser: " << p_sum << " c++: " << c_sum << "\n";
 	std::cout << "parser time optim   : " << parser_time_optim << "\n";
 	std::cout << "parser shared arena : " << parser_time_shared_arena << "\n";
-	std::cout << "parser time copy    : " << parser_time_copy << "\n";
+	//std::cout << "parser time copy    : " << parser_time_copy << "\n";
 	std::cout << "parser time noopt   : " << parser_time_noopt << "\n";
 	std::cout << "c++ time            : " << cpp_time << "\n";
 	std::cout << "fraction: " << parser_time_optim/cpp_time << "\n";
