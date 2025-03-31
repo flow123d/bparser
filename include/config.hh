@@ -33,9 +33,13 @@ typedef unsigned int uint;
 #endif
 
 #if defined(_WIN32)
-# define EXPORT __declspec(dllexport)
+# if defined(BPARSER_DLL)
+#  define EXPORT __declspec(dllexport)
+# else
+#  define EXPORT __declspec(dllimport)
+# endif
 #else
-#define EXPORT
+# define EXPORT
 #endif
 
 #if defined(_WIN32)

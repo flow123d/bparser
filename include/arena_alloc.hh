@@ -12,6 +12,7 @@
 #include <utility>
 #include <malloc.h>
 #include "aligned_alloc.hh"
+#include "arena_resource.hh"
 
 namespace bparser {
 
@@ -20,56 +21,72 @@ inline size_t align_size(size_t al, size_t size) {
 	return (size + al -1) / al * al;
 }
 
-struct ArenaAlloc {
+struct ArenaAlloc : public PatchArena {
+	
+#define SIZE (align_size(alignment,size))
+
+
 	ArenaAlloc(std::size_t alignment, std::size_t size)
-	: alignment_(alignment),
-	  size_(0)
+	//: alignment_(alignment),
+	//  size_(0)
+	: PatchArena(align_alloc(alignment, SIZE), SIZE, alignment)
 	{
-		size_ = align_size(alignment_, size);
+		/*size_ = align_size(alignment_, size);
 		base_ = (char*)align_alloc(alignment_, size_);
 		BP_ASSERT(base_ != nullptr);
 		ptr_ = base_;
 		//std::cout << "arena begin: " << (void *)base_ << " end: " << end() << std::endl;
+		*/
+		size_ = buffer_size_;
 	}
+#undef SIZE
 	
 	~ArenaAlloc() {
         destroy();
     }
 
 	void destroy() {
-		align_free(base_);
+		//align_free(base_);
+		align_free(PatchArena::buffer_);
 	}
 
-	void *end() {
+	/*void* end() {
 		return base_ + size_;
-	}
+	}*/
 
-	void * allocate(std::size_t size) {
+	/*void* allocate(std::size_t size) { //defined in PatchArena, std::pmr::memory_resource
+		
 		size = align_size(alignment_, size);
 		void * ptr = ptr_;
 		ptr_ += size;
 		BP_ASSERT(ptr_ <= end());
 		//std::cout << "allocated: " << ptr << " end: " << (void *)ptr_ << " aend: " << end() << "\n";
 		return ptr;
-	}
+		
+	}*/
 
 	template <class T, typename... Args>
-	T * create(Args&&... args) {
+	T* create(Args&&... args) {
+		
 		void * ptr = allocate(sizeof(T));
 		return new (ptr) T(std::forward<Args>(args)...);
+		
 	}
 
 	template <class T>
-	T * create_array(uint n_items) {
+	T* create_array(uint n_items) {
+		/*
 		void * ptr = allocate(sizeof(T) * n_items);
 		return new (ptr) T[n_items];
+		*/
+		return PatchArena::allocate_simd<T>(n_items);
 	}
 
 
-	std::size_t alignment_;
+	//std::size_t alignment_;
 	std::size_t size_;
-	char * base_;
-	char * ptr_;
+	//char * base_;
+	//char * ptr_;
 };
 
 } // namespace bparser
