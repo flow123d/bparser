@@ -17,7 +17,8 @@
 #include <string>
 
 #include <boost/math/constants/constants.hpp>
-#include <boost/spirit/include/phoenix.hpp>
+//#include <boost/spirit/include/phoenix.hpp>
+#include <boost/phoenix.hpp>
 
 
 //#define BOOST_SPIRIT_NO_PREDEFINED_TERMINALS

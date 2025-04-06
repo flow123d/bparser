@@ -169,7 +169,7 @@ public:
     ///
     /// All variable names have to be set before this call.
     /// TODO: set result variable
-    void compile(std::shared_ptr<ArenaAlloc> arena = nullptr) {
+    void compile(std::shared_ptr<PatchArena> arena = nullptr) {
     	destroy_processor();
 
         ParserResult res_array = boost::apply_visitor(ast::make_array(symbols_), ast);
