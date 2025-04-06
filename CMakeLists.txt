@@ -160,7 +160,7 @@ if (NOT Boost_FOUND)
   if (NOT EXTERNAL_PROJECT_DIR)
    unset(BOOST_ROOT)
   endif()
-  find_package( Boost 1.58.0 REQUIRED) #since Boost 1.70.0 it should be find_package( Boost CONFIG REQUIRED)
+  find_package( Boost 1.70.0 REQUIRED) #since Boost 1.70.0 it should be find_package( Boost CONFIG REQUIRED)
 endif()
 
 message(STATUS "-------------------------------------------------------")
@@ -169,11 +169,24 @@ message(STATUS "BOOST_ROOT = ${BOOST_ROOT}")
 message(STATUS "Boost_LIBRARIES = ${Boost_LIBRARIES}")
 message(STATUS "Boost_LIBRARY_DIRS = ${Boost_LIBRARY_DIRS}")
 message(STATUS "Boost_INCLUDE_DIR = ${Boost_INCLUDE_DIR}")
+message(STATUS "=======================================================\n")
+
+#Eigen
+message(STATUS "=======================================================")
+message(STATUS "====== EIGEN ==========================================")
+message(STATUS "=======================================================")
+
+find_package(Eigen3 CONFIG REQUIRED PATHS "/usr/local") #Remember to install Eigen for this to work. See eigen-3.x.x/INSTALL
+
+message(STATUS "-------------------------------------------------------")
+message(STATUS "EIGEN_ROOT = ${EIGEN_ROOT}")
+message(STATUS "Eigen3_DIR = ${Eigen3_DIR}")
+message(STATUS "EIGEN3_INCLUDE_DIR = ${EIGEN3_INCLUDE_DIR}")
 message(STATUS "=======================================================\n\n")
 
 message(STATUS "VCL2_INCLUDE_DIR = ${CMAKE_CURRENT_SOURCE_DIR}/third_party/VCL_v2")
 
-set(BPARSER_INCLUDES   ${CMAKE_CURRENT_SOURCE_DIR}/include     ${Boost_INCLUDE_DIR}     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/VCL_v2)
+set(BPARSER_INCLUDES   ${CMAKE_CURRENT_SOURCE_DIR}/include     ${Boost_INCLUDE_DIR}     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/VCL_v2      ${EIGEN3_INCLUDE_DIR})
 if(NOT PROJECT_IS_TOP_LEVEL)
     set(BPARSER_INCLUDES ${BPARSER_INCLUDES} PARENT_SCOPE)
 endif()
@@ -198,6 +211,7 @@ add_library(bparser SHARED
     ${CMAKE_CURRENT_SOURCE_DIR}/include/processor_AVX512.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/include/processor_double.cc
 )
+target_link_libraries(bparser Eigen3::Eigen) #Interface library, includes the header files
 set_target_properties(bparser PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -DBPARSER_DLL")
 
 

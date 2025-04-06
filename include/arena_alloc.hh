@@ -90,7 +90,7 @@ struct ArenaAlloc {
 		return arena->allocate_simd<T>(n_items);
 	}
 
-	inline std::size_t get_size() {
+	inline std::size_t get_size() const {
 		return size_; //arena->buffer_size would be more appropriate
 	}
 	
