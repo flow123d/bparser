@@ -21,49 +21,57 @@ inline size_t align_size(size_t al, size_t size) {
 	return (size + al -1) / al * al;
 }
 
-struct ArenaAlloc : public PatchArena {
+struct ArenaAlloc {
 	
-#define SIZE (align_size(alignment,size))
 
-
+	//Creates a wrapper of PatchArena for backwards compatibility with BParser
+	ArenaAlloc(PatchArena& existing_arena) : arena(&existing_arena),buffer(nullptr) {
+		;
+	}
+	//Creates a wrapper with a new PatchArena with the specified memory alignment and size
+	//However AssemblyArena might be the correct class to create 
 	ArenaAlloc(std::size_t alignment, std::size_t size)
 	//: alignment_(alignment),
 	//  size_(0)
-	: PatchArena(align_alloc(alignment, SIZE), SIZE, alignment)
+	: size_(align_size(alignment, size)) //We cannot access this->arena->buffer_size_. However it *should* not change and is currently only used by one assert. Maybe create getter? -LV
 	{
+		buffer = align_alloc(alignment, size_);
+		arena = new PatchArena(buffer, size_, alignment);
 		/*size_ = align_size(alignment_, size);
 		base_ = (char*)align_alloc(alignment_, size_);
 		BP_ASSERT(base_ != nullptr);
 		ptr_ = base_;
 		//std::cout << "arena begin: " << (void *)base_ << " end: " << end() << std::endl;
 		*/
-		size_ = buffer_size_;
 	}
-#undef SIZE
 	
 	~ArenaAlloc() {
         destroy();
     }
 
-	void destroy() {
+	inline void destroy() {
 		//align_free(base_);
-		align_free(PatchArena::buffer_);
+		if (buffer != nullptr) {
+			align_free(buffer);
+		}
 	}
 
 	/*void* end() {
 		return base_ + size_;
 	}*/
 
-	/*void* allocate(std::size_t size) { //defined in PatchArena, std::pmr::memory_resource
-		
+	inline void* allocate(std::size_t size) {
+		/*
 		size = align_size(alignment_, size);
 		void * ptr = ptr_;
 		ptr_ += size;
 		BP_ASSERT(ptr_ <= end());
 		//std::cout << "allocated: " << ptr << " end: " << (void *)ptr_ << " aend: " << end() << "\n";
 		return ptr;
+		*/
+		return arena->allocate(size);
 		
-	}*/
+	}
 
 	template <class T, typename... Args>
 	T* create(Args&&... args) {
@@ -79,14 +87,21 @@ struct ArenaAlloc : public PatchArena {
 		void * ptr = allocate(sizeof(T) * n_items);
 		return new (ptr) T[n_items];
 		*/
-		return PatchArena::allocate_simd<T>(n_items);
+		return arena->allocate_simd<T>(n_items);
 	}
 
-
+	inline std::size_t get_size() {
+		return size_; //arena->buffer_size would be more appropriate
+	}
+	
 	//std::size_t alignment_;
-	std::size_t size_;
+	//std::size_t size_;
 	//char * base_;
 	//char * ptr_;
+protected:
+	PatchArena* arena;
+	void* buffer;
+	std::size_t size_;
 };
 
 } // namespace bparser
