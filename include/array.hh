@@ -867,7 +867,7 @@ public:
 			return Eigen::MatrixX<ScalarWrapper>();
 		}
 		if (a.shape().size() == 1) {
-			Eigen::VectorX<ScalarWrapper> v(a.shape()[0]); //Rows x cols, which is which
+			Eigen::VectorX<ScalarWrapper> v(a.shape()[0]); //mat_mult_old is altering the vector size. Undocumented convenience?
 			for (uint i = 0; i < a.shape()[0]; i++) {
 				v(i) = ScalarWrapper(a.elements()[i]);
 			}
@@ -1087,10 +1087,10 @@ public:
 		// common_shape : (...,i,j,k,l,m)
 		
 		Array result = unwrap_array(wrap_array(a) * wrap_array(b));
-		Shape result_shape = result.shape();
+		//Shape result_shape = result.shape();
 
-
-		auto final_range = MultiIdxRange(result.shape()).full();
+		return result;
+		/*auto final_range = MultiIdxRange(result.shape()).full();
 
 		//std::cout << "  raw res: "<< print_vector(result_shape);
 		if (b.shape().size() == 1 && *(result_shape.end() - 1) == 1 ) {
@@ -1109,6 +1109,7 @@ public:
 		}
 		// std::cout << "  final res: " << print_vector(final_range.sub_shape()) << "\n";
 		return Array(result, final_range);
+		*/
 
 	}
 

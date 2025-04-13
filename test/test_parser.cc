@@ -227,6 +227,7 @@ void test_expression() {
 	BP_ASSERT(test_expr("25 % cs3", {1}));
 	BP_ASSERT(test_expr("25 % cv4", {1, 0, 1}));
 
+	BP_ASSERT(test_expr("[[1,2],[3,4]] @ [5,6]", { 17,39 }, { 2,1 })); //Eigen test
 	BP_ASSERT(test_expr("[3, 4] @ [[1], [2]]", {11}, {1}));
 	BP_ASSERT(test_expr("[3, 4, 1] @ [[1], [2], [3]]", {14}, {1}));
 	ASSERT_THROW(test_expr("[[1], [2], [3]] @ [3, 4, 1]", {14}, {1}), "Matmult summing dimension mismatch");
