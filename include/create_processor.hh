@@ -25,7 +25,7 @@ namespace bparser{
         }
     }
 
-    ProcessorBase * ProcessorBase::create_processor(ExpressionDAG &se, uint vector_size, uint simd_size, ArenaAllocPtr arena) {
+    ProcessorBase * ProcessorBase::create_processor(ExpressionDAG &se, uint vector_size, uint simd_size, PatchArenaPtr arena) {
         if (simd_size == 0) {
             simd_size = get_simd_size();
         }
