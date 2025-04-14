@@ -124,7 +124,7 @@ Arrays of arbitrery dimension are supported, i.e. vectors, matrices, tensors.
 
 Construction:
 `[1,2,3]` : vector, shape {3}
-`[[1,2], [3,4]]` : matrix, shape {2,3}
+`[[1,2,3], [2,3,4]]` : matrix, shape {2,3}
  
 Subscription, slices:
 
