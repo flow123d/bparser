@@ -49,8 +49,10 @@ namespace bparser {
 			}
 
 			inline bool operator==(const ScalarWrapper& b) const {
-				b.get();
-				return false;// return bin_op<_eq_>(*this, b); //How??????????
+				if (((***this).result_storage == constant      && (**b).result_storage == constant     ) || 
+					((***this).result_storage == constant_bool && (**b).result_storage == constant_bool) )
+					return *(***this).values_ == *(**b).values_;
+				return false;
 			}
 
 
@@ -89,23 +91,30 @@ namespace bparser {
 		}													\
 		using std::OP;
 
-		inline ScalarWrapper abs(const ScalarWrapper& s) {
-			return ScalarWrapper::un_op<_abs_>(s); 
-		}
-		using std::abs;
+		/*
+		UN_OP(abs)
 
 		//https://eigen.tuxfamily.org/dox/namespaceEigen.html#a54cc34b64b4935307efc06d56cd531df
 		inline ScalarWrapper abs2(const ScalarWrapper& s) {
 			return s*s;
 		};
+		*/
 
-		inline ScalarWrapper sqrt(const ScalarWrapper& s) {
-			return ScalarWrapper::un_op<_sqrt_>(s);
-		}
-		using std::sqrt;
-
-		UN_OP(log)
-		UN_OP(log10)
+		//UN_OP(sqrt)
+		//UN_OP(exp)
+		//UN_OP(log)
+		//UN_OP(log10)
+		//UN_OP(sin)
+		//UN_OP(sinh)
+		//UN_OP(asin)
+		//UN_OP(cos)
+		//UN_OP(cosh)
+		//UN_OP(acos)
+		//UN_OP(tan)
+		//UN_OP(tanh)
+		//UN_OP(atan)
+		//UN_OP(ceil)
+		//UN_OP(floor)
 
 
 
