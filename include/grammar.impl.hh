@@ -179,6 +179,7 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
             FN("power"  , binary_array<_pow_>())
 			FN("minimum", binary_array<_min_>())
 			FN("maximum", binary_array<_max_>())
+            FN("diag"   , &Array::diag)
             ;
 
         unary_op.add

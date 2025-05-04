@@ -101,6 +101,9 @@ public:
 #endif
     }
 
+    inline size_t get_size() {
+        return buffer_size_;
+    }
 protected:
     void* raw_allocate(size_t bytes, size_t alignment) {
         //ASSERT(!full_data_).error("Allocation of new data is not possible because child arena was created.");

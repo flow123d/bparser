@@ -33,8 +33,8 @@ struct ArenaAlloc {
 	ArenaAlloc(std::size_t alignment, std::size_t size)
 	//: alignment_(alignment),
 	//  size_(0)
-	: size_(align_size(alignment, size)) //We cannot access this->arena->buffer_size_. However it *should* not change and is currently only used by one assert. Maybe create getter? -LV
 	{
+		size_t size_ = align_size(alignment, size);
 		buffer = align_alloc(alignment, size_);
 		arena = new PatchArena(buffer, size_, alignment);
 		/*size_ = align_size(alignment_, size);
@@ -91,7 +91,7 @@ struct ArenaAlloc {
 	}
 
 	inline std::size_t get_size() const {
-		return size_; //arena->buffer_size would be more appropriate
+		return arena->get_size();
 	}
 	
 	//std::size_t alignment_;
@@ -101,7 +101,6 @@ struct ArenaAlloc {
 protected:
 	PatchArena* arena;
 	void* buffer;
-	std::size_t size_;
 };
 
 } // namespace bparser
