@@ -101,7 +101,7 @@ public:
 #endif
     }
 
-    inline size_t get_size() {
+    inline size_t get_size() const{
         return buffer_size_;
     }
 protected:
