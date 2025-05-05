@@ -884,6 +884,7 @@ public:
 
 		using namespace details;
 		Shape trg_shape = index.range_.target_shape();
+		std::cout << "Wrapping: " << print_shape(trg_shape) << std::endl;
 		if (trg_shape.size() == 0) {
 			Throw() << "Attempted to wrap scalar into Eigen Matrix";
 		}
@@ -896,9 +897,6 @@ public:
 			return v;
 		}
 		else {// (a.shape().size() > 2) {
-			
-
-			
 			uint rows = *(trg_shape.end() - 2);
 			uint cols = *(trg_shape.end() - 1);
 
@@ -1075,15 +1073,65 @@ public:
 	static Array mat_mult(const Array &a,  const Array &b) {
 		//std::cout << "mat mult: " << print_vector(a.shape()) << " @ " << print_vector(b.shape()) << "\n";
 
-		//std::cout << "Shape: ---------" << std::endl;
-		//std::cout << print_shape(a.shape()) << std::endl;
-		//std::cout << print_shape(b.shape()) << std::endl;
+		std::cout << "Shape: ---------" << std::endl;
+		std::cout << print_shape(a.shape()) << std::endl;
+		std::cout << print_shape(b.shape()) << std::endl;
 
 		if (a.shape().size() == 0)
 			Throw() << "Matmult can not multiply by scalar a." << "\n";
 		if (b.shape().size() == 0)
 			Throw() << "Matmult can not multiply by scalar b." << "\n";
 
+		Shape a_shape = a.shape();
+		if (a_shape.size() == 1) {
+			a_shape.insert(a_shape.begin(), 1);
+		}
+
+
+		Shape b_shape = b.shape();
+		if (b_shape.size() == 1) {
+			b_shape.push_back(1);
+		}
+
+
+		uint a_cols = *(a_shape.end() - 1), b_rows = *(b_shape.end() - 2);
+
+		if (a_cols != b_rows) {
+			Throw() << "Matmult summing dimension mismatch: " << a_cols << " != " << b_rows << "\n";
+		}
+
+		a_shape.insert(a_shape.end(), 1);
+		// a_shape : (...,i,j,k,l,1)
+		b_shape.insert(b_shape.end() - 2, 1);
+		// b_shape : (...,i,j,1,l,m)
+
+		
+		Shape result_shape(MultiIdxRange::broadcast_common_shape(a_shape, b_shape));// shape (..., i,j,k,l,m)
+		result_shape.erase(result_shape.end() - 2);
+
+		Array result(result_shape);
+		//std::cout << print_shape(result_shape) << std::endl;
+
+		bool should_transpose = a.shape().size() == 1;
+
+		for (MultiIdx	
+			result_idx(result.range()),
+			a_idx(a.range()),
+			b_idx(b.range());	result_idx.valid();) {
+
+			Eigen::MatrixX<details::ScalarWrapper> m_a = wrap_array(a, a_idx);
+			Eigen::MatrixX<details::ScalarWrapper> m_b = wrap_array(b, b_idx);
+			if (should_transpose) m_a = m_a.transpose();
+
+			Array matmult = unwrap_array(m_a * m_b);
+
+			for (MultiIdx mult_idx(matmult.range()); mult_idx.valid(); mult_idx.inc_src(), result_idx.inc_src()) {
+				result.elements_[result_idx.idx_src()] = matmult[mult_idx]; //TODO
+				//std::cout << result_idx.idx_src() << std::endl;
+			}
+		}
+		return result;
+		/*
 		auto m_a = wrap_array(a);
 		auto m_b = wrap_array(b);
 
@@ -1094,7 +1142,7 @@ public:
 		if (m_a.cols() != m_b.rows())
 			Throw() << "Matmult summing dimension mismatch: " << m_a.cols() << " != " << m_b.rows() << "\n";
 
-		return unwrap_array(m_a * m_b, (a.shape().size() == 1 || b.shape().size() == 1));
+		return unwrap_array(m_a * m_b, (a.shape().size() == 1 || b.shape().size() == 1));*/
 		//Shape result_shape = result.shape();
 
 		/*auto final_range = MultiIdxRange(result.shape()).full();
