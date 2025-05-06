@@ -53,6 +53,7 @@ struct ArenaAlloc {
 		//align_free(base_);
 		if (buffer != nullptr) {
 			align_free(buffer);
+			delete arena;
 		}
 	}
 
