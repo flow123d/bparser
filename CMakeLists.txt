@@ -182,6 +182,7 @@ message(STATUS "=======================================================")
 message(STATUS "====== EIGEN ==========================================")
 message(STATUS "=======================================================")
 
+set(EIGEN_BUILD_CMAKE_PACKAGE TRUE)
 #find_package(Eigen3 CONFIG REQUIRED) #Remember to install Eigen for this to work. See eigen-3.x.x/INSTALL
 FetchContent_Declare(
     Eigen
