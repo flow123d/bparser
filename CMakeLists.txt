@@ -185,12 +185,12 @@ message(STATUS "=======================================================")
 set(EIGEN_BUILD_CMAKE_PACKAGE TRUE)
 #find_package(Eigen3 CONFIG REQUIRED) #Remember to install Eigen for this to work. See eigen-3.x.x/INSTALL
 FetchContent_Declare(
-    Eigen
+    Eigen3
     URL https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz
-    #EXCLUDE_FROM_ALL
-    FIND_PACKAGE_ARGS NAMES Eigen3 #same as find_package(Eigen NAMES Eigen3)
+    EXCLUDE_FROM_ALL
+    FIND_PACKAGE_ARGS CONFIG REQUIRED #same as find_package(Eigen3 CONFIG REQUIRED)
 )
-FetchContent_MakeAvailable(Eigen)
+FetchContent_MakeAvailable(Eigen3)
 
 message(STATUS "-------------------------------------------------------")
 message(STATUS "EIGEN_ROOT = ${EIGEN_ROOT}")
