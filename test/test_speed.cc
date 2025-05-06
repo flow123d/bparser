@@ -23,6 +23,7 @@
 #include "test_tools.hh"
 
 #include "arena_alloc.hh"
+#include "arena_resource.hh"
 
 // Optimized structure, holds data in common arena
 struct ExprData {
@@ -31,7 +32,8 @@ struct ExprData {
 	{
 		uint simd_bytes = sizeof(double) * simd_size;
 
-		arena = std::make_shared<bparser::ArenaAlloc>(simd_bytes, 512 * 1012);
+		patch_arena = std::make_shared<AssemblyArena>(512 * 1012, simd_bytes);
+		arena = std::make_shared<bparser::ArenaAlloc>(*patch_arena);//(simd_bytes, 512 * 1012);
 		v1 = arena->create_array<double>(vec_size * 3);
 		fill_seq(v1, 100, 100 + 3 * vec_size);
 		v2 = arena->create_array<double>(vec_size * 3);
@@ -54,6 +56,7 @@ struct ExprData {
 	~ExprData()
 	{}
 
+	std::shared_ptr<PatchArena> patch_arena;
 	std::shared_ptr<bparser::ArenaAlloc> arena;
 	uint vec_size;
 	uint simd_size;
@@ -266,7 +269,7 @@ void test_expr(std::string expr, uint block_size, void (* func)(ExprData&)) {
 		//std::cout << "vres: " << vres << ", " << vres + block_size << ", " << vres + 2*vec_size << "\n";
 		//std::cout << "Symbols: " << print_vector(p.symbols()) << "\n";
 		//std::cout.flush();
-		p.compile(data1.arena);
+		p.compile(data1.patch_arena);
 
 		std::vector<uint> ss = std::vector<uint>(data1.subset, data1.subset+vec_size/simd_size);
 		p.set_subset(ss);

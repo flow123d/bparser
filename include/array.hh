@@ -884,7 +884,7 @@ public:
 
 		using namespace details;
 		Shape trg_shape = index.range_.target_shape();
-		std::cout << "Wrapping: " << print_shape(trg_shape) << std::endl;
+		//std::cout << "Wrapping: " << print_shape(trg_shape) << std::endl;
 		if (trg_shape.size() == 0) {
 			Throw() << "Attempted to wrap scalar into Eigen Matrix";
 		}
