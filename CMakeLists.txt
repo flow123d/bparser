@@ -187,7 +187,7 @@ set(EIGEN_BUILD_CMAKE_PACKAGE TRUE)
 FetchContent_Declare(
     Eigen
     URL https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz
-    EXCLUDE_FROM_ALL
+    #EXCLUDE_FROM_ALL
     FIND_PACKAGE_ARGS NAMES Eigen3 #same as find_package(Eigen NAMES Eigen3)
 )
 FetchContent_MakeAvailable(Eigen)
