@@ -182,13 +182,12 @@ message(STATUS "=======================================================")
 message(STATUS "====== EIGEN ==========================================")
 message(STATUS "=======================================================")
 
-set(EIGEN_BUILD_CMAKE_PACKAGE TRUE)
 #find_package(Eigen3 CONFIG REQUIRED) #Remember to install Eigen for this to work. See eigen-3.x.x/INSTALL
 FetchContent_Declare(
     Eigen3
     URL https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz
     EXCLUDE_FROM_ALL
-    FIND_PACKAGE_ARGS CONFIG REQUIRED #same as find_package(Eigen3 CONFIG REQUIRED)
+    FIND_PACKAGE_ARGS CONFIG #same as find_package(Eigen3 CONFIG)
 )
 FetchContent_MakeAvailable(Eigen3)
 
