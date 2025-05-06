@@ -226,7 +226,7 @@ void test_expression() {
 
 	BP_ASSERT(test_expr("25 % cs3", {1}));
 	BP_ASSERT(test_expr("25 % cv4", {1, 0, 1}));
-
+	
 	BP_ASSERT(test_expr("[[1,2],[3,4]] @ [5,6]", { 17,39 }, { 2 }));
 	BP_ASSERT(test_expr("[3, 4] @ [[1], [2]]", {11}, {1}));
 	BP_ASSERT(test_expr("[3, 4, 1] @ [[1], [2], [3]]", {14}, {1}));
@@ -237,17 +237,13 @@ void test_expression() {
 	BP_ASSERT(test_expr("[[1],[2],[3]] @ [[1,2,3]]", {1, 2, 3, 2, 4, 6, 3, 6, 9}, {3,3}));
 	BP_ASSERT(test_expr("a=[1,2,3]; a[:, None] @ a[None,:]", {1, 2, 3, 2, 4, 6, 3, 6, 9}, {3,3}));
 
-	BP_ASSERT(test_expr("diag([1,2,3])", {1, 0, 0,  0, 2, 0,  0, 0, 3}, {3,3}));
-	BP_ASSERT(test_expr("diag([[1,5],[9,2]])", { 1, 2 }, {2}));
-	BP_ASSERT(test_expr("diag(diag([1,2,3]))", { 1, 2, 3 }, {3}));
-
 	// 2×2 @ 2×2 → 2×2
 	BP_ASSERT(test_expr(
 		"[[1, 2], [3, 4]] @ [[5, 6], [7, 8]]",
 		{19, 22, 43, 50},    // 1*5+2*7, 1*6+2*8, 3*5+4*7, 3*6+4*8
 		{2, 2}
 	));
-
+	
 	// 3×1×2 @ 2×3 → 3×1×3 (batched matmul)
 	BP_ASSERT(test_expr(
 		"[[[1,2]], [[3,4]], [[5,6]]] @ [[7,8,9], [10,11,12]]",
@@ -258,6 +254,10 @@ void test_expression() {
 		},
 		{3, 1, 3}
 	));
+
+	BP_ASSERT(test_expr("diag([1,2,3])", { 1, 0, 0,  0, 2, 0,  0, 0, 3 }, { 3,3 }));
+	BP_ASSERT(test_expr("diag([[1,5],[9,2]])", { 1, 2 }, { 2 }));
+	BP_ASSERT(test_expr("diag(diag([1,2,3]))", { 1, 2, 3 }, { 3 }));
 
 	BP_ASSERT(test_expr("abs(-1)+abs(0)+abs(1)", {2}));
 	BP_ASSERT(test_expr("floor(-3.5)", {-4}, {}));

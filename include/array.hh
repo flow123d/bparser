@@ -892,7 +892,7 @@ public:
 			uint len = trg_shape[0];
 			Eigen::VectorX<ScalarWrapper> v(len);
 			for (uint i = 0; i < len && index.valid(); i++, index.inc_trg()) {
-				v(i) = ScalarWrapper(a.elements_[index.idx_trg()]);
+				v(i) = ScalarWrapper(a[index]);
 			}
 			return v;
 		}
@@ -903,7 +903,7 @@ public:
 			Eigen::MatrixX<ScalarWrapper> m(rows, cols);
 			for (uint row = 0; row < rows; row++) {
 				for (uint col = 0; col < cols && index.valid(); col++, index.inc_trg()) {
-					m(row, col) = ScalarWrapper(a.elements_[index.idx_trg()]);
+					m(row, col) = ScalarWrapper(a[index]);
 				}
 			}
 			return m;
@@ -1073,9 +1073,9 @@ public:
 	static Array mat_mult(const Array &a,  const Array &b) {
 		//std::cout << "mat mult: " << print_vector(a.shape()) << " @ " << print_vector(b.shape()) << "\n";
 
-		std::cout << "Shape: ---------" << std::endl;
-		std::cout << print_shape(a.shape()) << std::endl;
-		std::cout << print_shape(b.shape()) << std::endl;
+		//std::cout << "Shape: ---------" << std::endl;
+		//std::cout << print_shape(a.shape()) << std::endl;
+		//std::cout << print_shape(b.shape()) << std::endl;
 
 		if (a.shape().size() == 0)
 			Throw() << "Matmult can not multiply by scalar a." << "\n";
@@ -1085,52 +1085,76 @@ public:
 		Shape a_shape = a.shape();
 		if (a_shape.size() == 1) {
 			a_shape.insert(a_shape.begin(), 1);
+			// shape (l) -> (1,l)
 		}
 
 
 		Shape b_shape = b.shape();
 		if (b_shape.size() == 1) {
 			b_shape.push_back(1);
+			// shape (l) -> (l,1)
 		}
 
 
 		uint a_cols = *(a_shape.end() - 1), b_rows = *(b_shape.end() - 2);
 
-		if (a_cols != b_rows) {
+		if (a_cols != b_rows) { // l != l
 			Throw() << "Matmult summing dimension mismatch: " << a_cols << " != " << b_rows << "\n";
 		}
 
+		//Add for common shape
 		a_shape.insert(a_shape.end(), 1);
 		// a_shape : (...,i,j,k,l,1)
 		b_shape.insert(b_shape.end() - 2, 1);
 		// b_shape : (...,i,j,1,l,m)
 
 		
-		Shape result_shape(MultiIdxRange::broadcast_common_shape(a_shape, b_shape));// shape (..., i,j,k,l,m)
-		result_shape.erase(result_shape.end() - 2);
+		Shape result_shape(MultiIdxRange::broadcast_common_shape(a_shape, b_shape)); 
+		// r_shape (..., i,j,k,l,m)
+		MultiIdxRange a_range(MultiIdxRange(a_shape).full().broadcast(result_shape));
+		// a_shape (..., 1,1,k,l,1) -> (...,i,j,k,l,1)
+		MultiIdxRange b_range(MultiIdxRange(b_shape).full().broadcast(result_shape));
+		// b_shape (..., 1,1,1,l,m) -> (...,i,j,1,l,m)
 
-		Array result(result_shape);
+		//Remove for computation
+		a_range.target_transpose_.erase(a_range.target_transpose_.end() - 1); 
+		// a_shape (..., i,j,k,l, )
+		b_range.target_transpose_.erase(b_range.target_transpose_.end() - 3); 
+		// b_shape (..., i,j, ,l,m)
+		result_shape.erase(result_shape.end() - 2); 
+		// r_shape (..., i,j,k, ,m)
+
 		//std::cout << print_shape(result_shape) << std::endl;
 
+		Array result(result_shape);
 		bool should_transpose = a.shape().size() == 1;
 
 		for (MultiIdx	
 			result_idx(result.range()),
-			a_idx(a.range()),
-			b_idx(b.range());	result_idx.valid();) {
+			a_idx(a_range),
+			b_idx(b_range);	result_idx.valid(); ) {
 
 			Eigen::MatrixX<details::ScalarWrapper> m_a = wrap_array(a, a_idx);
 			Eigen::MatrixX<details::ScalarWrapper> m_b = wrap_array(b, b_idx);
-			if (should_transpose) m_a = m_a.transpose();
 
 			Array matmult = unwrap_array(m_a * m_b);
 
 			for (MultiIdx mult_idx(matmult.range()); mult_idx.valid(); mult_idx.inc_src(), result_idx.inc_src()) {
-				result.elements_[result_idx.idx_src()] = matmult[mult_idx]; //TODO
-				//std::cout << result_idx.idx_src() << std::endl;
+				result.elements_[result_idx.idx_src()] = matmult[mult_idx]; 
 			}
 		}
-		return result;
+
+		MultiIdxRange final_range(result.range());
+		if (b.shape().size() == 1) {
+			final_range.remove_target_axis(absolute_idx(-1, result_shape.size()));
+			// shape (..., i,j,k,1) -> ...,j,k)
+		}
+		if (a.shape().size() == 1) {
+			final_range.remove_target_axis(absolute_idx(-2, result_shape.size()));
+			// shape (..., i,j,1,m) -> ...,j,m)
+		}
+		
+		return Array(result,final_range);
 		/*
 		auto m_a = wrap_array(a);
 		auto m_b = wrap_array(b);
