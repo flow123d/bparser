@@ -5,6 +5,8 @@ option(SANITIZER_ON "Whether to use AddressSanitizer (asan) in the DEBUG configu
 
 message(STATUS "CMakeLists.txt - BParser")
 
+include(FetchContent)
+
 # CLANG
 
 #set(CMAKE_CXX_FLAGS     "-std=c++14 -finline-hint-functions -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION")
@@ -176,7 +178,14 @@ message(STATUS "=======================================================")
 message(STATUS "====== EIGEN ==========================================")
 message(STATUS "=======================================================")
 
-find_package(Eigen3 CONFIG REQUIRED PATHS "/usr/local") #Remember to install Eigen for this to work. See eigen-3.x.x/INSTALL
+#find_package(Eigen3 CONFIG REQUIRED) #Remember to install Eigen for this to work. See eigen-3.x.x/INSTALL
+FetchContent_Declare(
+    Eigen
+    DOWNLOAD_EXTRACT_TIMESTAMP
+    URL https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz
+    FIND_PACKAGE_ARGS NAMES Eigen3 #find_package(Eigen NAMES Eigen3)
+)
+FetchContent_MakeAvailable(Eigen)
 
 message(STATUS "-------------------------------------------------------")
 message(STATUS "EIGEN_ROOT = ${EIGEN_ROOT}")
