@@ -12,10 +12,10 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
-#include <memory>
 #include <boost/math/constants/constants.hpp>
 #include "config.hh"
 #include "scalar_node.hh"
+#include "scalar_wrapper.hh"
 //#include "test_tools.hh"
 
 namespace bparser {
@@ -860,6 +860,81 @@ public:
 	}
 
 
+
+	//Wraps the ScalarNodes of an Array into an Eigen Matrix of ScalarWrappers.
+	//Vectors will be column vectors. Eigen does not support vectors without orientation.
+	//Cannot wrap scalars. To wrap scalars, use the bparser::details::ScalarWrapper constructor
+	static Eigen::MatrixX<details::ScalarWrapper> wrap_array(const bparser::Array& a) {
+		MultiIdx idx(a.range());
+		return wrap_array(a, idx);
+	}
+
+	//Wraps the ScalarNodes of an Array accessed via MultiIdx.idx_trg() created from supplied MultiIdxRange into an Eigen Matrix of ScalarWrapper
+	//Vectors will be column vectors. Eigen does not support vectors without orientation.
+	//Cannot wrap scalars. To wrap scalars, use the bparser::details::ScalarWrapper constructor
+	static Eigen::MatrixX<details::ScalarWrapper> wrap_array(const bparser::Array& a, MultiIdxRange& range) {
+		MultiIdx idx (range);
+		return wrap_array(a, idx);
+	}
+
+	//Wraps the ScalarNodes of an Array accessed via MultiIdx.idx_trg() into an Eigen Matrix of ScalarWrapper
+	//Vectors will be column vectors. Eigen does not support vectors without orientation.
+	//Cannot wrap scalars. To wrap scalars, use the bparser::details::ScalarWrapper constructor
+	static Eigen::MatrixX<details::ScalarWrapper> wrap_array(const bparser::Array& a, MultiIdx& index) {
+
+		using namespace details;
+		Shape trg_shape = index.range_.target_shape();
+		//std::cout << "Wrapping: " << print_shape(trg_shape) << std::endl;
+		if (trg_shape.size() == 0) {
+			Throw() << "Attempted to wrap scalar into Eigen Matrix";
+		}
+		if (trg_shape.size() == 1) {
+			uint len = trg_shape[0];
+			Eigen::VectorX<ScalarWrapper> v(len);
+			for (uint i = 0; i < len && index.valid(); i++, index.inc_trg()) {
+				v(i) = ScalarWrapper(a[index]);
+			}
+			return v;
+		}
+		else {// (a.shape().size() > 2) {
+			uint rows = *(trg_shape.end() - 2);
+			uint cols = *(trg_shape.end() - 1);
+
+			Eigen::MatrixX<ScalarWrapper> m(rows, cols);
+			for (uint row = 0; row < rows; row++) {
+				for (uint col = 0; col < cols && index.valid(); col++, index.inc_trg()) {
+					m(row, col) = ScalarWrapper(a[index]);
+				}
+			}
+			return m;
+		}
+	}
+
+	//Creates an Array of ScalarNodes from an Eigen Matrix of ScalarWrappers
+	// make_vector - Will reduce the Array shape if Matrix is actually a Vector. Shape:(x,1) -> (x); (1,y) -> (y)
+	static bparser::Array unwrap_array(const Eigen::MatrixX<details::ScalarWrapper>& m, const bool make_vector = false) {
+		using namespace details;
+
+		if (make_vector && (m.rows() == 1 || m.cols() == 1)) {
+			Array a({ (uint)std::max(m.rows(),m.cols()) });
+			MultiIdx index(a.range());
+			for (uint i = 0; i < a.shape()[0]; i++, index.inc_src()) {
+				a.elements_[index.idx_src()] = m(i).get();
+			}
+			return a;
+		}
+		else {
+			Array a({ (uint)m.rows(), (uint)m.cols() });
+			MultiIdx index(a.range());
+			for (uint row = 0; row < a.shape()[0]; row++) {
+				for (uint col = 0; col < a.shape()[1]; col++, index.inc_src()) {
+					a.elements_[index.idx_src()] = m(row, col).get();
+				}
+			}
+			return a;
+		}
+	}
+
 	/**
 	 * Numpy.matmul:
 	 *
@@ -867,7 +942,7 @@ public:
 	 * b 		has shape (..., i,j, l,m)
 	 * result 	has shape (..., i,j, k,m)
 	 */
-	static Array mat_mult(const Array &a,  const Array &b) {
+	static Array mat_mult_old(const Array& a, const Array& b) {
 		//std::cout << "mat mult: " << print_vector(a.shape()) << " @ " << print_vector(b.shape()) << "\n";
 
 		if (a.shape().size() == 0)
@@ -919,44 +994,45 @@ public:
 		MultiIdx a_idx(a_range);
 		MultiIdx b_idx(b_range); // allocated
 		MultiIdx result_idx(result_range);
-/*
-		std::cout << "a_idx, shp: " << print_vector(a_idx.range_.full_shape_) << "\n";
-		std::cout << "b_idx, shp: " << print_vector(b_idx.range_.full_shape_) << "\n";
-		std::cout << "r_idx, shp: " << print_vector(result_idx.range_.full_shape_) << "\n";
-*/
+		/*
+				std::cout << "a_idx, shp: " << print_vector(a_idx.range_.full_shape_) << "\n";
+				std::cout << "b_idx, shp: " << print_vector(b_idx.range_.full_shape_) << "\n";
+				std::cout << "r_idx, shp: " << print_vector(result_idx.range_.full_shape_) << "\n";
+		*/
 
 		ScalarNodePtr sum;
 		Array result(result_shape);
-		for(;result_idx.valid();) {
+		for (; result_idx.valid();) {
 			sum = nullptr;
 			a_idx.reset_indices(result_idx);
 			b_idx.reset_indices(result_idx);
-			for(;a_idx.valid();) {
-/*
-				std::cout << "a_idx: " << print_vector(a_idx.indices()) << " didx: "
-						<< a_idx.src_idx() << "\n";
-				std::cout << "b_idx: " << print_vector(b_idx.indices()) << " didx: "
-						<< b_idx.src_idx() << "\n";
-*/
+			for (; a_idx.valid();) {
+				/*
+								std::cout << "a_idx: " << print_vector(a_idx.indices()) << " didx: "
+										<< a_idx.src_idx() << "\n";
+								std::cout << "b_idx: " << print_vector(b_idx.indices()) << " didx: "
+										<< b_idx.src_idx() << "\n";
+				*/
 				ScalarNodePtr mult = details::ScalarNode::create<details::_mul_>(
-						a.elements_[a_idx.idx_src()],
-						b.elements_[b_idx.idx_src()]);
+					a.elements_[a_idx.idx_src()],
+					b.elements_[b_idx.idx_src()]);
 				if (sum == nullptr) {
 					sum = mult;
-				} else {
+				}
+				else {
 					// TODO: how to use inplace operations correctly ??
 					sum = details::ScalarNode::create<details::_add_>(sum, mult);
 				}
 				//std::cout << "aidx ";
-				a_idx.inc_trg(-1,1, false);
+				a_idx.inc_trg(-1, 1, false);
 				//std::cout << "bidx ";
-				b_idx.inc_trg(-1,1, false);
+				b_idx.inc_trg(-1, 1, false);
 				BP_ASSERT(a_idx.valid() == b_idx.valid());
 			}
-/*
-			std::cout << "r_idx: " << print_vector(result_idx.indices()) << " didx: "
-									<< result_idx.src_idx() << "\n";
-*/
+			/*
+						std::cout << "r_idx: " << print_vector(result_idx.indices()) << " didx: "
+												<< result_idx.src_idx() << "\n";
+			*/
 
 			result.elements_[result_idx.idx_src()] = sum;
 
@@ -966,6 +1042,134 @@ public:
 
 
 		auto final_range = MultiIdxRange(result.shape()).full();
+
+		//std::cout << "  raw res: "<< print_vector(result_shape);
+		if (b.shape().size() == 1 && *(result_shape.end() - 1) == 1) {
+			// cut -1 axis
+			//std::cout << "  b cut: "<< result_shape.size()-1 << "\n";
+			final_range.remove_target_axis(result_shape.size() - 1);
+		}
+		BP_ASSERT(*(result_shape.end() - 2) == 1);
+		//std::cout << "  r cut: "<< result_shape.size()-2 << "\n";
+		final_range.remove_target_axis(result_shape.size() - 2);
+		// cut -2 axis always
+		if (a.shape().size() == 1 && *(result_shape.end() - 3) == 1) {
+			// cut -3 axis
+			// std::cout << "  a cut: "<< result_shape.size()-3 << "\n";
+			final_range.remove_target_axis(result_shape.size() - 3);
+		}
+		// std::cout << "  final res: " << print_vector(final_range.sub_shape()) << "\n";
+		return Array(result, final_range);
+
+	}
+
+	/**
+	 * Numpy.matmul:
+	 *
+	 * a 		has shape (..., i,j, k,l)
+	 * b 		has shape (..., i,j, l,m)
+	 * result 	has shape (..., i,j, k,m)
+	 */
+	static Array mat_mult(const Array &a,  const Array &b) {
+		//std::cout << "mat mult: " << print_vector(a.shape()) << " @ " << print_vector(b.shape()) << "\n";
+
+		//std::cout << "Shape: ---------" << std::endl;
+		//std::cout << print_shape(a.shape()) << std::endl;
+		//std::cout << print_shape(b.shape()) << std::endl;
+
+		if (a.shape().size() == 0)
+			Throw() << "Matmult can not multiply by scalar a." << "\n";
+		if (b.shape().size() == 0)
+			Throw() << "Matmult can not multiply by scalar b." << "\n";
+
+		Shape a_shape = a.shape();
+		if (a_shape.size() == 1) {
+			a_shape.insert(a_shape.begin(), 1);
+			// shape (l) -> (1,l)
+		}
+
+
+		Shape b_shape = b.shape();
+		if (b_shape.size() == 1) {
+			b_shape.push_back(1);
+			// shape (l) -> (l,1)
+		}
+
+
+		uint a_cols = *(a_shape.end() - 1), b_rows = *(b_shape.end() - 2);
+
+		if (a_cols != b_rows) { // l != l
+			Throw() << "Matmult summing dimension mismatch: " << a_cols << " != " << b_rows << "\n";
+		}
+
+		//Add for common shape
+		a_shape.insert(a_shape.end(), 1);
+		// a_shape : (...,i,j,k,l,1)
+		b_shape.insert(b_shape.end() - 2, 1);
+		// b_shape : (...,i,j,1,l,m)
+
+		
+		Shape result_shape(MultiIdxRange::broadcast_common_shape(a_shape, b_shape)); 
+		// r_shape (..., i,j,k,l,m)
+		MultiIdxRange a_range(MultiIdxRange(a_shape).full().broadcast(result_shape));
+		// a_shape (..., 1,1,k,l,1) -> (...,i,j,k,l,1)
+		MultiIdxRange b_range(MultiIdxRange(b_shape).full().broadcast(result_shape));
+		// b_shape (..., 1,1,1,l,m) -> (...,i,j,1,l,m)
+
+		//Remove for computation
+		a_range.target_transpose_.erase(a_range.target_transpose_.end() - 1); 
+		// a_shape (..., i,j,k,l, )
+		b_range.target_transpose_.erase(b_range.target_transpose_.end() - 3); 
+		// b_shape (..., i,j, ,l,m)
+		result_shape.erase(result_shape.end() - 2); 
+		// r_shape (..., i,j,k, ,m)
+
+		//std::cout << print_shape(result_shape) << std::endl;
+
+		Array result(result_shape);
+		bool should_transpose = a.shape().size() == 1;
+
+		for (MultiIdx	
+			result_idx(result.range()),
+			a_idx(a_range),
+			b_idx(b_range);	result_idx.valid(); ) {
+
+			Eigen::MatrixX<details::ScalarWrapper> m_a = wrap_array(a, a_idx);
+			Eigen::MatrixX<details::ScalarWrapper> m_b = wrap_array(b, b_idx);
+
+			Array matmult = unwrap_array(m_a * m_b);
+
+			for (MultiIdx mult_idx(matmult.range()); mult_idx.valid(); mult_idx.inc_src(), result_idx.inc_src()) {
+				result.elements_[result_idx.idx_src()] = matmult[mult_idx]; 
+			}
+		}
+
+		MultiIdxRange final_range(result.range());
+		if (b.shape().size() == 1) {
+			final_range.remove_target_axis(absolute_idx(-1, result_shape.size()));
+			// shape (..., i,j,k,1) -> ...,j,k)
+		}
+		if (a.shape().size() == 1) {
+			final_range.remove_target_axis(absolute_idx(-2, result_shape.size()));
+			// shape (..., i,j,1,m) -> ...,j,m)
+		}
+		
+		return Array(result,final_range);
+		/*
+		auto m_a = wrap_array(a);
+		auto m_b = wrap_array(b);
+
+		if (a.shape().size() == 1) { //is vector
+			m_a = m_a.transpose(); //colvec -> rowvec
+		}
+
+		if (m_a.cols() != m_b.rows())
+			Throw() << "Matmult summing dimension mismatch: " << m_a.cols() << " != " << m_b.rows() << "\n";
+
+		return unwrap_array(m_a * m_b, (a.shape().size() == 1 || b.shape().size() == 1));*/
+		//Shape result_shape = result.shape();
+
+		/*auto final_range = MultiIdxRange(result.shape()).full();
 
 		//std::cout << "  raw res: "<< print_vector(result_shape);
 		if (b.shape().size() == 1 && *(result_shape.end() - 1) == 1 ) {
@@ -984,7 +1188,32 @@ public:
 		}
 		// std::cout << "  final res: " << print_vector(final_range.sub_shape()) << "\n";
 		return Array(result, final_range);
+		*/
 
+	}
+
+	static Array diag(const Array& a) {
+		if (a.shape().size() == 0) {
+			return a;
+		}
+
+		if (a.shape().size() == 1) { // diag -> matrix
+			return unwrap_array(wrap_array(a).asDiagonal());
+		}
+		// matrix -> diag
+		return unwrap_array(wrap_array(a).diagonal(),true);
+
+	}
+
+	static Array trace(const Array& a) {
+		if (a.shape().size() != 2) {
+			Throw() << "Function trace can only be used for matrices" << "\n";
+		}
+		Shape s; //empty Shape for scalar
+		Array r(s);
+		r.elements_[0U] = *wrap_array(a).trace();
+		return r;
+		//return full_({}, *wrap_array(a).trace());
 	}
 
 	static Array flatten(const Array &tensor) {

@@ -5,6 +5,12 @@ option(SANITIZER_ON "Whether to use AddressSanitizer (asan) in the DEBUG configu
 
 message(STATUS "CMakeLists.txt - BParser")
 
+include(FetchContent)
+
+if(POLICY CMP0135)
+    cmake_policy(SET CMP0135 NEW)
+endif()
+
 # CLANG
 
 #set(CMAKE_CXX_FLAGS     "-std=c++14 -finline-hint-functions -pedantic-errors -Werror=pedantic -Wall -Wextra -Werror -Wno-long-long -Wno-strict-aliasing -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION")
@@ -160,7 +166,7 @@ if (NOT Boost_FOUND)
   if (NOT EXTERNAL_PROJECT_DIR)
    unset(BOOST_ROOT)
   endif()
-  find_package( Boost 1.58.0 REQUIRED)
+  find_package( Boost 1.70.0 REQUIRED) #since Boost 1.70.0 it should be find_package( Boost CONFIG REQUIRED)
 endif()
 
 message(STATUS "-------------------------------------------------------")
@@ -169,11 +175,31 @@ message(STATUS "BOOST_ROOT = ${BOOST_ROOT}")
 message(STATUS "Boost_LIBRARIES = ${Boost_LIBRARIES}")
 message(STATUS "Boost_LIBRARY_DIRS = ${Boost_LIBRARY_DIRS}")
 message(STATUS "Boost_INCLUDE_DIR = ${Boost_INCLUDE_DIR}")
+message(STATUS "=======================================================\n")
+
+#Eigen
+message(STATUS "=======================================================")
+message(STATUS "====== EIGEN ==========================================")
+message(STATUS "=======================================================")
+
+#find_package(Eigen3 CONFIG REQUIRED) #Remember to install Eigen for this to work. See eigen-3.x.x/INSTALL
+FetchContent_Declare(
+    Eigen3
+    URL https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz
+    EXCLUDE_FROM_ALL
+    FIND_PACKAGE_ARGS CONFIG #same as find_package(Eigen3 CONFIG)
+)
+FetchContent_MakeAvailable(Eigen3)
+
+message(STATUS "-------------------------------------------------------")
+message(STATUS "EIGEN_ROOT = ${EIGEN_ROOT}")
+message(STATUS "Eigen3_DIR = ${Eigen3_DIR}")
+message(STATUS "EIGEN3_INCLUDE_DIR = ${EIGEN3_INCLUDE_DIR}")
 message(STATUS "=======================================================\n\n")
 
 message(STATUS "VCL2_INCLUDE_DIR = ${CMAKE_CURRENT_SOURCE_DIR}/third_party/VCL_v2")
 
-set(BPARSER_INCLUDES   ${CMAKE_CURRENT_SOURCE_DIR}/include     ${Boost_INCLUDE_DIR}     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/VCL_v2)
+set(BPARSER_INCLUDES   ${CMAKE_CURRENT_SOURCE_DIR}/include     ${Boost_INCLUDE_DIR}     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/VCL_v2      ${EIGEN3_INCLUDE_DIR})
 if(NOT PROJECT_IS_TOP_LEVEL)
     set(BPARSER_INCLUDES ${BPARSER_INCLUDES} PARENT_SCOPE)
 endif()
@@ -198,6 +224,8 @@ add_library(bparser SHARED
     ${CMAKE_CURRENT_SOURCE_DIR}/include/processor_AVX512.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/include/processor_double.cc
 )
+target_link_libraries(bparser Eigen3::Eigen) #Interface library, includes the header files
+set_target_properties(bparser PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -DBPARSER_DLL")
 
 
 
@@ -259,6 +287,6 @@ endmacro()
 define_test(test_parser bparser)
 define_test(test_array)
 define_test(test_grammar bparser)
-define_test(test_processor)
+define_test(test_processor bparser) #is it broken? -LV
 define_test(test_speed bparser)  
 define_test(test_simd)

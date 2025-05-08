@@ -127,6 +127,8 @@ using namespace details;
 
 
 typedef std::shared_ptr<ArenaAlloc> ArenaAllocPtr;
+typedef std::shared_ptr<PatchArena> PatchArenaPtr;
+
 
 
 #define CODE(OP_NAME) \
@@ -158,7 +160,7 @@ struct ProcessorBase {
 		return arena_;
 	}
 	
-	inline static ProcessorBase *create_processor(ExpressionDAG &se, uint vec_n_blocks, uint simd_size = 0, ArenaAllocPtr arena = nullptr);
+	inline static ProcessorBase *create_processor(ExpressionDAG &se, uint vec_n_blocks, uint simd_size = 0, PatchArenaPtr arena = nullptr);
 
 	ArenaAllocPtr arena_;
 };
@@ -477,7 +479,13 @@ struct Processor : public ProcessorBase {
 	Operation * program_;
 	std::vector< std::shared_ptr<ValueCopyNode> > val_copy_nodes_;
 };
-
+template <class VCLVec>
+ProcessorBase* create_processor_(ExpressionDAG& se, uint vector_size, uint simd_size, PatchArenaPtr arena) {
+	if (arena == nullptr) {
+		return create_processor_<VCLVec>(se, vector_size, simd_size, (ArenaAllocPtr)std::shared_ptr<ArenaAlloc>(nullptr)); //will create new ArenaAlloc in the other method
+	}
+	return create_processor_<VCLVec>(se, vector_size, simd_size, std::make_shared<ArenaAlloc>(*arena));
+}
 
 template <class VCLVec> 
 ProcessorBase * create_processor_(ExpressionDAG &se, uint vector_size,  uint simd_size, ArenaAllocPtr arena)
@@ -503,7 +511,7 @@ ProcessorBase * create_processor_(ExpressionDAG &se, uint vector_size,  uint sim
     if (arena == nullptr)
         arena = std::make_shared<ArenaAlloc>(simd_bytes, est);
     else
-        BP_ASSERT(arena->size_ >= est);
+        BP_ASSERT(arena->get_size() >= est);
     return arena->create<Processor<Vec<VCLVec>>>(arena, se, vec_n_blocks);
 }
 

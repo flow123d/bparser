@@ -265,6 +265,8 @@ jobs:
           # Bparser dependency
           sudo apt-get install -y libboost-all-dev
 
+          # install eigen
+          sudo apt install libeigen3-dev
           
           
 
