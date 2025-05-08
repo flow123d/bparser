@@ -259,6 +259,8 @@ void test_expression() {
 	BP_ASSERT(test_expr("diag([[1,5],[9,2]])", { 1, 2 }, { 2 }));
 	BP_ASSERT(test_expr("diag(diag([1,2,3]))", { 1, 2, 3 }, { 3 }));
 
+	BP_ASSERT(test_expr("tr([[1,9,9],[9,1,9],[9,9,1]])", { 3 }, {}));
+
 	BP_ASSERT(test_expr("abs(-1)+abs(0)+abs(1)", {2}));
 	BP_ASSERT(test_expr("floor(-3.5)", {-4}, {}));
 	BP_ASSERT(test_expr("ceil(-3.5)", {-3}, {}));

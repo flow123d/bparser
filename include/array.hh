@@ -1193,8 +1193,9 @@ public:
 	}
 
 	static Array diag(const Array& a) {
-		if (a.shape().size() == 0)
+		if (a.shape().size() == 0) {
 			return a;
+		}
 
 		if (a.shape().size() == 1) { // diag -> matrix
 			return unwrap_array(wrap_array(a).asDiagonal());
@@ -1202,6 +1203,17 @@ public:
 		// matrix -> diag
 		return unwrap_array(wrap_array(a).diagonal(),true);
 
+	}
+
+	static Array trace(const Array& a) {
+		if (a.shape().size() != 2) {
+			Throw() << "Function trace can only be used for matrices" << "\n";
+		}
+		Shape s; //empty Shape for scalar
+		Array r(s);
+		r.elements_[0U] = *wrap_array(a).trace();
+		return r;
+		//return full_({}, *wrap_array(a).trace());
 	}
 
 	static Array flatten(const Array &tensor) {
