@@ -102,6 +102,7 @@ public:
 
 	/**
 	 * Print ScalarExpression graph in the dot format.
+	 * Useful for debugging
 	 */
 	void print_in_dot() {
 		std::map<ScalarNodePtr , uint> i_node;
@@ -129,6 +130,58 @@ public:
 
 	void _print_node(ScalarNodePtr  node) {
 		std::cout << "Node: " << node->op_name_ <<  "_" << node->result_idx_ << " " << node->result_storage << std::endl;
+	}
+
+	/**
+	 * Print ScalarExpression graph in the common dot format.
+	 * Useful for understanding the DAG
+	 */
+	void print_in_dot2() {
+		sort_nodes();
+		
+		std::cout << "\n" << "----- begin cut here -----" << "\n";
+		std::cout << "digraph Expr {" << "\n";
+
+		std::cout << "/* definitions */" << "\n";
+		std::cout << "edge [dir=back]" << "\n";
+		for (uint i = 0; i < sorted.size(); ++i) {
+			_print_dot_node_definition(sorted[i]);
+		}
+		std::cout << "/* end of definitions */" << "\n";
+
+		for (uint i = 0; i < sorted.size(); ++i) {
+			for (uint in = 0; in < sorted[i]->n_inputs_; ++in) {
+				std::cout << "    ";
+				_print_dot_node(sorted[i]);
+				std::cout << "\n -> ";
+				_print_dot_node(sorted[i]->inputs_[in]);
+				std::cout << "\n\n";
+			}
+		}
+		std::cout << "}" << "\n";
+		std::cout << "-----  end cut here  -----" << "\n";
+		std::cout.flush();
+	}
+	void _print_dot_node(ScalarNodePtr  node) {
+		std::cout << node->op_name_ << "_" << (int)node.get() << "__" << node->result_storage;// << std::endl;
+	}
+
+	void _print_dot_node_definition(ScalarNodePtr  node) {
+		_print_dot_node(node);
+		std::cout << ' ';
+
+		if		(node->result_storage == ResultStorage::constant) {
+			std::cout << "[shape=circle,label=\"const " << *node->values_ << "\"]" << std::endl;
+		}
+		else if (node->result_storage == ResultStorage::constant_bool) {
+			std::cout << "[shape=circle,label=\"const " << *node->values_ << "\"]" << std::endl;
+		}
+		else if (node->result_storage == ResultStorage::expr_result) {
+			std::cout << "[shape=box,label=\"" << node->op_name_ << " " << node->result_idx_ << "\"]" << std::endl;
+		}
+		else {
+			std::cout << "[label=\"" << node->op_name_ << "\"]" << std::endl;
+		}
 	}
 
 

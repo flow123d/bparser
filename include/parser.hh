@@ -190,6 +190,7 @@ public:
 		details::ExpressionDAG se(result_array_.elements());
 
 		//se.print_in_dot();
+        //se.print_in_dot2();
 		processor = ProcessorBase::create_processor(se, max_vec_size, simd_size, arena);
     }
 
