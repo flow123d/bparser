@@ -163,7 +163,7 @@ public:
 		std::cout.flush();
 	}
 	void _print_dot_node(ScalarNodePtr  node) {
-		std::cout << node->op_name_ << "_" << (int)node.get() << "__" << node->result_storage;// << std::endl;
+		std::cout << node->op_name_ << "_" << (uintptr_t)node.get() << "__" << node->result_storage;// << std::endl;
 	}
 
 	void _print_dot_node_definition(ScalarNodePtr  node) {
