@@ -216,7 +216,7 @@ private:
 				std::string name(invmap.at(node).first);
 				std::cout << "label=\"" << name << ": " << *node->values_ << "\",group=\"" << name << '"';
 			}
-			catch (std::out_of_range) { //No name
+			catch (const std::out_of_range&) { //No name
 				std::cout << "label=\"" << "const " << *node->values_ << '"';
 			}
 			std::cout  << "]" << std::endl;
@@ -229,7 +229,7 @@ private:
 				std::string name(invmap.at(node).first);
 				std::cout << "label=\"" << name << ": " << *node->values_ << "\",group=\"" << name << '"';
 			}
-			catch (std::out_of_range) { //No name
+			catch (const std::out_of_range&) { //No name
 				std::cout << "label=\"" << "const " << *node->values_ << '"';
 			}
 			std::cout << "]" << std::endl;
@@ -253,7 +253,7 @@ private:
 				}
 				std::cout << ",group=\"" << name << '"';
 			}
-			catch (std::out_of_range) {
+			catch (const std::out_of_range&) {
 				std::cout << "label=<<I>var</I>>";
 			}
 			
@@ -273,7 +273,7 @@ private:
 				}
 				std::cout << ",group=\"" << name << '"';
 			}
-			catch (std::out_of_range) {
+			catch (const std::out_of_range&) {
 				std::cout << "label=<<I>var_cp</I>>";
 			}
 			std::cout << "]" << std::endl;
