@@ -15,6 +15,7 @@
 #include "config.hh"
 #include "scalar_node.hh"
 #include "assert.hh"
+#include "array.hh"
 
 
 namespace bparser {
@@ -40,6 +41,8 @@ private:
 	/// Result nodes, given as input.
 	NodeVec results;
 
+	typedef std::pair<std::string, bool> InvDotNameAndScalar;
+	typedef std::map<ScalarNodePtr, InvDotNameAndScalar> InvDotMap;
 
 	/**
 	 * Used in the setup_result_storage to note number of unclosed nodes
@@ -134,27 +137,45 @@ public:
 
 	/**
 	 * Print ScalarExpression graph in the common dot format.
-	 * Useful for understanding the DAG
+	 * Useful for understanding the DAG.
 	 */
 	void print_in_dot2() {
+		print_in_dot2(InvDotMap());
+	}
+
+	/**
+	 * Print ScalarExpression graph in the common dot format.
+	 * Useful for understanding the DAG. Using the parser's map of var. Name -> Array find the inverse ScalarNodePtr -> var. Name
+	 */
+	void print_in_dot2(const std::map<std::string, bparser::Array>& symbols) {
+		print_in_dot2(create_inverse_map(symbols));
+	}
+
+	/**
+	 * Print ScalarExpression graph in the common dot format.
+	 * Useful for understanding the DAG. Using the map of ScalarNodePtr -> variableName
+	 */
+	void print_in_dot2(const InvDotMap& names) {
+
 		sort_nodes();
 		
 		std::cout << "\n" << "----- begin cut here -----" << "\n";
 		std::cout << "digraph Expr {" << "\n";
 
 		std::cout << "/* definitions */" << "\n";
+
 		std::cout << "edge [dir=back]" << "\n";
 		for (uint i = 0; i < sorted.size(); ++i) {
-			_print_dot_node_definition(sorted[i]);
+			_print_dot_node_definition(sorted[i],names);
 		}
 		std::cout << "/* end of definitions */" << "\n";
 
 		for (uint i = 0; i < sorted.size(); ++i) {
 			for (uint in = 0; in < sorted[i]->n_inputs_; ++in) {
 				std::cout << "    ";
-				_print_dot_node(sorted[i]);
+				_print_dot_node_id(sorted[i]);
 				std::cout << "\n -> ";
-				_print_dot_node(sorted[i]->inputs_[in]);
+				_print_dot_node_id(sorted[i]->inputs_[in]);
 				std::cout << "\n\n";
 			}
 		}
@@ -162,30 +183,107 @@ public:
 		std::cout << "-----  end cut here  -----" << "\n";
 		std::cout.flush();
 	}
-	void _print_dot_node(ScalarNodePtr  node) {
-		std::cout << node->op_name_ << "_" << (uintptr_t)node.get() << "__" << node->result_storage;// << std::endl;
-	}
-
-	void _print_dot_node_definition(ScalarNodePtr  node) {
-		_print_dot_node(node);
-		std::cout << ' ';
-
-		if		(node->result_storage == ResultStorage::constant) {
-			std::cout << "[shape=circle,label=\"const " << *node->values_ << "\"]" << std::endl;
+	
+	//Create a map of ScalarNodePtr -> (variable name, is_scalar)
+	InvDotMap create_inverse_map(const std::map<std::string, bparser::Array>& symbols) const {
+		InvDotMap inv_map;
+		if (symbols.empty()) return inv_map;
+		for (const auto& s : symbols)
+		{
+			for (const auto& n : s.second.elements()) {
+				inv_map[n] = std::pair<std::string,bool>(s.first, s.second.shape().empty());
+			}
 		}
-		else if (node->result_storage == ResultStorage::constant_bool) {
-			std::cout << "[shape=circle,label=\"const " << *node->values_ << "\"]" << std::endl;
-		}
-		else if (node->result_storage == ResultStorage::expr_result) {
-			std::cout << "[shape=box,label=\"" << node->op_name_ << " " << node->result_idx_ << "\"]" << std::endl;
-		}
-		else {
-			std::cout << "[label=\"" << node->op_name_ << "\"]" << std::endl;
-		}
+		return inv_map;
 	}
 
 
 private:
+	//Print the vertice identifier for dot
+	void _print_dot_node_id(const ScalarNodePtr& node) const {
+		std::cout << node->op_name_ << "_" << (uintptr_t)node.get() << "__" << node->result_storage;// << std::endl;
+	}
+
+	//Print how the vertice should look in dot
+	void _print_dot_node_definition(const ScalarNodePtr& node, const InvDotMap& invmap) const {
+		_print_dot_node_id(node);
+		std::cout << ' ';
+
+		if (node->result_storage == ResultStorage::constant) {				// Constant
+			std::cout << "[shape=circle,";
+
+			try { //If the constant has a name
+				std::string name(invmap.at(node).first);
+				std::cout << "label=\"" << name << ": " << *node->values_ << "\",group=\"" << name << '"';
+			}
+			catch (std::out_of_range) { //No name
+				std::cout << "label=\"" << "const " << *node->values_ << '"';
+			}
+			std::cout  << "]" << std::endl;
+		}
+
+		else if (node->result_storage == ResultStorage::constant_bool) {	//Constant bool
+			std::cout << "[shape=circle,";
+
+			try { //If the constant has a name
+				std::string name(invmap.at(node).first);
+				std::cout << "label=\"" << name << ": " << *node->values_ << "\",group=\"" << name << '"';
+			}
+			catch (std::out_of_range) { //No name
+				std::cout << "label=\"" << "const " << *node->values_ << '"';
+			}
+			std::cout << "]" << std::endl;
+		}
+
+		else if (node->result_storage == ResultStorage::expr_result) {		//Result
+			std::cout << "[shape=box,label=\"" << node->op_name_ << " [" << node->result_idx_ << "]" << "\"]" << std::endl;
+		}
+
+		else if (node->result_storage == ResultStorage::value) {			// Value
+
+			std::cout << "[shape=circle,";
+			try {
+				std::string name(invmap.at(node).first);
+				bool scalar(invmap.at(node).second);
+				if (scalar) {
+					std::cout << "label=\"" << name << '"';
+				}
+				else {
+					std::cout << "label=<" << name << "<SUB>i</SUB>" << '>';
+				}
+				std::cout << ",group=\"" << name << '"';
+			}
+			catch (std::out_of_range) {
+				std::cout << "label=<<I>var</I>>";
+			}
+			
+			std::cout << "]" << std::endl;
+		}
+
+		else if (node->result_storage == ResultStorage::value_copy) {		//Value copy
+			std::cout << "[shape=circle,";
+			try {
+				std::string name(invmap.at(node).first);
+				bool scalar(invmap.at(node).second);
+				if (scalar) {
+					std::cout << "label=\"" << name << '"';
+				}
+				else {
+					std::cout << "label=<" << name << "<SUB>i</SUB>" << '>';
+				}
+				std::cout << ",group=\"" << name << '"';
+			}
+			catch (std::out_of_range) {
+				std::cout << "label=<<I>var_cp</I>>";
+			}
+			std::cout << "]" << std::endl;
+		}
+
+		else {//Temporary & other											//Temporary & other
+			std::cout << "[label=\"" << node->op_name_ << "\"]" << std::endl;
+		}
+	}
+
 	void _print_i_node(uint i) {
 		std::cout << sorted[i]->op_name_ << "_" << i << "_"<< sorted[i]->result_idx_;
 	}

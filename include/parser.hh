@@ -191,6 +191,7 @@ public:
 
 		//se.print_in_dot();
         //se.print_in_dot2();
+        //se.print_in_dot2(symbols_);
 		processor = ProcessorBase::create_processor(se, max_vec_size, simd_size, arena);
     }
 
