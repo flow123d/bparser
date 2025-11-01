@@ -1216,6 +1216,93 @@ public:
 		//return full_({}, *wrap_array(a).trace());
 	}
 
+	static Array norm1(const Array& a) {
+		switch (a.shape().size()) {
+			case 0: //scalar
+				Throw() << "Norms are not for scalar values" << "\n";
+				break;
+			case 1: //vector
+			{
+
+				Shape s; //empty Shape for scalar
+				Array r(s);
+				r.elements_[0U] = *wrap_array(a).lpNorm<1>();
+				return r;
+			}
+			case 2: //matrix
+			{
+				Shape s; //empty Shape for scalar
+				Array r(s);
+				r.elements_[0U] = *wrap_array(a).colwise().lpNorm<1>().maxCoeff();
+				return r;
+			}
+			default:
+				Throw() << "Norms are not avaiable for ND tensors" << "\n";
+			}
+	}
+
+	static Array norm2(const Array& a) {
+		switch (a.shape().size()) {
+		case 0: //scalar
+			Throw() << "Norms are not for scalar values" << "\n";
+			break;
+		case 1: //vector
+		{
+			//Euclidean norm
+			Shape s; //empty Shape for scalar
+			Array r(s);
+			r.elements_[0U] = *wrap_array(a).norm();
+			return r;
+		}
+		case 2: //matrix
+		{
+			//Spectral norm
+			Throw() << "norm2(matrix) not yet implemented" << "\n";
+			Shape s; //empty Shape for scalar
+			Array r(s);
+			//r.elements_[0U] = *wrap_array(a);
+			return r;
+		}
+		default:
+			Throw() << "Norms are not avaiable for ND tensors" << "\n";
+		}
+	}
+
+	static Array normfro(const Array& a) {
+		if (a.shape().size() != 2) {
+			Throw() << "Frobenius norm is only defined for matrices" << "\n";
+		}
+
+		Shape s;
+		Array r(s);
+		r.elements_[0U] = *wrap_array(a).norm();
+		return r;
+	}
+
+	static Array norminf(const Array& a) {
+		switch (a.shape().size()) {
+			case 0: //scalar
+				Throw() << "Norms are not for scalar values" << "\n";
+				break;
+			case 1: //vector
+			{
+				Shape s; //empty Shape for scalar
+				Array r(s);
+				r.elements_[0U] = *wrap_array(a).lpNorm<Eigen::Infinity>();
+				return r;
+			}
+			case 2: //matrix
+			{
+				Shape s; //empty Shape for scalar
+				Array r(s);
+				r.elements_[0U] = *wrap_array(a).rowwise().lpNorm<1>().maxCoeff();
+				return r;
+			}
+			default:
+				Throw() << "Norms are not avaiable for ND tensors" << "\n";
+		}
+	}
+
 	static Array flatten(const Array &tensor) {
 		uint n_elements = shape_size(tensor.shape());
 		Shape res_shape(1, n_elements);

@@ -49,8 +49,7 @@ namespace bparser {
 			}
 
 			inline bool operator==(const ScalarWrapper& b) const {
-				if (((***this).result_storage == constant      && (**b).result_storage == constant     ) || 
-					((***this).result_storage == constant_bool && (**b).result_storage == constant_bool) )
+				if ((*this).is_constant() && (*this).have_same_result_storage(b))
 					return *(***this).values_ == *(**b).values_;
 				return false;
 			}
@@ -78,6 +77,14 @@ namespace bparser {
 		protected:
 			ScalarNodePtr node;
 
+			inline bool is_constant() const {
+				return (***this).result_storage == constant ||
+					   (***this).result_storage == constant_bool;
+			}
+
+			inline bool have_same_result_storage(const ScalarWrapper& b)const {
+				return (***this).result_storage == (**b).result_storage;
+			}
 
 		}; //ScalarWrapper
 
@@ -91,18 +98,25 @@ namespace bparser {
 		}													\
 		using std::OP;
 
-		/*
+#define BIN_OP(OP)																	\
+		inline ScalarWrapper OP(const ScalarWrapper& a,const ScalarWrapper& b) {	\
+			return ScalarWrapper::bin_op<_##OP##_>(a,b);							\
+		}																			\
+		using std::OP;
+
+		
 		UN_OP(abs)
 
 		//https://eigen.tuxfamily.org/dox/namespaceEigen.html#a54cc34b64b4935307efc06d56cd531df
 		inline ScalarWrapper abs2(const ScalarWrapper& s) {
 			return s*s;
-		};
-		*/
+		}
+		
 
-		//UN_OP(sqrt)
+		UN_OP(sqrt)
 		//UN_OP(exp)
 		//UN_OP(log)
+		//UN_OP(log2)
 		//UN_OP(log10)
 		//UN_OP(sin)
 		//UN_OP(sinh)
@@ -116,9 +130,18 @@ namespace bparser {
 		//UN_OP(ceil)
 		//UN_OP(floor)
 
+		BIN_OP(max)
+		inline ScalarWrapper maxi(const ScalarWrapper& a, const ScalarWrapper& b) {
+			return ScalarWrapper::bin_op<_max_>(a, b);
+		}
 
+		BIN_OP(min)
+		inline ScalarWrapper mini(const ScalarWrapper& a, const ScalarWrapper& b) {
+			return ScalarWrapper::bin_op<_min_>(a, b);
+		}
 
-
+		//BIN_OP(atan2)
+		//BIN_OP(pow)
 
 	} //details
 } //bparser

@@ -181,6 +181,10 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 			FN("maximum", binary_array<_max_>())
             FN("diag"   , &Array::diag)
             FN("tr"     , &Array::trace)
+            FN("norm1"  , &Array::norm1)
+            FN("norm2"  , &Array::norm2)
+            FN("normfro", &Array::normfro)
+            FN("norminf", &Array::norminf)
             ;
 
         unary_op.add

@@ -261,6 +261,14 @@ void test_expression() {
 
 	BP_ASSERT(test_expr("tr([[1,9,9],[9,1,9],[9,9,1]])", { 3 }, {}));
 
+	BP_ASSERT(test_expr("norm1([-4,-3,-2,-1,0,1,2,3,4])", {20}, {}));
+	BP_ASSERT(test_expr("norm1([[-4,-3,-2],[-1,0,1],[2,3,4]])", { 7 }, {}));
+	BP_ASSERT(test_expr("norm2([-4,-3,-2,-1,0,1,2,3,4])", { 7.745966692414834 }, {}));
+	//BP_ASSERT(test_expr("norm2([[-4,-3,-2],[-1,0,1],[2,3,4]])", { 7.3484692283495345 }, {}));
+	BP_ASSERT(test_expr("normfro([[-4,-3,-2],[-1,0,1],[2,3,4]])", { 7.745966692414834 }, {}));
+	BP_ASSERT(test_expr("norminf([-4,-3,-2,-1,0,1,2,3,4])", { 4 }, {}));
+	BP_ASSERT(test_expr("norminf([[-4,-3,-2],[-1,0,1],[2,3,4]])", { 9 }, {}));
+
 	BP_ASSERT(test_expr("abs(-1)+abs(0)+abs(1)", {2}));
 	BP_ASSERT(test_expr("floor(-3.5)", {-4}, {}));
 	BP_ASSERT(test_expr("ceil(-3.5)", {-3}, {}));
