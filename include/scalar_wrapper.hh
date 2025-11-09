@@ -12,6 +12,7 @@
 
 #include "scalar_node.hh"
 #include <Eigen/Core>
+//#include <Eigen/Eigenvalues> //impossible
 
 namespace bparser {
 	namespace details {
@@ -22,6 +23,10 @@ namespace bparser {
 			ScalarWrapper(int i) : node(ScalarNode::create_const(i)) { ; }
 			ScalarWrapper(double d) : node(ScalarNode::create_const(d)) { ; }
 			ScalarWrapper(ScalarNodePtr existing_ptr) : node(existing_ptr) { ; }
+
+			inline ScalarWrapper operator+() const {
+				return ScalarWrapper(*this);
+			}
 
 			inline ScalarWrapper operator-() const {
 				return un_op<_minus_>(*this);
@@ -36,12 +41,27 @@ namespace bparser {
 				return bin_op<_add_>(*this, b);
 			}
 
+			inline ScalarWrapper& operator-=(const ScalarWrapper& b) {
+				node = bin_op<_sub_>(*this, b).get();
+				return *this;
+			}
+
 			inline ScalarWrapper operator-(const ScalarWrapper& b) const {
 				return bin_op<_sub_>(*this, b);
 			}
 
+			inline ScalarWrapper& operator*=(const ScalarWrapper& b) {
+				node = bin_op<_mul_>(*this, b).get();
+				return *this;
+			}
+
 			inline ScalarWrapper operator*(const ScalarWrapper& b) const {
 				return bin_op<_mul_>(*this, b);
+			}
+
+			inline ScalarWrapper& operator/=(const ScalarWrapper& b) {
+				node = bin_op<_div_>(*this, b).get();
+				return *this;
 			}
 
 			inline ScalarWrapper operator/(const ScalarWrapper& b) const {
@@ -53,6 +73,34 @@ namespace bparser {
 					return *(***this).values_ == *(**b).values_;
 				return false;
 			}
+			/* These do not make any sense with what we are trying to achieve
+			inline bool operator!=(const ScalarWrapper& b) const {
+				return !((*this) == b);
+			}
+
+			inline bool operator<(const ScalarWrapper& b) const {
+				if ((*this).is_constant() && (*this).have_same_result_storage(b))
+					return *(***this).values_ < *(**b).values_;
+				return false;
+			}
+
+			inline bool operator<=(const ScalarWrapper& b) const {
+				if ((*this).is_constant() && (*this).have_same_result_storage(b))
+					return *(***this).values_ <= *(**b).values_;
+				return false;
+			}
+
+			inline bool operator>=(const ScalarWrapper& b) const {
+				if ((*this).is_constant() && (*this).have_same_result_storage(b))
+					return *(***this).values_ >= *(**b).values_;
+				return false;
+			}
+
+			inline bool operator>(const ScalarWrapper& b) const {
+				if ((*this).is_constant() && (*this).have_same_result_storage(b))
+					return *(***this).values_ > *(**b).values_;
+				return false;
+			}*/
 
 
 			inline ScalarNodePtr operator*() const { //dereference
@@ -111,7 +159,7 @@ namespace bparser {
 		inline ScalarWrapper abs2(const ScalarWrapper& s) {
 			return s*s;
 		}
-		
+	
 
 		UN_OP(sqrt)
 		//UN_OP(exp)

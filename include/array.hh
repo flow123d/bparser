@@ -1257,11 +1257,17 @@ public:
 		case 2: //matrix
 		{
 			//Spectral norm
-			Throw() << "norm2(matrix) not yet implemented" << "\n";
-			Shape s; //empty Shape for scalar
+			Throw() << "norm2(matrix) is not yet possible" << "\n";
+			/*Shape s; //empty Shape for scalar
 			Array r(s);
-			//r.elements_[0U] = *wrap_array(a);
-			return r;
+
+			Eigen::MatrixX<details::ScalarWrapper> m( wrap_array(a) );
+
+			r.elements_[0U] = *details::sqrt((m.adjoint()*m).eigenvalues().real().maxCoeff());
+			//computing eigenvalues would require static cast to double and comparison operators (<,<=,>,>=,!=,==)
+			//something which we cannot support
+			return r;*/
+			break;
 		}
 		default:
 			Throw() << "Norms are not avaiable for ND tensors" << "\n";

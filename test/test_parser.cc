@@ -264,7 +264,7 @@ void test_expression() {
 	BP_ASSERT(test_expr("norm1([-4,-3,-2,-1,0,1,2,3,4])", {20}, {}));
 	BP_ASSERT(test_expr("norm1([[-4,-3,-2],[-1,0,1],[2,3,4]])", { 7 }, {}));
 	BP_ASSERT(test_expr("norm2([-4,-3,-2,-1,0,1,2,3,4])", { 7.745966692414834 }, {}));
-	//BP_ASSERT(test_expr("norm2([[-4,-3,-2],[-1,0,1],[2,3,4]])", { 7.3484692283495345 }, {}));
+	//BP_ASSERT(test_expr("norm2([[-4,-3,-2],[-1,0,1],[2,3,4]])", { 7.3484692283495345 }, {})); //Spectral norm uses eigenvalues/singular values. Eigen uses comparison operators in the algorithm. Bparser does not like that
 	BP_ASSERT(test_expr("normfro([[-4,-3,-2],[-1,0,1],[2,3,4]])", { 7.745966692414834 }, {}));
 	BP_ASSERT(test_expr("norminf([-4,-3,-2,-1,0,1,2,3,4])", { 4 }, {}));
 	BP_ASSERT(test_expr("norminf([[-4,-3,-2],[-1,0,1],[2,3,4]])", { 9 }, {}));
