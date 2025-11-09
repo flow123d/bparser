@@ -41,8 +41,8 @@ private:
 	/// Result nodes, given as input.
 	NodeVec results;
 
-	typedef std::pair<std::string, bool> InvDotNameAndScalar;
-	typedef std::map<ScalarNodePtr, InvDotNameAndScalar> InvDotMap;
+	typedef std::pair<std::string, MultiIdx::VecUint> InvDotNameAndIndices;
+	typedef std::map<ScalarNodePtr, InvDotNameAndIndices> InvDotMap;
 
 	/**
 	 * Used in the setup_result_storage to note number of unclosed nodes
@@ -190,9 +190,12 @@ public:
 		if (symbols.empty()) return inv_map;
 		for (const auto& s : symbols)
 		{
-			for (const auto& n : s.second.elements()) {
-				inv_map[n] = std::pair<std::string,bool>(s.first, s.second.shape().empty());
+			for (MultiIdx idx(s.second.range()); idx.valid();idx.inc_src()) {
+				inv_map[s.second[idx]] = InvDotNameAndIndices(s.first, idx.indices());
 			}
+			/*for (const auto& n : s.second.elements()) {
+				inv_map[n] = InvDotNameAndIndices(s.first, s.second.shape().empty());
+			}*/
 		}
 		return inv_map;
 	}
@@ -209,79 +212,138 @@ private:
 		_print_dot_node_id(node);
 		std::cout << ' ';
 
-		if (node->result_storage == ResultStorage::constant) {				// Constant
-			std::cout << "[shape=circle,";
+		switch (node->result_storage) {
+			case ResultStorage::constant: {				// Constant
+				std::cout << "[shape=circle,";
 
-			try { //If the constant has a name
-				std::string name(invmap.at(node).first);
-				std::cout << "label=\"" << name << ": " << *node->values_ << "\",group=\"" << name << '"';
-			}
-			catch (const std::out_of_range&) { //No name
-				std::cout << "label=\"" << "const " << *node->values_ << '"';
-			}
-			std::cout  << "]" << std::endl;
-		}
-
-		else if (node->result_storage == ResultStorage::constant_bool) {	//Constant bool
-			std::cout << "[shape=circle,";
-
-			try { //If the constant has a name
-				std::string name(invmap.at(node).first);
-				std::cout << "label=\"" << name << ": " << *node->values_ << "\",group=\"" << name << '"';
-			}
-			catch (const std::out_of_range&) { //No name
-				std::cout << "label=\"" << "const " << *node->values_ << '"';
-			}
-			std::cout << "]" << std::endl;
-		}
-
-		else if (node->result_storage == ResultStorage::expr_result) {		//Result
-			std::cout << "[shape=box,label=\"" << node->op_name_ << " [" << node->result_idx_ << "]" << "\"]" << std::endl;
-		}
-
-		else if (node->result_storage == ResultStorage::value) {			// Value
-
-			std::cout << "[shape=circle,";
-			try {
-				std::string name(invmap.at(node).first);
-				bool scalar(invmap.at(node).second);
-				if (scalar) {
-					std::cout << "label=\"" << name << '"';
+				try { //If the constant has a name
+					std::string name(invmap.at(node).first);
+					const MultiIdx::VecUint indices(invmap.at(node).second);
+					bool scalar(indices.empty());
+					if (scalar) {
+						std::cout << "label=\"" << name << '=' << *node->values_ << '\"';
+					}
+					else {
+						MultiIdx::VecUint::size_type size(indices.size());
+						std::cout << "label=\"" << name << "[";
+						for (MultiIdx::VecUint::size_type i = 0; i < size; i++) {
+							std::cout << indices.at(i);
+							if (i != size - 1) {
+								std::cout << ',';
+							}
+						}
+						std::cout << "]";
+						std::cout << '=' << *node->values_ << '\"';
+					}
+					std::cout << ", group = \"" << name << '\"';
 				}
-				else {
-					std::cout << "label=<" << name << "<SUB>i</SUB>" << '>';
+				catch (const std::out_of_range&) { //No name
+					std::cout << "label=\"" << "const " << *node->values_ << '"';
 				}
-				std::cout << ",group=\"" << name << '"';
+				std::cout << "]" << std::endl;
+				break;
 			}
-			catch (const std::out_of_range&) {
-				std::cout << "label=<<I>var</I>>";
-			}
-			
-			std::cout << "]" << std::endl;
-		}
 
-		else if (node->result_storage == ResultStorage::value_copy) {		//Value copy
-			std::cout << "[shape=circle,";
-			try {
-				std::string name(invmap.at(node).first);
-				bool scalar(invmap.at(node).second);
-				if (scalar) {
-					std::cout << "label=\"" << name << '"';
-				}
-				else {
-					std::cout << "label=<" << name << "<SUB>i</SUB>" << '>';
-				}
-				std::cout << ",group=\"" << name << '"';
-			}
-			catch (const std::out_of_range&) {
-				std::cout << "label=<<I>var_cp</I>>";
-			}
-			std::cout << "]" << std::endl;
-		}
+			case ResultStorage::constant_bool: {		//Constant bool
+				std::cout << "[shape=circle,";
 
-		else {//Temporary & other											//Temporary & other
-			std::cout << "[label=\"" << node->op_name_ << "\"]" << std::endl;
-		}
+				try { //If the constant has a name
+					std::string name(invmap.at(node).first);
+					const MultiIdx::VecUint indices(invmap.at(node).second);
+					bool scalar(indices.empty());
+					if (scalar) {
+						std::cout << "label=\"" << name << '=' << *node->values_ << '\"';
+					}
+					else {
+						MultiIdx::VecUint::size_type size(indices.size());
+						std::cout << "label=\"" << name << "[";
+						for (MultiIdx::VecUint::size_type i = 0; i < size; i++) {
+							std::cout << indices.at(i);
+							if (i != size - 1) {
+								std::cout << ',';
+							}
+						}
+						std::cout << "]";
+						std::cout << '=' << *node->values_ << '\"';
+					}
+					std::cout << ", group = \"" << name << '\"';
+				}
+				catch (const std::out_of_range&) { //No name
+					std::cout << "label=\"" << "const " << *node->values_ << '"';
+				}
+				std::cout << "]" << std::endl;
+				break;
+			}
+
+			case ResultStorage::expr_result: {			//Result
+				std::cout << "[shape=box,label=\"" << node->op_name_ << " [" << node->result_idx_ << "]" << "\"]" << std::endl;
+				break;
+			}
+
+			case ResultStorage::value: {				// Value
+				std::cout << "[shape=circle,";
+				try {
+					std::string name(invmap.at(node).first);
+					const MultiIdx::VecUint indices(invmap.at(node).second);
+					bool scalar(indices.empty());
+					if (scalar) {
+						std::cout << "label=\"" << name << '"';
+					}
+					else {
+						MultiIdx::VecUint::size_type size(indices.size());
+						std::cout << "label=\"" << name << "[";
+						for (MultiIdx::VecUint::size_type i = 0; i < size; i++) {
+							std::cout << indices.at(i);
+							if (i != size - 1) {
+								std::cout << ',';
+							}
+						}
+						std::cout << "]\"";
+					}
+					std::cout << ",group=\"" << name << '"';
+				}
+				catch (const std::out_of_range&) {
+					std::cout << "label=<<I>var</I>>";
+				}
+
+				std::cout << "]" << std::endl;
+				break;
+			}
+
+			case ResultStorage::value_copy: {			//Value copy
+				std::cout << "[shape=circle,";
+				try {
+					std::string name(invmap.at(node).first);
+					MultiIdx::VecUint indices(invmap.at(node).second);
+					bool scalar(indices.empty());
+					if (scalar) {
+						std::cout << "label=\"" << name << '"';
+					}
+					else {
+						MultiIdx::VecUint::size_type size(indices.size());
+						std::cout << "label=\"" << name << "[";
+						for (MultiIdx::VecUint::size_type i = 0; i < size; i++) {
+							std::cout << indices.at(i);
+							if (i != size - 1) {
+								std::cout << ',';
+							}
+						}
+						std::cout << "]\"";
+					}
+					std::cout << ",group=\"" << name << '"';
+				}
+				catch (const std::out_of_range&) {
+					std::cout << "label=<<I>var_cp</I>>";
+				}
+				std::cout << "]" << std::endl;
+				break;
+			}
+
+			default: {									//Temporary & other
+				std::cout << "[label=\"" << node->op_name_ << "\"]" << std::endl;
+				break;
+			}
+		} //switch
 	}
 
 	void _print_i_node(uint i) {
