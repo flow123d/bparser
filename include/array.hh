@@ -1309,6 +1309,27 @@ public:
 		}
 	}
 
+	static Array max(const Array& a) {
+		Shape s;
+		Array r(s);
+		r.elements_[0U] = *wrap_array(flatten(a)).maxCoeff();
+		return r;
+	}
+
+	static Array min(const Array& a) {
+		Shape s;
+		Array r(s);
+		r.elements_[0U] = *wrap_array(flatten(a)).minCoeff();
+		return r;
+	}
+
+	static Array sum(const Array& a) {
+		Shape s;
+		Array r(s);
+		r.elements_[0U] = *wrap_array(flatten(a)).sum();
+		return r;
+	}
+
 	static Array flatten(const Array &tensor) {
 		uint n_elements = shape_size(tensor.shape());
 		Shape res_shape(1, n_elements);

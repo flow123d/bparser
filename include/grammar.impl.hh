@@ -179,12 +179,15 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
             FN("power"  , binary_array<_pow_>())
 			FN("minimum", binary_array<_min_>())
 			FN("maximum", binary_array<_max_>())
+            FN("min"    , &Array::min)
+            FN("max"    , &Array::max)
             FN("diag"   , &Array::diag)
             FN("tr"     , &Array::trace)
             FN("norm1"  , &Array::norm1)
             FN("norm2"  , &Array::norm2)
             FN("normfro", &Array::normfro)
             FN("norminf", &Array::norminf)
+            FN("sum"    , &Array::sum)
             ;
 
         unary_op.add
