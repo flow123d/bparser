@@ -12,6 +12,7 @@
 
 #include "scalar_node.hh"
 #include <Eigen/Core>
+#include <Eigen/Geometry>
 //#include <Eigen/Eigenvalues> //impossible
 
 namespace bparser {

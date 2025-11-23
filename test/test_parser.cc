@@ -314,6 +314,13 @@ void test_expression() {
 	BP_ASSERT(test_expr("sum([-3,-2,-1,0,1,2,3])", { 0 }));
 	BP_ASSERT(test_expr("sum([[[8,7],[6,5]],[[4,3],[2,1]]])", { 1+2+3+4+5+6+7+8 }));
 
+	BP_ASSERT(test_expr("cross([1,2,3],[4,5,6])", {-3, 6, -3}, {3}));
+	BP_ASSERT(test_expr("cross([1,2],[4,5,6])", { 12, -6, -3 }, { 3 }));
+	BP_ASSERT(test_expr("cross([1,2,0],[4,5,6])", { 12, -6, -3 }, { 3 }));
+	BP_ASSERT(test_expr("cross([1,2],[4,5])", { -3 }, {}));
+	//BP_ASSERT(test_expr("cross([[1,2,3],[4,5,6]," +
+	//						  "[[4,5,6],[1,2,3]] )"));
+
 	/**
 	 * All bool tests have defined:
 	 * v1 - scalar array == [88..134]

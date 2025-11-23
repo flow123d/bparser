@@ -859,12 +859,12 @@ public:
 		return result;
 	}
 
-
+	typedef Eigen::MatrixX<details::ScalarWrapper> WrappedArray;
 
 	//Wraps the ScalarNodes of an Array into an Eigen Matrix of ScalarWrappers.
 	//Vectors will be column vectors. Eigen does not support vectors without orientation.
 	//Cannot wrap scalars. To wrap scalars, use the bparser::details::ScalarWrapper constructor
-	static Eigen::MatrixX<details::ScalarWrapper> wrap_array(const bparser::Array& a) {
+	static WrappedArray wrap_array(const bparser::Array& a) {
 		MultiIdx idx(a.range());
 		return wrap_array(a, idx);
 	}
@@ -872,7 +872,7 @@ public:
 	//Wraps the ScalarNodes of an Array accessed via MultiIdx.idx_trg() created from supplied MultiIdxRange into an Eigen Matrix of ScalarWrapper
 	//Vectors will be column vectors. Eigen does not support vectors without orientation.
 	//Cannot wrap scalars. To wrap scalars, use the bparser::details::ScalarWrapper constructor
-	static Eigen::MatrixX<details::ScalarWrapper> wrap_array(const bparser::Array& a, MultiIdxRange& range) {
+	static WrappedArray wrap_array(const bparser::Array& a, MultiIdxRange& range) {
 		MultiIdx idx (range);
 		return wrap_array(a, idx);
 	}
@@ -880,7 +880,7 @@ public:
 	//Wraps the ScalarNodes of an Array accessed via MultiIdx.idx_trg() into an Eigen Matrix of ScalarWrapper
 	//Vectors will be column vectors. Eigen does not support vectors without orientation.
 	//Cannot wrap scalars. To wrap scalars, use the bparser::details::ScalarWrapper constructor
-	static Eigen::MatrixX<details::ScalarWrapper> wrap_array(const bparser::Array& a, MultiIdx& index) {
+	static WrappedArray wrap_array(const bparser::Array& a, MultiIdx& index) {
 
 		using namespace details;
 		Shape trg_shape = index.range_.target_shape();
@@ -1127,15 +1127,15 @@ public:
 		//std::cout << print_shape(result_shape) << std::endl;
 
 		Array result(result_shape);
-		bool should_transpose = a.shape().size() == 1;
+		//bool should_transpose = a.shape().size() == 1;
 
 		for (MultiIdx	
 			result_idx(result.range()),
 			a_idx(a_range),
 			b_idx(b_range);	result_idx.valid(); ) {
 
-			Eigen::MatrixX<details::ScalarWrapper> m_a = wrap_array(a, a_idx);
-			Eigen::MatrixX<details::ScalarWrapper> m_b = wrap_array(b, b_idx);
+			WrappedArray m_a = wrap_array(a, a_idx);
+			WrappedArray m_b = wrap_array(b, b_idx);
 
 			Array matmult = unwrap_array(m_a * m_b);
 
@@ -1328,6 +1328,49 @@ public:
 		Array r(s);
 		r.elements_[0U] = *wrap_array(flatten(a)).sum();
 		return r;
+	}
+
+	static Array cross(const Array& a, const Array& b) {
+		Shape a_shape(a.shape());
+		Shape b_shape(b.shape());
+		if (a_shape.size() != 1 && a_shape.size() != 2) 
+			Throw() << "Array a of cross product has wrong dimensions";
+		if (b_shape.size() != 1 && b_shape.size() != 2) 
+			Throw() << "Array b of cross product has wrong dimensions";
+		if (a_shape.back() != 2 && a_shape.back() != 3)
+			Throw() << "Array a of cross product doesn't have the right amount of elements";
+		if (b_shape.back() != 2 && b_shape.back() != 3)
+			Throw() << "Array b of cross product doesn't have the right amount of elements";
+
+		//for (MultiIdx) //TODO: Support multiple vector cross-products
+		//{
+			WrappedArray m_a = wrap_array(a);
+			WrappedArray m_b = wrap_array(b);
+
+			if (m_a.cols() == 1) m_a.transposeInPlace(); //col -> row
+			if (m_b.cols() == 1) m_b.transposeInPlace(); //col -> row
+
+			if (m_a.cols() == 2 && m_b.cols() == 3) {
+				m_a.conservativeResize(Eigen::NoChange, 3);
+				m_a(0, 2) = details::ScalarWrapper(details::ScalarNode::create_zero());
+			}
+			else if (m_b.cols() == 2 && m_a.cols() == 3) {
+				m_b.conservativeResize(Eigen::NoChange, 3);
+				m_b(0, 2) = details::ScalarWrapper(details::ScalarNode::create_zero());
+			}
+
+			WrappedArray cross;
+			if (m_a.cols() == 2 && m_b.cols() == 2) {
+				//cross = Eigen::Ref<const Eigen::RowVector2<details::ScalarWrapper>>(m_a).cross(Eigen::Ref<const Eigen::RowVector2<details::ScalarWrapper>>(m_b)); // Only in Eigen 5.0.0+
+				cross = WrappedArray(1, 1);
+				cross(0, 0) = (m_a(0, 0) * m_b(0, 1) - m_b(0, 0) * m_a(0, 1));
+			}
+			else {
+				cross = Eigen::Ref<const Eigen::RowVector3<details::ScalarWrapper>>(m_a).cross(Eigen::Ref<const Eigen::RowVector3<details::ScalarWrapper>>(m_b));
+			}
+			Array arr = unwrap_array(cross, true);
+		//}
+		return Array(arr);
 	}
 
 	static Array flatten(const Array &tensor) {
