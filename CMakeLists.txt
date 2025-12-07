@@ -290,3 +290,31 @@ define_test(test_grammar bparser)
 define_test(test_processor bparser) #is it broken? -LV
 define_test(test_speed bparser)  
 define_test(test_simd)
+
+set(src_name "nitpick_generate")
+set(nit_source "${CMAKE_CURRENT_SOURCE_DIR}/nitpick/${src_name}.cc")
+set(nit_binary "${src_name}_bin")
+set(nit_name "${src_name}")
+
+add_executable(${nit_binary} EXCLUDE_FROM_ALL  ${nit_source} )
+add_dependencies(${nit_binary} bparser)
+target_link_libraries(${nit_binary} bparser)
+
+add_custom_target(${nit_name}
+COMMAND "$<TARGET_FILE:${nit_binary}>"
+DEPENDS ${nit_binary}
+WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/nitpick")
+
+set(src_name "nitpick_run")
+set(nit_source "${CMAKE_CURRENT_SOURCE_DIR}/nitpick/${src_name}.cc")
+set(nit_binary "${src_name}_bin")
+set(nit_name "${src_name}")
+
+add_executable(${nit_binary} EXCLUDE_FROM_ALL  ${nit_source} )
+add_dependencies(${nit_binary} bparser)
+target_link_libraries(${nit_binary} bparser)
+
+add_custom_target(${nit_name}
+COMMAND "$<TARGET_FILE:${nit_binary}>"
+DEPENDS ${nit_binary}
+WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/nitpick")
