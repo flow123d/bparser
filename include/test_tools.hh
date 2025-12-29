@@ -8,7 +8,7 @@
 #ifndef INCLUDE_TEST_TOOLS_HH_
 #define INCLUDE_TEST_TOOLS_HH_
 
-
+#include "config.hh"
 #include "assert.hh"
 #include <vector>
 

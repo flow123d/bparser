@@ -43,7 +43,7 @@ private:
 
 	typedef std::pair<std::string, bool> InvDotNameAndScalar;
 	typedef std::map<ScalarNodePtr, InvDotNameAndScalar> InvDotMap;
-	typedef std::unordered_map<std::string, ScalarNodePtr> CXXVarMap;
+	typedef std::unordered_map<double*, std::string> CXXVarMap;
 
 	/**
 	 * Used in the setup_result_storage to note number of unclosed nodes
@@ -185,7 +185,7 @@ public:
 		std::cout.flush();
 	}
 
-	std::string print_in_cxx(/*const CXXVarMap& map*/) {
+	std::string print_in_cxx(const CXXVarMap& map) {
 		std::ostringstream result;
 		NodeVec result_nodes;
 
@@ -195,14 +195,14 @@ public:
 		result << "#include \"parser.hh\"" << "\n";
 		result << "using namespace bparser;" << "\n";
 		result << "using namespace bparser::details;" << "\n";
-		result << "int main(){ //This is here only to stop any compiler warnings, do not run this file as is" << "\n";
+		result << "int main(){ //This is here only to stop any IDE warnings, do not run this file as is" << "\n";
 		result << "#endif //NITPICK_INCLUDE_ONLY" << "\n";
 		result << "\n";
 
 		//Print nodes
 		for (uint i = sorted.size(); i-- > 0U; ) { // N-1,N-2,... 0
 			
-			result << _get_cxx_node_definition(sorted[i]);
+			result << _get_cxx_node_definition(sorted[i],map);
 			//result << "\n";
 			if (sorted[i]->result_storage == expr_result) {
 				result_nodes.push_back(sorted[i]);
@@ -211,7 +211,7 @@ public:
 		result << "\n\n";
 		//Print results
 		for (uint i = 0U; i < result_nodes.size(); ++i) {
-			result << "ScalarNodePtr " << "r" << i << " = " << _get_cxx_result(result_nodes[i]);
+			result << "ScalarNodePtr " << "r" << i << " = " << _get_cxx_result(result_nodes[i],map);
 		}
 		//Print final dag
 		result << "ExpressionDAG se({";
@@ -332,11 +332,11 @@ private:
 		}
 	}
 
-	std::string _get_cxx_node_id(const ScalarNodePtr& node) {
+	std::string _get_cxx_node_id(const ScalarNodePtr& node) const {
 		return _get_dot_node_id(node);
 	}
 
-	std::string _get_cxx_input_ids(const ScalarNodePtr& node) {
+	std::string _get_cxx_input_ids(const ScalarNodePtr& node) const {
 		std::string result;
 		for (uint in = 0; in < node->n_inputs_; ++in) {
 			result += _get_cxx_node_id(node->inputs_[in]);
@@ -347,29 +347,38 @@ private:
 		return result;
 	}
 
-	std::string _get_cxx_node_definition(const ScalarNodePtr& node) {
+	std::string _get_cxx_node_definition(const ScalarNodePtr& node, const CXXVarMap& map) const {
 		std::ostringstream result;
 
 		result << "ScalarNodePtr " << _get_cxx_node_id(node) << " = ";
 		switch (node->result_storage)
 		{
-		case ResultStorage::value:
-		case ResultStorage::constant:{
-			result << "ScalarNode::create_const(" << *node->values_ << ");\n";
-			break;
+		case ResultStorage::constant: {
+			if (map.count(node->values_) == 1){
+				result << "ScalarNode::create_const(node_map[\"" << map.at(node->values_) << "\"]);\n";
 			}
-		case ResultStorage::constant_bool: {
-			result << "ScalarNode::create_const_bool(" << *node->values_ << ");\n";
+			else {
+				result << "ScalarNode::create_const(" << *node->values_ << ");\n";
+			}
 			break;
 		}
-		/*case ResultStorage::value: {
-			result << "ScalarNode::create_const(" << *node->values_ << ");\n";
+		case ResultStorage::constant_bool: {
+			if (map.count(node->values_) == 1) {
+				result << "ScalarNode::create_const_bool(node_map[\"" << map.at(node->values_) << "\"]);\n";
+			}
+			else {
+				result << "ScalarNode::create_const_bool(" << *node->values_ << ");\n";
+			}
+			break;
+		}
+		case ResultStorage::value: {
+			result << "ScalarNode::create_value(node_map[\"" << map.at(node->values_) << "\"]);\n";
 			break;
 		}
 		case ResultStorage::value_copy: {
-			result << "ScalarNode::create_const(" << *node->values_ << ");\n";
+			result << "ScalarNode::create_val_copy(node_map[\"" << map.at(node->values_) << "\"]);\n";
 			break;
-		}*/
+		}
 		case ResultStorage::expr_result:
 		case ResultStorage::temporary: {
 			result << "ScalarNode::create<_" << node->op_name_ << "_>(" << _get_cxx_input_ids(node) << ");\n";
@@ -385,8 +394,8 @@ private:
 		return result.str();
 	}
 
-	std::string _get_cxx_result(const ScalarNodePtr& node/*, std::string idx*/) {
-		return "ScalarNode::create_result(" + _get_cxx_node_id(node) + ", " + "???" + ");\n";
+	std::string _get_cxx_result(const ScalarNodePtr& node, const CXXVarMap& map) const {
+		return "ScalarNode::create_result(" + _get_cxx_node_id(node) + ", node_map[\"" + map.at(node->values_) + "\"]);\n";
 	}
 
 	void _print_i_node(uint i) {
