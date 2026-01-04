@@ -40,6 +40,9 @@ int main() {
 	}
 	constexpr int vres_size = vec_size * 3;
 	double vres[vres_size];
+	for (uint i = 0; i < vres_size; ++i) {
+		vres[i] = NAN;
+	}
 
 		// Create parser, give the size of the value spaces.
 	// That is maximal allocated space. Actual values and 
@@ -51,11 +54,10 @@ int main() {
 	// parse an expression.
 	p.parse("1 * v1 + cs1 * v2");
 
-	//TODO: Create the SET_CONSTANT macro
 	// "cs1" constant with shape {}, i.e. scalar and values {2}.
-	p.set_constant("cs1", {}, {2});
+	P_SET_CONSTANT(cs1, {}, {2});
 	// "cv1" vector constant with shape {3}
-	p.set_constant("cv1", {3}, {1, 2, 3});
+	P_SET_CONSTANT(cv1, {3}, ARG({1, 2, 3}));
 	// "v1" variable with shape {3}; v1 is pointer to the value space
 	P_SET_VARIABLE(v1, { 3 }, v1);
 	P_SET_VARIABLE(v2, { 3 }, v2);
