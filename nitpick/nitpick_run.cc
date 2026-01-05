@@ -9,7 +9,7 @@ int main() {
 
 	ProcessorBase* processor = ProcessorBase::create_processor(se, max_vec_size, bparser::get_simd_size(), nullptr);
 
-	std::vector<uint> subset = { 0, 1 };
+	std::vector<uint> subset = { 0, 1 }; //ctverice doubluu
 
 	processor->set_subset(subset);
 	processor->run();

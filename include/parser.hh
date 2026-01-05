@@ -19,6 +19,7 @@
 #include "processor.hh"
 #include "grammar.hh"
 #include "create_processor.hh"
+#include "dag_printer.hh"
 
 namespace bparser {
 
@@ -190,8 +191,8 @@ public:
 		details::ExpressionDAG se(result_array_.elements());
 
 		//se.print_in_dot();
-        //se.print_in_dot2();
-        //se.print_in_dot2(symbols_);
+        //DagPrinter(se).print_in_dot2();
+        //DagPrinter(se).print_in_dot2(symbols_);
 		processor = ProcessorBase::create_processor(se, max_vec_size, simd_size, arena);
     }
 
