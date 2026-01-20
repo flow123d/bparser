@@ -292,49 +292,49 @@ define_test(test_speed bparser)
 define_test(test_simd)
 
 macro(define_nit_gen make_name def_file gen_file)
-set(src_name "nitpick_generate")
-set(nit_source "${CMAKE_CURRENT_SOURCE_DIR}/nitpick/${src_name}.cc")
-set(nit_name "${src_name}_${make_name}")
-set(nit_binary "${nit_name}_bin")
+    set(src_name "nitpick_generate")
+    set(nit_source "${CMAKE_CURRENT_SOURCE_DIR}/nitpick/${src_name}.cc")
+    set(nit_name "${src_name}_${make_name}")
+    set(nit_binary "${nit_name}_bin")
 
-add_executable(${nit_binary} EXCLUDE_FROM_ALL  ${nit_source} )
-add_dependencies(${nit_binary} bparser)
-target_link_libraries(${nit_binary} bparser)
-#set_property(TARGET ${nit_binary} PROPERTY COMPILE_DEFINITIONS "DEF_FILE=$<PATH:NORMAL_PATH,\"${def_file}\">;GEN_FILE=$<PATH:NORMAL_PATH,\"${gen_file}\">")
-set_property(TARGET ${nit_binary} PROPERTY COMPILE_DEFINITIONS "DEF_FILE=\"${def_file}\";GEN_FILE=\"${gen_file}\"")
+    add_executable(${nit_binary} EXCLUDE_FROM_ALL  ${nit_source} )
+    add_dependencies(${nit_binary} bparser)
+    target_link_libraries(${nit_binary} bparser)
+    #set_property(TARGET ${nit_binary} PROPERTY COMPILE_DEFINITIONS "DEF_FILE=$<PATH:NORMAL_PATH,\"${def_file}\">;GEN_FILE=$<PATH:NORMAL_PATH,\"${gen_file}\">")
+    set_property(TARGET ${nit_binary} PROPERTY COMPILE_DEFINITIONS "DEF_FILE=\"${def_file}\";GEN_FILE=\"${gen_file}\"")
 
-add_custom_target(${nit_name}
-COMMAND "$<TARGET_FILE:${nit_binary}>"
-DEPENDS ${nit_binary}
-WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/cases")
+    add_custom_target(${nit_name}
+    COMMAND "$<TARGET_FILE:${nit_binary}>"
+    DEPENDS ${nit_binary}
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/cases")
 endmacro()
 
 macro(define_nit_run make_name def_file gen_file)
-set(src_name "nitpick_run")
-set(nit_source "${CMAKE_CURRENT_SOURCE_DIR}/nitpick/${src_name}.cc")
-set(nit_name "${src_name}_${make_name}")
-set(nit_binary "${nit_name}_bin")
+    set(src_name "nitpick_run")
+    set(nit_source "${CMAKE_CURRENT_SOURCE_DIR}/nitpick/${src_name}.cc")
+    set(nit_name "${src_name}_${make_name}")
+    set(nit_binary "${nit_name}_bin")
 
-add_executable(${nit_binary} EXCLUDE_FROM_ALL  ${nit_source} )
-add_dependencies(${nit_binary} bparser)
-target_link_libraries(${nit_binary} bparser)
-#set_target_properties(${nit_binary} PROPERTIES COMPILE_DEFINITIONS "DEF_FILE=$<PATH:NORMAL_PATH,${def_file}>;GEN_FILE=$<PATH:NORMAL_PATH,${gen_file}>")
-set_property(TARGET ${nit_binary} PROPERTY COMPILE_DEFINITIONS "DEF_FILE=\"${def_file}\";GEN_FILE=\"${gen_file}\"")
+    add_executable(${nit_binary} EXCLUDE_FROM_ALL  ${nit_source} )
+    add_dependencies(${nit_binary} bparser)
+    target_link_libraries(${nit_binary} bparser)
+    #set_target_properties(${nit_binary} PROPERTIES COMPILE_DEFINITIONS "DEF_FILE=$<PATH:NORMAL_PATH,${def_file}>;GEN_FILE=$<PATH:NORMAL_PATH,${gen_file}>")
+    set_property(TARGET ${nit_binary} PROPERTY COMPILE_DEFINITIONS "DEF_FILE=\"${def_file}\";GEN_FILE=\"${gen_file}\"")
 
-add_custom_target(${nit_name}
-COMMAND "$<TARGET_FILE:${nit_binary}>"
-DEPENDS ${nit_binary}
-WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/cases")
+    add_custom_target(${nit_name}
+    COMMAND "$<TARGET_FILE:${nit_binary}>"
+    DEPENDS ${nit_binary}
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/cases")
 endmacro()
 
 macro(define_nit make_name def_file gen_file)
-define_nit_gen(${make_name} ${def_file} ${gen_file})
+    define_nit_gen(${make_name} ${def_file} ${gen_file})
 
-define_nit_run(${make_name} ${def_file} ${gen_file})
+    define_nit_run(${make_name} ${def_file} ${gen_file})
 endmacro()
 
-define_nit(basic_expr basic_expr_def.cc basic_expr_gen.cc)
-define_nit(norm2 norm2_def.cc norm2_gen.cc)
+define_nit(basic_expr basic_expr_def.hh basic_expr_gen.hh)
+define_nit(norm2 norm2_def.hh norm2_gen.hh)
 
 
 #set(src_name "nitpick_generate")
