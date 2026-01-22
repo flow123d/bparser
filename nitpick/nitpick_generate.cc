@@ -21,6 +21,10 @@ int main() {
 	//def is in NITPICK_DEF_FILE
 	def(exprcase);
 
+	if (exprcase.get_expression().empty()) {
+		Throw() << "No expression was set!";
+	}
+
 	exprcase.allocate(1);
 	Parser& p = exprcase.get_parser();
 
@@ -35,5 +39,7 @@ int main() {
 	file << DagPrinter(dag).print_in_cxx(exprcase.get_inv_map());
 	file.close();
 	std::cout << "File " << std::filesystem::current_path() << " " << NITPICK_GEN_FILE << " created from " << NITPICK_DEF_FILE;
+
 	::operator delete(buffer);
-}
+
+} //main

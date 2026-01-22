@@ -12,24 +12,25 @@ using namespace bparser;
 int main() {
 
 	const uint max_vec_size = 2000;
-	const size_t buffer_size = sizeof(double) * max_vec_size + 50000;
+	const size_t buffer_size = sizeof(double) * max_vec_size + 500000;
 
-	const uint N = 2048U;
+	const uint N = 1073741824U; //2^30
 
 	void* buffer = ::operator new(buffer_size);
 	ExprCase exprcase(max_vec_size, (void*)buffer, buffer_size);
 
 	def(exprcase);
 
-	if (exprcase.get_query().empty()) {
+	if (exprcase.get_expression().empty()) {
 		Throw() << "No expression was set!";
 	}
 
-	std::vector<uint> subset = { 0, 1, 2, 3 }; //ctverice doubluu //TODO: autocreate from vec_size
+	std::vector<uint> subset = { 0, 1, 2, 3, 4,5,6,7,8,9,10,11,12 }; //ctverice doubluu //TODO: autocreate from vec_size
 	std::vector<uint> vec_sizes({ 16U, 64U, 256U, 1024U });
 
 	PatchArenaPtr arena = exprcase.get_patch_arena();
 	for (uint vec_size : vec_sizes) {
+
 		uint n_repeats = N / vec_size;
 		std::cout << "Running \"" << exprcase.get_query() << "\" " << n_repeats << "x for vec_size: " << vec_size << std::endl;
 		exprcase.allocate(vec_size);
@@ -38,7 +39,6 @@ int main() {
 		ExpressionDAG se = gen(exprcase.get_node_map());
 
 		ProcessorBase* processor = ProcessorBase::create_processor(se, max_vec_size, bparser::get_simd_size(), arena); //get arena from ExprCase
-		//ProcessorBase* processor = ProcessorBase::create_processor(se, max_vec_size, bparser::get_simd_size(), nullptr);
 		processor->set_subset(subset);
 
 		auto start_time = std::chrono::high_resolution_clock::now();
@@ -49,17 +49,18 @@ int main() {
 
 		double time = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time).count();
 		std::cout << "Finished in " << time << std::endl;
-		//processor.get_arena();
-		delete processor;
 
-		exprcase.deallocate();
-	}
-	//auto start_time = std::chrono::high_resolution_clock::now();
 
-	//TODO:
+		exprcase.deallocate(); //processor is allocated in arena
+	} //for
+
+
+	//TODO: have result
 	//std::cout << "Result: \n";
 
 	// Result in the 'vres' value space.
 	//std::cout << print_vec(vres, vres_size);
+
 	::operator delete(buffer);
-}
+
+} //main

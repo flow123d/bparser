@@ -53,7 +53,7 @@ namespace bparser {
 
 		PatchArenaPtr arena;
 		Parser parser;
-		std::string parseQuery;
+		std::string parseExpr;
 
 		std::unordered_map<string, VarInfo> variables;
 		std::unordered_map<string, std::vector<double>> variable_consts;
@@ -76,10 +76,10 @@ namespace bparser {
 		void set_result_shape(Shape shape) {
 			variables["_result_"] = VarInfo(Variable, shape);
 		}
-		void parse(string query) {
-			parseQuery = query;
+		void parse(string expression) {
+			parseExpr = expression;
 
-			parser.parse(query);
+			parser.parse(expression);
 		}
 
 	public: //Methods for the gen/run files
@@ -118,8 +118,8 @@ namespace bparser {
 		PatchArenaPtr get_patch_arena() const {
 			return arena;
 		}
-		string get_query() const {
-			return parseQuery;
+		string get_expression() const {
+			return parseExpr;
 		}
 
 		const std::unordered_map<double*, std::string>& get_inv_map() const{
