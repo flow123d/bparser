@@ -86,6 +86,9 @@ struct ScalarNode {
 	template <class T>
 	static ScalarNodePtr  create(ScalarNodePtr a, ScalarNodePtr b);
 
+	template <class T>
+	static ScalarNodePtr  create(ScalarNodePtr a, ScalarNodePtr b, ScalarNodePtr c);
+
 
 
 	ScalarNode()
@@ -728,6 +731,20 @@ inline void _ifelse_::eval<double>(double &res, double a, double b, double c) {
 }
 UNARY_FN(_log2_, 	52, log2);
 
+inline double mul_add(double a, double b, double c) {
+	return std::fma(a, b, c);
+}
+using ::mul_add; //+ VCL mul_add
+
+struct _muladd_ : public ScalarNode {
+	static const char op_code = 53;
+	static const char n_eval_args = 4;
+	template <typename VecType>
+	inline static void eval(VecType& res, VecType a, VecType b, VecType c) {
+		res = mul_add(a, b, c); // a * b + c
+	}
+};
+
 
 /***********************
  * Construction Nodes.
@@ -802,6 +819,26 @@ ScalarNodePtr ScalarNode::create(ScalarNodePtr a, ScalarNodePtr b) {
 		node_ptr->result_storage = none;
 	} else {
 		BP_ASSERT(T::n_eval_args == 3);
+		node_ptr->result_storage = temporary;
+	}
+
+	return node_ptr;
+}
+
+template <class T>
+ScalarNodePtr ScalarNode::create(ScalarNodePtr a, ScalarNodePtr b, ScalarNodePtr c) {
+	std::shared_ptr<T> node_ptr = std::make_shared<T>();
+	node_ptr->op_code_ = T::op_code;
+	node_ptr->set_name(typeid(T).name());
+	node_ptr->add_input(a);
+	node_ptr->add_input(b);
+	node_ptr->add_input(c);
+	if (T::n_eval_args == 3) {
+		// Note: in place operations are not supported
+		node_ptr->result_storage = none;
+	}
+	else {
+		BP_ASSERT(T::n_eval_args == 4);
 		node_ptr->result_storage = temporary;
 	}
 

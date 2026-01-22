@@ -335,6 +335,7 @@ endmacro()
 
 define_nit(basic_expr basic_expr_def.hh basic_expr_gen.hh)
 define_nit(norm2 norm2_def.hh norm2_gen.hh)
+define_nit_run(norm2_mac norm2_def.hh norm2_gen_edit.hh)
 
 
 #set(src_name "nitpick_generate")
