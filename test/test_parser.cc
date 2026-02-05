@@ -269,6 +269,8 @@ void test_expression() {
 	BP_ASSERT(test_expr("norminf([-4,-3,-2,-1,0,1,2,3,4])", { 4 }, {}));
 	BP_ASSERT(test_expr("norminf([[-4,-3,-2],[-1,0,1],[2,3,4]])", { 9 }, {}));
 
+	//BP_ASSERT(test_expr("[[1,2],[3,4]].T", {1, 3, 2, 4}, { 2,2 }));
+
 	BP_ASSERT(test_expr("abs(-1)+abs(0)+abs(1)", {2}));
 	BP_ASSERT(test_expr("floor(-3.5)", {-4}, {}));
 	BP_ASSERT(test_expr("ceil(-3.5)", {-3}, {}));

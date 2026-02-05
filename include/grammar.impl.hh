@@ -98,6 +98,7 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
 		multiplicative_expr,
 		signed_optional,
 		signed_expr,
+        post_expr,
 		power,
         array_constr,
 		array_constr_list_opt,
@@ -129,6 +130,7 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
     	reserved,
 		func,
 		unary_op,
+        unary_op_post,
 		not_op,
 		additive_op,
 		multiplicative_op,
@@ -194,6 +196,10 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
         unary_op.add
             FN("+", &unary_plus)
             FN("-", unary_array<_minus_>())
+            ;
+
+        unary_op_post.add
+            FN(".T", &Array::transpose)
             ;
 
         additive_op.add
@@ -314,6 +320,8 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
         RULE(signed_expr) = (unary_op > signed_optional)[qi::_val = ast::make_unary(qi::_1, qi::_2)];
         RULE(power) = primary[qi::_val = qi::_1] >>
         				-(power_op > signed_optional)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)];
+
+        RULE(post_expr) = (subscriptable >> unary_op_post)[qi::_val = ast::make_unary(qi::_2, qi::_1)]; //TODO: Do properly, this does not work -LV
 
         RULE(primary) = literal_number | const_lit | subscription;
         RULE(subscriptable) = array_constr | enclosure | call | identifier;

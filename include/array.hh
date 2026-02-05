@@ -1373,6 +1373,24 @@ public:
 		return Array(arr);
 	}
 
+	static Array transpose(const Array& a) {
+		switch (a.shape().size()) {
+		case 0: //scalar
+			Throw() << "Cannot transpose a scalar" << "\n";
+			break;
+		case 1: //vector
+		{
+			Throw() << "bparser vectors do not have an orientation and thus cannot be transposed" << "\n";
+		}
+		case 2: //matrix
+		{
+			return unwrap_array(wrap_array(a).transpose());
+		}
+		default:
+			Throw() << "Cannot transpose ND tensors" << "\n";
+		}
+	}
+
 	static Array flatten(const Array &tensor) {
 		uint n_elements = shape_size(tensor.shape());
 		Shape res_shape(1, n_elements);
