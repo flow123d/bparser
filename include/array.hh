@@ -1373,6 +1373,8 @@ public:
 		return Array(arr);
 	}
 
+	// [[ 1, 2 ],  -> [[ 1, 3 ],
+	//	[ 3, 4 ]]      [ 2, 4 ]]
 	static Array transpose(const Array& a) {
 		switch (a.shape().size()) {
 		case 0: //scalar
@@ -1380,7 +1382,7 @@ public:
 			break;
 		case 1: //vector
 		{
-			Throw() << "bparser vectors do not have an orientation and thus cannot be transposed" << "\n";
+			Throw() << "Cannot transpose vector. BParser vectors do not have an orientation" << "\n";
 		}
 		case 2: //matrix
 		{
@@ -1390,6 +1392,57 @@ public:
 			Throw() << "Cannot transpose ND tensors" << "\n";
 		}
 	}
+
+	static Array sym(const Array& a) {
+		switch (a.shape().size()) {
+		case 0: //scalar
+			Throw() << "Cannot sym a scalar" << "\n";
+			break;
+		case 1: //vector
+		{
+			Throw() << "Cannot sym a vector" << "\n";
+		}
+		case 2: //matrix
+		{
+			if (a.shape()[0] != a.shape()[1]) {
+				Throw() << "Cannot sym non-square matrix" << "\n";
+			}
+
+			WrappedArray m_a(wrap_array(a));
+			using namespace details;
+			ScalarWrapper two(ScalarNode::create_const(2));
+			return unwrap_array( (m_a + m_a.transpose())/two );
+		}
+		default:
+			Throw() << "Cannot sym ND tensors" << "\n";
+		}
+	}
+	
+	static Array dev(const Array& a) {
+		switch (a.shape().size()) {
+		case 0: //scalar
+			Throw() << "Cannot dev a scalar" << "\n";
+			break;
+		case 1: //vector
+		{
+			Throw() << "Cannot dev a vector" << "\n";
+		}
+		case 2: //matrix
+		{
+			if (a.shape()[0] != a.shape()[1]) {
+				Throw() << "Cannot dev non-square matrix" << "\n";
+			}
+			WrappedArray m_a(wrap_array(a));
+			using namespace details;
+			ScalarWrapper D((int)m_a.rows());
+			WrappedArray I(WrappedArray::Identity(m_a.rows(), m_a.cols()));
+			return unwrap_array( m_a - ( (m_a.trace()/D ) * I ) );
+		}
+		default:
+			Throw() << "Cannot dev ND tensors" << "\n";
+		}
+	}
+
 
 	static Array flatten(const Array &tensor) {
 		uint n_elements = shape_size(tensor.shape());

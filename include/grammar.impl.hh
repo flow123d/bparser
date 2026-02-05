@@ -191,6 +191,8 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
             FN("norminf", &Array::norminf)
             FN("sum"    , &Array::sum)
             FN("cross"  , &Array::cross)
+            FN("sym"    , &Array::sym)
+            FN("dev"    , &Array::dev)
             ;
 
         unary_op.add
