@@ -323,9 +323,9 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
         RULE(power) = primary[qi::_val = qi::_1] >>
         				-(power_op > signed_optional)[qi::_val = ast::make_binary(qi::_1, qi::_val, qi::_2)];
 
-        RULE(post_expr) = (subscriptable >> unary_op_post)[qi::_val = ast::make_unary(qi::_2, qi::_1)]; //TODO: Do properly, this does not work -LV
+        RULE(post_expr) = (subscription)[qi::_val = qi::_1] >> -(unary_op_post)[qi::_val = ast::make_unary(qi::_1, qi::_val)]; //This works, but the AST looks weird, ast::make_unary_post recommended -LV
 
-        RULE(primary) = literal_number | const_lit | subscription;
+        RULE(primary) = literal_number | const_lit | post_expr;
         RULE(subscriptable) = array_constr | enclosure | call | identifier;
 
         RULE(call) = (qi::no_skip[func > '('] > param_list_opt > ')')

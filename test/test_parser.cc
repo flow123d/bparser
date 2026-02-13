@@ -269,8 +269,9 @@ void test_expression() {
 	BP_ASSERT(test_expr("norminf([-4,-3,-2,-1,0,1,2,3,4])", { 4 }, {}));
 	BP_ASSERT(test_expr("norminf([[-4,-3,-2],[-1,0,1],[2,3,4]])", { 9 }, {}));
 
-	//BP_ASSERT(test_expr("[[1,2],[3,4]].T", {1, 3, 2, 4}, { 2,2 })); //Fix .T before uncommenting
-	//BP_ASSERT(test_expr("a = sym([[1,2],[3,4]]); a.T == a", { 1,1,1,1 }, { 2,2 }));
+	BP_ASSERT(test_expr("[[1,2],[3,4]].T", {1, 3, 2, 4}, { 2,2 }));
+	BP_ASSERT(test_expr("([[1,2],[3,4]].T).T", { 1,2,3,4 }, { 2,2 }));
+	BP_ASSERT(test_expr("a = sym([[1,2],[3,4]]); a.T == a", { 1,1,1,1 }, { 2,2 }));
 	BP_ASSERT(test_expr("dev([[1,2],[3,4]])", { 1-2.5, 2, 3, 4-2.5 }, {2,2}));
 	BP_ASSERT(test_expr("tr(dev([[1,2],[3,4]]))", { 0 }, {}));
 
