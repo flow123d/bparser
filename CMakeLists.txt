@@ -199,7 +199,7 @@ message(STATUS "=======================================================\n\n")
 
 message(STATUS "VCL2_INCLUDE_DIR = ${CMAKE_CURRENT_SOURCE_DIR}/third_party/VCL_v2")
 
-set(BPARSER_INCLUDES   ${CMAKE_CURRENT_SOURCE_DIR}/include     ${CMAKE_CURRENT_SOURCE_DIR}/cases     ${Boost_INCLUDE_DIR}     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/VCL_v2      ${EIGEN3_INCLUDE_DIR})
+set(BPARSER_INCLUDES   ${CMAKE_CURRENT_SOURCE_DIR}/include     ${CMAKE_CURRENT_SOURCE_DIR}/test/cases     ${Boost_INCLUDE_DIR}     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/VCL_v2      ${EIGEN3_INCLUDE_DIR})
 if(NOT PROJECT_IS_TOP_LEVEL)
     set(BPARSER_INCLUDES ${BPARSER_INCLUDES} PARENT_SCOPE)
 endif()
