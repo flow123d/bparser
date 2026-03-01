@@ -148,7 +148,7 @@ public:
 
     /**
      * Set given name to be a variable of given shape with values at
-     * given address 'variable_space'.
+     * given address 'variable_space', which will be copied to internal arena before every run.
      *
      * Unused variables and constants are ignored.
      *
@@ -205,7 +205,7 @@ public:
     }
 
     /// @brief Set new subset of the 'max_vec_size' vectors.
-    /// Only this subset is evuluated by the processor.
+    /// Only this subset is evaluated by the processor.
     void set_subset(std::vector<uint> const &subset) {
     	BP_ASSERT(processor != nullptr);
     	processor->set_subset(subset);
