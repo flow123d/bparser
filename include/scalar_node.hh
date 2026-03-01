@@ -731,19 +731,21 @@ inline void _ifelse_::eval<double>(double &res, double a, double b, double c) {
 }
 UNARY_FN(_log2_, 	52, log2);
 
-inline double mul_add(double a, double b, double c) {
-	return std::fma(a, b, c);
-}
-using ::mul_add; //+ VCL mul_add
 
 struct _muladd_ : public ScalarNode {
 	static const char op_code = 53;
 	static const char n_eval_args = 4;
 	template <typename VecType>
-	inline static void eval(VecType& res, VecType a, VecType b, VecType c) {
-		res = mul_add(a, b, c); // a * b + c
-	}
+	inline static void eval(VecType& res, VecType a, VecType b, VecType c);
 };
+template<typename VecType>
+inline void _muladd_::eval(VecType& res, VecType a, VecType b, VecType c) {
+	res = mul_add(a, b, c); // a * b + c
+}
+template<>
+inline void _muladd_::eval<double>(double& res, double a, double b, double c) {
+	res = std::fma(a, b, c); // a * b + c
+}
 
 
 /***********************
