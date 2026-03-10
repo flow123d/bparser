@@ -54,6 +54,8 @@ namespace bparser {
 		PatchArenaPtr arena;
 		Parser parser;
 		std::string parseExpr;
+		double* result_ptr = nullptr;
+		size_t result_ptr_size = 0;
 
 		std::unordered_map<string, VarInfo> variables;
 		std::unordered_map<string, std::vector<double>> variable_consts;
@@ -93,13 +95,28 @@ namespace bparser {
 				VarType t = varInfo.first;
 				Shape shape = varInfo.second;
 				double n_values = numel(shape);
-				double* ptr = arena->allocate_simd<double>(n_values * vec_size);
+				size_t ptr_size = n_values * vec_size;
+				double* ptr = arena->allocate_simd<double>(ptr_size);
+
+				if (varName == "_result_"){
+					for (size_t i = 0; i < ptr_size; i++) {
+						ptr[i] = NAN;
+					}
+
+					result_ptr = ptr;
+					result_ptr_size = ptr_size;
+				}
+				else {
+					for (size_t i = 0; i < ptr_size; i++) {
+						ptr[i] = std::rand();
+					}
+				}
 
 				if (t == Const) {
 					map_const(varName, variable_consts[varName], shape);
 				}
 				else {
-					map_variable(varName, ptr, shape);
+					map_variable(varName, ptr, shape, vec_size);
 				}
 				
 
@@ -111,7 +128,6 @@ namespace bparser {
 				else if (t == Const) {
 					parser.set_constant(varName, shape, variable_consts[varName]);
 				}
-
 			}
 		}
 
@@ -133,11 +149,21 @@ namespace bparser {
 			return parser;
 		}
 
+		//This ptr will be set only after allocate() and only if set_result_shape() has been called
+		double* get_result_ptr() const {
+			return result_ptr;
+		}
+
+		//The size of the ptr returned by get_result_ptr()
+		size_t get_result_ptr_size() const {
+			return result_ptr_size;
+		}
+
 	protected: //Helper methods
 
 		//Put the variable names and ptrs in the maps for gen/run use
-		void map_variable(string name,double* pointer, const Shape& shape) {
-			Array array = Array::value(pointer, max_vec_size, shape);
+		void map_variable(string name,double* pointer, const Shape& shape, double vec_size) {
+			Array array = Array::value(pointer, vec_size, shape);
 
 			for (MultiIdx idx(array.range()); idx.valid(); idx.inc_src()) {
 
