@@ -268,8 +268,8 @@ struct Processor : public ProcessorBase {
 				for(uint j=0; j<simd_size; ++j) {
 					c_ptr[j] = c_val;
 				}
-				break;}
-
+				break;
+			}
 			case constant_bool:
 			{
 				double c_val = *node->get_value();
