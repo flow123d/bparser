@@ -1472,6 +1472,8 @@ public:
 				return unwrap_array(Eigen::Ref<Eigen::Matrix3<details::ScalarWrapper>>(m_a).inverse());
 			case 4:
 				return unwrap_array(Eigen::Ref<Eigen::Matrix4<details::ScalarWrapper>>(m_a).inverse());
+			default:
+				Throw() << "Cannot inverse >4x4 matrix" << "\n";
 			}
 			//return unwrap_array(m_a.inverse());
 		}
