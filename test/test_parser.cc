@@ -275,6 +275,15 @@ void test_expression() {
 	BP_ASSERT(test_expr("dev([[1,2],[3,4]])", { 1-2.5, 2, 3, 4-2.5 }, {2,2}));
 	BP_ASSERT(test_expr("tr(dev([[1,2],[3,4]]))", { 0 }, {}));
 
+	//BP_ASSERT(test_expr("det()", {}, {}));
+
+	BP_ASSERT(test_expr("inv([[1,2],[3,4]])", { -2., 1., 1.5, -0.5 }, { 2,2 }));
+	BP_ASSERT(test_expr("a=[[1]];											 inv(a)", { 1 }, { 1,1 }));
+	BP_ASSERT(test_expr("a=[[1,2],[3,4]];									 a @ inv(a)", { 1,0,0,1 }, { 2,2 }));
+	BP_ASSERT(test_expr("a=[[1,2],[3,4]];									 inv(a) @ a", { 1,0,0,1 }, { 2,2 }));
+	BP_ASSERT(test_expr("a=[[1,2,3],[4,5,6],[7,8,9]];						 inv(a) @ a", { 1,0,0, 0,1,0, 0,0,1 }, { 3,3 }));
+	BP_ASSERT(test_expr("a=[[1,2,3,4],[5,6,7,8],[9,10,11,12],[13,14,15,16]]; inv(a) @ a", { 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 }, { 4,4 }));
+
 	BP_ASSERT(test_expr("abs(-1)+abs(0)+abs(1)", {2}));
 	BP_ASSERT(test_expr("floor(-3.5)", {-4}, {}));
 	BP_ASSERT(test_expr("ceil(-3.5)", {-3}, {}));

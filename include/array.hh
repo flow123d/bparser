@@ -1443,6 +1443,43 @@ public:
 		}
 	}
 
+	/*static Array det(const Array& a) {
+
+	}*/
+
+	//Square matrix inverse
+	static Array inv(const Array& a) {
+		switch (a.shape().size()) {
+		case 0: //scalar
+			Throw() << "Cannot inverse a scalar" << "\n";
+			break;
+		case 1: //vector
+		{
+			Throw() << "Cannot inverse a vector" << "\n";
+		}
+		case 2: //matrix
+		{
+			if (a.shape()[0] != a.shape()[1]) {
+				Throw() << "Cannot inverse non-square matrix" << "\n";
+			}
+			WrappedArray m_a(wrap_array(a));
+			switch (a.shape()[0]) {
+			case 1:
+				return unwrap_array(Eigen::Ref<Eigen::Matrix<details::ScalarWrapper,1,1>>(m_a).inverse());
+			case 2:
+				return unwrap_array(Eigen::Ref<Eigen::Matrix2<details::ScalarWrapper>>(m_a).inverse());
+			case 3:
+				return unwrap_array(Eigen::Ref<Eigen::Matrix3<details::ScalarWrapper>>(m_a).inverse());
+			case 4:
+				return unwrap_array(Eigen::Ref<Eigen::Matrix4<details::ScalarWrapper>>(m_a).inverse());
+			}
+			//return unwrap_array(m_a.inverse());
+		}
+		default:
+			Throw() << "Cannot inverse ND tensors" << "\n";
+		}
+	}
+
 
 	static Array flatten(const Array &tensor) {
 		uint n_elements = shape_size(tensor.shape());
