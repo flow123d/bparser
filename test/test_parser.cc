@@ -275,7 +275,7 @@ void test_expression() {
 	BP_ASSERT(test_expr("dev([[1,2],[3,4]])", { 1-2.5, 2, 3, 4-2.5 }, {2,2}));
 	BP_ASSERT(test_expr("tr(dev([[1,2],[3,4]]))", { 0 }, {}));
 
-	//BP_ASSERT(test_expr("det()", {}, {}));
+	BP_ASSERT(test_expr("det([[1,2],[3,4]])", {-2}, {}));
 
 	BP_ASSERT(test_expr("inv([[1,2],[3,4]])", { -2., 1., 1.5, -0.5 }, { 2,2 }));
 	BP_ASSERT(test_expr("a=[[1]];											 inv(a)", { 1 }, { 1,1 }));

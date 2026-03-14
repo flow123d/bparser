@@ -193,7 +193,7 @@ struct grammar : qi::grammar<Iterator, ast::operand(), ascii::space_type> {
             FN("cross"  , &Array::cross)
             FN("sym"    , &Array::sym)
             FN("dev"    , &Array::dev)
-            //FN("det"    , &Array::det)
+            FN("det"    , &Array::det)
             FN("inv"    , &Array::inv)
             ;
 

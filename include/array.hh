@@ -1443,9 +1443,45 @@ public:
 		}
 	}
 
-	/*static Array det(const Array& a) {
+	static Array det(const Array& a) {
+		switch (a.shape().size()) {
+		case 0: //scalar
+			Throw() << "Cannot compute determinant of a scalar" << "\n";
+			break;
+		case 1: //vector
+		{
+			Throw() << "Cannot compute determinant of a vector" << "\n";
+		}
+		case 2: //matrix
+		{
+			if (a.shape()[0] != a.shape()[1]) {
+				Throw() << "Cannot compute determinant of non-square matrix" << "\n";
+			}
+			WrappedArray m_a(wrap_array(a));
+			Shape s;
+			Array r(s);
 
-	}*/
+			switch (a.shape()[0]) {
+			case 1:
+				return a; //Maybe this should return "a {}" instead "[[a]] {1,1}"
+			case 2:
+				r.elements_[0U] = *Eigen::Ref<Eigen::Matrix2<details::ScalarWrapper>>(m_a).determinant();
+				break;
+			case 3:
+				r.elements_[0U] = *Eigen::Ref<Eigen::Matrix3<details::ScalarWrapper>>(m_a).determinant();
+				break;
+			case 4:
+				r.elements_[0U] = *Eigen::Ref<Eigen::Matrix4<details::ScalarWrapper>>(m_a).determinant();
+				break;
+			default:
+				Throw() << "Cannot compute determinant of >4x4 matrix" << "\n";
+			}
+			return r;
+		}
+		default:
+			Throw() << "Cannot compute determinant of ND tensors" << "\n";
+		}
+	}
 
 	//Square matrix inverse
 	static Array inv(const Array& a) {
