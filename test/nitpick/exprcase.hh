@@ -12,6 +12,7 @@
 
 #include "arena_resource.hh"
 #include "parser.hh"
+#include "nitpick_common.hh"
 
 using namespace bparser;
 
@@ -21,11 +22,6 @@ namespace bparser {
 
 	class ExprCase {
 	public:
-		enum VarType {
-			Variable,
-			VarCopy,
-			Const
-		};
 
 		using string = std::string;
 		using Shape = bparser::Shape;
@@ -90,11 +86,11 @@ namespace bparser {
 			arena->reset();
 		}
 
-		void allocate(double vec_size) {
+		void allocate(uint vec_size) {
 			for (const auto& [varName, varInfo] : variables) {
 				VarType t = varInfo.first;
 				Shape shape = varInfo.second;
-				double n_values = numel(shape);
+				uint n_values = numel(shape);
 				size_t ptr_size = n_values * vec_size;
 				double* ptr = arena->allocate_simd<double>(ptr_size);
 
@@ -184,8 +180,8 @@ namespace bparser {
 			}
 		}
 
-		inline double numel(const Shape& s) {
-			double res = 1;
+		inline uint numel(const Shape& s) {
+			uint res = 1;
 			for (const uint& n : s) {
 				res *= n;
 			}

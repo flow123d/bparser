@@ -111,6 +111,7 @@ namespace details {
 			result << "// " << __DATE__ << " " << __TIME__ << "\n";
 			result << "\n";
 			result << "#ifndef NITPICK_IDE_IGNORE" << "\n";
+			result << "#include \"nitpick_common.hh\"" << "\n";
 			result << "#include \"nitpick_include.hh\"" << "\n";
 			result << "using namespace bparser;" << "\n";
 			result << "using namespace bparser::details;" << "\n";
@@ -340,7 +341,7 @@ namespace details {
 			{
 			case ResultStorage::constant: {
 				if (map.count(node->values_) == 1) { //this will not work, each Array::const has its own pointers
-					result << "ScalarNode::create_const(node_map.at(\"" << map.at(node->values_) << "\"));\n";
+					result << "create_variable_node(node_map.at(\"" << map.at(node->values_) << "\"),Const);\n";
 				}
 				else {
 					result << "ScalarNode::create_const(" << *node->values_ << ");\n";
@@ -349,7 +350,7 @@ namespace details {
 			}
 			case ResultStorage::constant_bool: {
 				if (map.count(node->values_) == 1) {
-					result << "ScalarNode::create_const_bool(node_map.at(\"" << map.at(node->values_) << "\"));\n";
+					result << "create_variable_node(node_map.at(\"" << map.at(node->values_) << "\"),ConstBool);\n";
 				}
 				else {
 					result << "ScalarNode::create_const_bool(" << *node->values_ << ");\n";
@@ -357,11 +358,11 @@ namespace details {
 				break;
 			}
 			case ResultStorage::value: {
-				result << "ScalarNode::create_value(node_map.at(\"" << map.at(node->values_) << "\"));\n";
+				result << "create_variable_node(node_map.at(\"" << map.at(node->values_) << "\"),Variable);\n";
 				break;
 			}
 			case ResultStorage::value_copy: {
-				result << "ScalarNode::create_val_copy(node_map.at(\"" << map.at(node->values_) << "\"));\n";
+				result << "create_variable_node(node_map.at(\"" << map.at(node->values_) << "\"),VarCopy);\n";
 				break;
 			}
 			case ResultStorage::expr_result:

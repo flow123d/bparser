@@ -9,8 +9,8 @@ using namespace bparser;
 
 int main() {
 
-	const uint max_vec_size = 20000;
-	const size_t buffer_size = sizeof(double) * max_vec_size;
+	const uint max_vec_size = 1;
+	const size_t buffer_size = sizeof(double) * 2000;
 
 	void* buffer = ::operator new(buffer_size);
 	
