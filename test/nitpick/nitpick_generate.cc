@@ -33,7 +33,7 @@ int main() {
 	//p.compile(exprcase.get_patch_arena()); //Add arena from ExprCase
 
 	ExpressionDAG dag(p.result_array().elements());
-	//dag.print_in_dot2();
+	DagPrinter(dag).print_in_dot2(p.get_raw_symbols());
 
 	std::ofstream file(NITPICK_GEN_FILE);
 	file << DagPrinter(dag).print_in_cxx(exprcase.get_inv_map());

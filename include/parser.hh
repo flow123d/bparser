@@ -135,6 +135,10 @@ public:
     	return keys;
     }
 
+    const std::map<std::string, Array> get_raw_symbols() const {
+        return symbols_;
+    }
+
     /**
      * Set given name to be a variable of given shape with values at
      * given address 'variable_space'.
