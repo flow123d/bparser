@@ -27,7 +27,7 @@ int main() {
 
 		EfficientTestCaseForceVariable(vec_size, buffer, buffer_size).run();
 		ShiftingTestCaseForceVariable(vec_size, buffer, buffer_size).run();
-		//ShiftingTestCaseForceCopy(vec_size, buffer, buffer_size).run();
+		ShiftingTestCaseForceCopy(vec_size, buffer, buffer_size).run();
 		
 	} //for
 

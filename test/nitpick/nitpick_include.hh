@@ -39,26 +39,35 @@ VariableAllocationEnum globalVariableAllocationMethod = KeepDefault;
 
 ScalarNodePtr create_variable_node(double* ptr, VarType preffered_type) {
 	using namespace bparser::details;
-	switch (globalVariableAllocationMethod) {
-	case KeepDefault: {
-		switch (preffered_type) {
-		case Variable:
-			return ScalarNode::create_value(ptr);
-		case VarCopy:
-			return ScalarNode::create_val_copy(ptr);
-		case Const:
-			return ScalarNode::create_const(*ptr);
-		case ConstBool:
-			return ScalarNode::create_const_bool(*ptr);
+
+	switch (preffered_type) {
+	case Variable:
+	case VarCopy:
+		switch (globalVariableAllocationMethod) {
+		case KeepDefault: {
+			switch (preffered_type) {
+			case Variable:
+				return ScalarNode::create_value(ptr);
+			case VarCopy:
+				return ScalarNode::create_val_copy(ptr);
+			default:
+				Throw() << "preffered_type is Variable/VarCopy but isn't. Wrong switch case configuration";
+			}
 		}
-	}
-	case ForceVariable:
-		return ScalarNode::create_value(ptr);
-	case ForceVarCopy:
-		return ScalarNode::create_val_copy(ptr);
-	case ForceConst:
+		case ForceVariable:
+			return ScalarNode::create_value(ptr);
+		case ForceVarCopy:
+			return ScalarNode::create_val_copy(ptr);
+		case ForceConst:
+			return ScalarNode::create_const(*ptr);
+		}
+	case Const:
 		return ScalarNode::create_const(*ptr);
+	case ConstBool:
+		return ScalarNode::create_const_bool(*ptr);
 	}
+
+	
 }
 
 
