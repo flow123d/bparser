@@ -129,8 +129,10 @@ class EfficientTestCaseForceVariable : public EfficientTestCase {
 class ShiftingTestCase : public TestCase {
 	std::string getTestCaseIdentifier() const override { return "ShiftingTestCase"; }
 
+	using ValueCopyNodePtr = std::shared_ptr<bparser::details::ValueCopyNode>;
+
 	std::vector<ScalarNodePtr> value_nodes{};
-	std::vector<ScalarNodePtr> val_copy_nodes{};
+	std::vector<ValueCopyNodePtr> val_copy_nodes{};
 
 public:
 	ShiftingTestCase(uint vec_size, uint allocation_vec_size, void* buffer, size_t buffer_size) : TestCase(vec_size, allocation_vec_size, buffer, buffer_size) {
@@ -152,7 +154,7 @@ protected:
 				value_nodes.push_back(n);
 			}
 			else if (n->result_storage == value_copy) {
-				val_copy_nodes.push_back(n);
+				val_copy_nodes.push_back(std::dynamic_pointer_cast<details::ValueCopyNode>(n));
 			}
 		}
 	}
@@ -175,8 +177,7 @@ protected:
 			n->values_ += a;
 		}
 		for (auto n : val_copy_nodes) {
-			details::ValueCopyNode& vcn = dynamic_cast<details::ValueCopyNode&>(*n);
-			vcn.source_ptr_ += a;
+			n->source_ptr_ += a;
 		}
 	}
 };
