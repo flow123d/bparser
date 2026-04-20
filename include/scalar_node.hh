@@ -747,6 +747,21 @@ inline void _muladd_::eval<double>(double& res, double a, double b, double c) {
 	res = std::fma(a, b, c); // a * b + c
 }
 
+struct _mulsub_ : public ScalarNode {
+	static const char op_code = 54;
+	static const char n_eval_args = 4;
+	template <typename VecType>
+	inline static void eval(VecType& res, VecType a, VecType b, VecType c);
+};
+template<typename VecType>
+inline void _mulsub_::eval(VecType& res, VecType a, VecType b, VecType c) {
+	res = mul_sub(a, b, c); // a * b - c
+}
+template<>
+inline void _mulsub_::eval<double>(double& res, double a, double b, double c) {
+	res = a * b - c; // a * b - c
+}
+
 
 /***********************
  * Construction Nodes.
