@@ -82,7 +82,8 @@ namespace details {
 
 			std::cout << "/* definitions */" << "\n";
 
-			std::cout << "edge [dir=back]" << "\n";
+			std::cout << "edge [dir=back]" << "\n"; //arrows up
+			std::cout << "ordering=\"out\"" << "\n"; //arrows ordered
 			for (uint i = 0; i < sorted.size(); ++i) {
 				_print_dot_node_definition(sorted[i], names);
 			}
