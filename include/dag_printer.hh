@@ -29,9 +29,9 @@ namespace details {
 	public:
 
 		DagPrinter(ExpressionDAG& dag)
-			:sorted(dag.sort_nodes()) 
+			:DagPrinter(dag.sort_nodes()) 
 		{
-			name_nodes();
+			;
 		}
 
 		DagPrinter(const ExpressionDAG::NodeVec& vec)
