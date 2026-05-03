@@ -81,6 +81,7 @@ charactes and must not start with a digit.
 Supported operators (sorted from the highest precedence):
 
 - `**` : power
+- `.T`: matrix transpose
 - `+` (unary), `-` (unary)
 - `*`, `/`, `//`, `%`, `@` 
   
@@ -117,7 +118,14 @@ Operands can be: numbers, variables, function calls, and array subscriptions.
    - `sqrt`, `power`
    - `eye`, `zeros`, `ones`, `full` : array construction
    - `flatten`
-   - `minimum`, `maximum`
+   - `minimum`, `maximum` (comparison)
+   - `min`, `max` (array elements)
+   - `diag`, `tr`
+   - `norm1`, `norm2` (only vector), `normfro` (only matrix), `norminf`
+   - `sum`, `cross`
+   - `sym` (`sym(A)=(A+A.T)/2`)
+   - `dev` (`dev(A) = A - trace(A)/D * I`, D = dimension)
+   - `det`, `inv` (matrices of shape <4x4)
    
 ### Arrays
 Arrays of arbitrery dimension are supported, i.e. vectors, matrices, tensors.
@@ -142,6 +150,8 @@ Subscription, slices:
 
 
 ## Syntax grammar
+*Not fully up to date.*
+
 program:
     (assignment)+ expression 
 
