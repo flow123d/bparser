@@ -74,7 +74,7 @@ namespace details {
 		template<typename T>
 		static TransposeNodePtr create(TransposeNodePtr input0) {
 			ScalarNodePtr node = ScalarNode::create<T>(
-				input0->node,
+				input0->node
 				);
 			return std::make_shared<TransposeNode>(node,input0);
 		}
@@ -83,7 +83,7 @@ namespace details {
 		static TransposeNodePtr create(TransposeNodePtr input0, TransposeNodePtr input1) {
 			ScalarNodePtr node = ScalarNode::create<T>(
 				input0->node,
-				input1->node,
+				input1->node
 			);
 			return std::make_shared<TransposeNode>(node,input0, input1);
 		}
