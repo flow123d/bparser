@@ -15,11 +15,13 @@ namespace details {
 
 	struct TransposeNode {
 		typedef std::shared_ptr<TransposeNode> TransposeNodePtr;
+		typedef std::weak_ptr<TransposeNode> TransposeNodeWPtr;
 		ScalarNodePtr node; //node->inputs_
 		
 		uint n_inputs;
 		std::array<TransposeNodePtr, 3> inputs{};
-		std::vector<TransposeNodePtr> outputs{};
+		std::vector<TransposeNodeWPtr> outputs{};
+		//weak_ptr should only be null with improper graph handling, since there is a shared_ptr pointing the other way
 
 		TransposeNode(ScalarNodePtr node_ptr) 
 		:
@@ -101,6 +103,11 @@ namespace details {
 
 	}; //TransposeNode
 
+
+
+
+
+
 	class TransposeDAG {
 		using TransposeNodePtr = TransposeNode::TransposeNodePtr;
 		typedef std::vector<TransposeNodePtr > NodeVec;
@@ -116,8 +123,8 @@ namespace details {
 		}
 
 		TransposeDAG(const ExpressionDAG::NodeVec& nodes)
-			//: nodes(nodes.size()) 
 		{
+			this->nodes.reserve(nodes.size());
 			std::unordered_map<ScalarNodePtr, TransposeNodePtr> ptr_map{};
 
 			for (const ScalarNodePtr& node : nodes) {
@@ -147,6 +154,7 @@ namespace details {
 			return nodes;
 		}
 
+		//Result nodes
 		const std::vector<ScalarNodePtr> get_results() const {
 			return results;
 		}

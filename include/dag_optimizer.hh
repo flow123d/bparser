@@ -14,6 +14,7 @@ namespace bparser {
 namespace details {
 
 	using TransposeNodePtr = TransposeNode::TransposeNodePtr;
+	using TransposeNodeWPtr = TransposeNode::TransposeNodeWPtr;
 
 	struct DAGOptimization {
 		virtual bool can_optimize(TransposeNodePtr) = 0;
@@ -27,12 +28,25 @@ namespace details {
 		}
 
 		template<typename T>
+		bool is_op(const TransposeNodeWPtr& tnode) const {
+			TransposeNodePtr ptr = tnode.lock();
+			if (!ptr) return false;
+			return is_op<T>(ptr->node);
+		}
+
+		template<typename T>
 		bool is_op(const ScalarNodePtr& node) const{
 			return node->op_code_ == T::op_code;
 		}
 
 		bool is_result(const TransposeNodePtr& tnode) const {
 			return is_result(tnode->node);
+		}
+
+		bool is_result(const TransposeNodeWPtr& tnode) const {
+			TransposeNodePtr ptr = tnode.lock();
+			if (!ptr) return false;
+			return is_result(ptr->node);
 		}
 
 		bool is_result(const ScalarNodePtr& node) const {
@@ -47,7 +61,9 @@ namespace details {
 		//
 
 		void replace_outputs_input(TransposeNodePtr current, ScalarNodePtr new_node) {
-			for (TransposeNodePtr output : current->outputs) {
+			for (TransposeNodeWPtr woutput : current->outputs) {
+				TransposeNodePtr output = woutput.lock();
+				if (!output) continue;
 				for (size_t i = 0; i < output->n_inputs_(); i++) {
 					if (output->inputs_()[i] == current->node) {
 						output->node->inputs_[i] = new_node;
@@ -69,7 +85,7 @@ namespace details {
 			for (uint i = 0; i < current->n_inputs; i++) {
 				TransposeNodePtr& input = current->inputs[i];
 				for (size_t j = 0; j < input->n_outputs(); j++) {
-					if (input->outputs[j] == current) {
+					if (input->outputs[j].lock() == current) {
 						input->outputs[j] = new_node;
 					}
 				}
@@ -135,7 +151,7 @@ namespace details {
 		}
 
 		void apply(TransposeNodePtr mul) override {
-			TransposeNodePtr add = mul->outputs[0];
+			TransposeNodePtr add = mul->outputs[0].lock();
 
 			TransposeNodePtr muladd = TransposeNode::create<_muladd_>(
 				mul->inputs[0],
@@ -159,12 +175,12 @@ namespace details {
 				is_op<_mul_>(tnode) &&
 				is_op<_sub_>(tnode->outputs[0]) &&
 				!is_result(tnode->outputs[0]) &&
-				tnode->outputs[0]->inputs_()[0] == tnode->node // a*b - c not c - a*b
+				tnode->outputs[0].lock()->inputs_()[0] == tnode->node // a*b - c not c - a*b
 				;
 		}
 
 		void apply(TransposeNodePtr mul) override {
-			TransposeNodePtr sub = mul->outputs[0];
+			TransposeNodePtr sub = mul->outputs[0].lock();
 
 			TransposeNodePtr mulsub = TransposeNode::create<_mulsub_>(
 				mul->inputs[0],
@@ -188,12 +204,12 @@ namespace details {
 				is_op<_mul_>(tnode) &&
 				is_op<_sub_>(tnode->outputs[0]) &&
 				!is_result(tnode->outputs[0]) &&
-				tnode->outputs[0]->inputs_()[1] == tnode->node //  c - a*b not a*b - c
+				tnode->outputs[0].lock()->inputs_()[1] == tnode->node //  c - a*b not a*b - c
 				;
 		}
 
 		void apply(TransposeNodePtr mul) override {
-			TransposeNodePtr sub = mul->outputs[0];
+			TransposeNodePtr sub = mul->outputs[0].lock();
 
 			TransposeNodePtr mulsub = TransposeNode::create<_nmuladd_>(
 				mul->inputs[0],
@@ -221,7 +237,7 @@ namespace details {
 		}
 
 		void apply(TransposeNodePtr add) override {
-			TransposeNodePtr mul = add->outputs[0];
+			TransposeNodePtr mul = add->outputs[0].lock();
 
 			TransposeNodePtr addmul = TransposeNode::create<_addmul_>(
 				add->inputs[0],
@@ -249,7 +265,7 @@ namespace details {
 		}
 
 		void apply(TransposeNodePtr sub) override {
-			TransposeNodePtr mul = sub->outputs[0];
+			TransposeNodePtr mul = sub->outputs[0].lock();
 
 			TransposeNodePtr mulsub = TransposeNode::create<_submul_>(
 				sub->inputs[0],
@@ -277,7 +293,7 @@ namespace details {
 		}
 
 		void apply(TransposeNodePtr mul0) override {
-			TransposeNodePtr mul1 = mul0->outputs[0];
+			TransposeNodePtr mul1 = mul0->outputs[0].lock();
 
 			TransposeNodePtr addmul = TransposeNode::create<_mulmul_>(
 				mul0->inputs[0],
