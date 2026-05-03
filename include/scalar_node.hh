@@ -762,6 +762,51 @@ inline void _mulsub_::eval<double>(double& res, double a, double b, double c) {
 	res = a * b - c; // a * b - c
 }
 
+struct _nmuladd_ : public ScalarNode {
+	static const char op_code = 55;
+	static const char n_eval_args = 4;
+	template <typename VecType>
+	inline static void eval(VecType& res, VecType a, VecType b, VecType c);
+};
+template<typename VecType>
+inline void _nmuladd_::eval(VecType& res, VecType a, VecType b, VecType c) {
+	res = nmul_add(a, b, c); // c - a * b
+}
+template<>
+inline void _nmuladd_::eval<double>(double& res, double a, double b, double c) {
+	res = c - (a * b); // c - a * b
+}
+
+struct _addmul_ : public ScalarNode {
+	static const char op_code = 56;
+	static const char n_eval_args = 4;
+	template <typename VecType>
+	inline static void eval(VecType& res, VecType a, VecType b, VecType c) {
+
+		res = (a + b) * c;
+	}
+};
+
+struct _submul_ : public ScalarNode {
+	static const char op_code = 57;
+	static const char n_eval_args = 4;
+	template <typename VecType>
+	inline static void eval(VecType& res, VecType a, VecType b, VecType c) {
+
+		res = (a - b) * c;
+	}
+};
+
+struct _mulmul_ : public ScalarNode {
+	static const char op_code = 58;
+	static const char n_eval_args = 4;
+	template <typename VecType>
+	inline static void eval(VecType& res, VecType a, VecType b, VecType c) {
+
+		res = (a * b) * c;
+	}
+};
+
 
 /***********************
  * Construction Nodes.

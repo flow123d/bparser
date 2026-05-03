@@ -431,8 +431,12 @@ struct Processor : public ProcessorBase {
 			CODE(_copy_);
 			CODE(_ifelse_);
 			CODE(_log2_);
-			CODE(_muladd_);
-			CODE(_mulsub_);
+			CODE(_muladd_); // a * b + c
+			CODE(_mulsub_); // a * b - c
+			CODE(_nmuladd_);// c - a * b
+			CODE(_addmul_); //(a + b) * c
+			CODE(_submul_); //(a - b) * c
+			CODE(_mulmul_); // a * b * c
 //			CODE(__);
 //			CODE(__);
 //			CODE(__);

@@ -56,7 +56,11 @@ protected:
 
     DAGOptimizer opt{ {
             std::make_shared<details::MulAddOpt>(),
-            std::make_shared<details::MulSubOpt>()
+            std::make_shared<details::MulSubOpt>(),
+            std::make_shared<details::NMulAddOpt>(),
+            std::make_shared<details::AddMulOpt>(),
+            std::make_shared<details::SubMulOpt>(),
+            std::make_shared<details::MulMulOpt>()
         } };
 
 public:

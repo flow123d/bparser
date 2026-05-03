@@ -31,6 +31,14 @@ namespace details {
 			return node->op_code_ == T::op_code;
 		}
 
+		bool is_result(const TransposeNodePtr& tnode) const {
+			return is_result(tnode->node);
+		}
+
+		bool is_result(const ScalarNodePtr& node) const {
+			return node->result_storage == ResultStorage::expr_result;
+		}
+
 
 		//  current <  - - - a		 current          a
 		//			  \			  	               /
@@ -121,7 +129,8 @@ namespace details {
 			return	
 				tnode->n_outputs() == 1 &&
 				is_op<_mul_>(tnode) &&
-				is_op<_add_>(tnode->outputs[0])
+				is_op<_add_>(tnode->outputs[0]) &&
+				!is_result(tnode->outputs[0])
 				;
 		}
 
@@ -149,6 +158,7 @@ namespace details {
 				tnode->n_outputs() == 1 &&
 				is_op<_mul_>(tnode) &&
 				is_op<_sub_>(tnode->outputs[0]) &&
+				!is_result(tnode->outputs[0]) &&
 				tnode->outputs[0]->inputs_()[0] == tnode->node // a*b - c not c - a*b
 				;
 		}
@@ -167,6 +177,119 @@ namespace details {
 			replace_inputs_output(sub, mulsub);
 
 			replace_outputs_input(sub, mulsub);
+		}
+	};
+
+	//c - (a * b)
+	struct NMulAddOpt : public DAGOptimization {
+		bool can_optimize(TransposeNodePtr tnode) override {
+			return
+				tnode->n_outputs() == 1 &&
+				is_op<_mul_>(tnode) &&
+				is_op<_sub_>(tnode->outputs[0]) &&
+				!is_result(tnode->outputs[0]) &&
+				tnode->outputs[0]->inputs_()[1] == tnode->node //  c - a*b not a*b - c
+				;
+		}
+
+		void apply(TransposeNodePtr mul) override {
+			TransposeNodePtr sub = mul->outputs[0];
+
+			TransposeNodePtr mulsub = TransposeNode::create<_nmuladd_>(
+				mul->inputs[0],
+				mul->inputs[1],
+				sub->inputs[0]
+			);	
+			mulsub->outputs = sub->outputs;
+
+			replace_inputs_output(mul, mulsub);
+			replace_inputs_output(sub, mulsub);
+
+			replace_outputs_input(sub, mulsub);
+		}
+	};
+
+	//(a + b) * c
+	struct AddMulOpt : public DAGOptimization {
+		bool can_optimize(TransposeNodePtr tnode) override {
+			return
+				tnode->n_outputs() == 1 &&
+				is_op<_add_>(tnode) &&
+				is_op<_mul_>(tnode->outputs[0]) &&
+				!is_result(tnode->outputs[0])
+				;
+		}
+
+		void apply(TransposeNodePtr add) override {
+			TransposeNodePtr mul = add->outputs[0];
+
+			TransposeNodePtr addmul = TransposeNode::create<_addmul_>(
+				add->inputs[0],
+				add->inputs[1],
+				mul->inputs_()[0] == add->node ? mul->inputs[1] : mul->inputs[0]
+			);
+			addmul->outputs = mul->outputs;
+
+			replace_inputs_output(add, addmul);
+			replace_inputs_output(mul, addmul);
+
+			replace_outputs_input(mul, addmul);
+		}
+	};
+
+	//(a - b) * c
+	struct SubMulOpt : public DAGOptimization {
+		bool can_optimize(TransposeNodePtr tnode) override {
+			return
+				tnode->n_outputs() == 1 &&
+				is_op<_sub_>(tnode) &&
+				is_op<_mul_>(tnode->outputs[0]) &&
+				!is_result(tnode->outputs[0])
+				;
+		}
+
+		void apply(TransposeNodePtr sub) override {
+			TransposeNodePtr mul = sub->outputs[0];
+
+			TransposeNodePtr mulsub = TransposeNode::create<_submul_>(
+				sub->inputs[0],
+				sub->inputs[1],
+				mul->inputs_()[0] == sub->node ? mul->inputs[1] : mul->inputs[0]
+			);
+			mulsub->outputs = mul->outputs;
+
+			replace_inputs_output(sub, mulsub);
+			replace_inputs_output(mul, mulsub);
+
+			replace_outputs_input(mul, mulsub);
+		}
+	};
+
+	//(a * b) * c
+	struct MulMulOpt : public DAGOptimization {
+		bool can_optimize(TransposeNodePtr tnode) override {
+			return
+				tnode->n_outputs() == 1 &&
+				is_op<_mul_>(tnode) &&
+				is_op<_mul_>(tnode->outputs[0]) &&
+				!is_result(tnode->outputs[0])
+				;
+		}
+
+		void apply(TransposeNodePtr mul0) override {
+			TransposeNodePtr mul1 = mul0->outputs[0];
+
+			TransposeNodePtr addmul = TransposeNode::create<_mulmul_>(
+				mul0->inputs[0],
+				mul0->inputs[1],
+				mul1->inputs_()[0] == mul0->node ? mul1->inputs[1] : mul1->inputs[0]
+			);
+			addmul->outputs = mul1->outputs;
+
+			replace_inputs_output(mul0, addmul);
+			replace_inputs_output(mul1, addmul);
+
+			replace_outputs_input(mul1, addmul);
 		}
 	};
 
