@@ -20,6 +20,7 @@
 #include "grammar.hh"
 #include "create_processor.hh"
 #include "dag_printer.hh"
+#include "dag_optimizer.hh"
 
 namespace bparser {
 
@@ -53,7 +54,15 @@ protected:
 	ProcessorBase * processor;
 	std::vector<double> tmp_result;
 
+    DAGOptimizer opt{ {
+            std::make_shared<details::MulAddOpt>(),
+            std::make_shared<details::MulSubOpt>()
+        } };
+
 public:
+    //DAG optimizations in compile()
+    bool should_optimize = false;
+
     /** @brief Constructor
      * max_vec_size - size of single array component in doubles
      */
@@ -193,6 +202,10 @@ public:
 		}
 
 		details::ExpressionDAG se(result_array_.elements());
+
+        if (should_optimize) {
+            se = opt.optimize(se);
+        }
 
 		//se.print_in_dot();
         //DagPrinter(se).print_in_dot2();

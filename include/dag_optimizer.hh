@@ -109,6 +109,12 @@ namespace details {
 
 	};
 
+
+
+
+	//OPTIMIZATIONS ----------------------------------------------------------------
+
+
 	//(a * b) + c
 	struct MulAddOpt : public DAGOptimization {
 		bool can_optimize(TransposeNodePtr tnode) override {
