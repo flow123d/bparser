@@ -321,6 +321,7 @@ define_nit(basic_expr)
 define_nit(norm2)
 define_nit(inv)
 define_nit(cross)
+define_nit(inv4)
 
 
 #set(src_name "nitpick_generate")
