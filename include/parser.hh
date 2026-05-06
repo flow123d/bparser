@@ -19,6 +19,8 @@
 #include "processor.hh"
 #include "grammar.hh"
 #include "create_processor.hh"
+#include "dag_printer.hh"
+#include "dag_optimizer.hh"
 
 namespace bparser {
 
@@ -52,7 +54,19 @@ protected:
 	ProcessorBase * processor;
 	std::vector<double> tmp_result;
 
+    DAGOptimizer opt{ {
+            std::make_shared<details::MulAddOpt>(),
+            std::make_shared<details::MulSubOpt>(),
+            std::make_shared<details::NMulAddOpt>(),
+            std::make_shared<details::AddMulOpt>(),
+            std::make_shared<details::SubMulOpt>(),
+            std::make_shared<details::MulMulOpt>()
+        } };
+
 public:
+    //DAG optimizations in compile()
+    bool should_optimize = false;
+
     /** @brief Constructor
      * max_vec_size - size of single array component in doubles
      */
@@ -134,6 +148,10 @@ public:
     	return keys;
     }
 
+    const std::map<std::string, Array> get_raw_symbols() const {
+        return symbols_;
+    }
+
     /**
      * Set given name to be a variable of given shape with values at
      * given address 'variable_space'.
@@ -147,7 +165,7 @@ public:
 
     /**
      * Set given name to be a variable of given shape with values at
-     * given address 'variable_space'.
+     * given address 'variable_space', which will be copied to internal arena before every run.
      *
      * Unused variables and constants are ignored.
      *
@@ -189,7 +207,13 @@ public:
 
 		details::ExpressionDAG se(result_array_.elements());
 
+        if (should_optimize) {
+            se = opt.optimize(se);
+        }
+
 		//se.print_in_dot();
+        //DagPrinter(se).print_in_dot2();
+        //DagPrinter(se).print_in_dot2(symbols_);
 		processor = ProcessorBase::create_processor(se, max_vec_size, simd_size, arena);
     }
 
@@ -202,7 +226,7 @@ public:
     }
 
     /// @brief Set new subset of the 'max_vec_size' vectors.
-    /// Only this subset is evuluated by the processor.
+    /// Only this subset is evaluated by the processor.
     void set_subset(std::vector<uint> const &subset) {
     	BP_ASSERT(processor != nullptr);
     	processor->set_subset(subset);

@@ -859,12 +859,12 @@ public:
 		return result;
 	}
 
-
+	typedef Eigen::MatrixX<details::ScalarWrapper> WrappedArray;
 
 	//Wraps the ScalarNodes of an Array into an Eigen Matrix of ScalarWrappers.
 	//Vectors will be column vectors. Eigen does not support vectors without orientation.
 	//Cannot wrap scalars. To wrap scalars, use the bparser::details::ScalarWrapper constructor
-	static Eigen::MatrixX<details::ScalarWrapper> wrap_array(const bparser::Array& a) {
+	static WrappedArray wrap_array(const bparser::Array& a) {
 		MultiIdx idx(a.range());
 		return wrap_array(a, idx);
 	}
@@ -872,7 +872,7 @@ public:
 	//Wraps the ScalarNodes of an Array accessed via MultiIdx.idx_trg() created from supplied MultiIdxRange into an Eigen Matrix of ScalarWrapper
 	//Vectors will be column vectors. Eigen does not support vectors without orientation.
 	//Cannot wrap scalars. To wrap scalars, use the bparser::details::ScalarWrapper constructor
-	static Eigen::MatrixX<details::ScalarWrapper> wrap_array(const bparser::Array& a, MultiIdxRange& range) {
+	static WrappedArray wrap_array(const bparser::Array& a, MultiIdxRange& range) {
 		MultiIdx idx (range);
 		return wrap_array(a, idx);
 	}
@@ -880,7 +880,7 @@ public:
 	//Wraps the ScalarNodes of an Array accessed via MultiIdx.idx_trg() into an Eigen Matrix of ScalarWrapper
 	//Vectors will be column vectors. Eigen does not support vectors without orientation.
 	//Cannot wrap scalars. To wrap scalars, use the bparser::details::ScalarWrapper constructor
-	static Eigen::MatrixX<details::ScalarWrapper> wrap_array(const bparser::Array& a, MultiIdx& index) {
+	static WrappedArray wrap_array(const bparser::Array& a, MultiIdx& index) {
 
 		using namespace details;
 		Shape trg_shape = index.range_.target_shape();
@@ -1127,15 +1127,15 @@ public:
 		//std::cout << print_shape(result_shape) << std::endl;
 
 		Array result(result_shape);
-		bool should_transpose = a.shape().size() == 1;
+		//bool should_transpose = a.shape().size() == 1;
 
 		for (MultiIdx	
 			result_idx(result.range()),
 			a_idx(a_range),
 			b_idx(b_range);	result_idx.valid(); ) {
 
-			Eigen::MatrixX<details::ScalarWrapper> m_a = wrap_array(a, a_idx);
-			Eigen::MatrixX<details::ScalarWrapper> m_b = wrap_array(b, b_idx);
+			WrappedArray m_a = wrap_array(a, a_idx);
+			WrappedArray m_b = wrap_array(b, b_idx);
 
 			Array matmult = unwrap_array(m_a * m_b);
 
@@ -1215,6 +1215,309 @@ public:
 		return r;
 		//return full_({}, *wrap_array(a).trace());
 	}
+
+	static Array norm1(const Array& a) {
+		switch (a.shape().size()) {
+			case 0: //scalar
+				Throw() << "Norms are not for scalar values" << "\n";
+				break;
+			case 1: //vector
+			{
+
+				Shape s; //empty Shape for scalar
+				Array r(s);
+				r.elements_[0U] = *wrap_array(a).lpNorm<1>();
+				return r;
+			}
+			case 2: //matrix
+			{
+				Shape s; //empty Shape for scalar
+				Array r(s);
+				r.elements_[0U] = *wrap_array(a).colwise().lpNorm<1>().maxCoeff();
+				return r;
+			}
+			default:
+				Throw() << "Norms are not avaiable for ND tensors" << "\n";
+			}
+	}
+
+	static Array norm2(const Array& a) {
+		switch (a.shape().size()) {
+		case 0: //scalar
+			Throw() << "Norms are not for scalar values" << "\n";
+			break;
+		case 1: //vector
+		{
+			//Euclidean norm
+			Shape s; //empty Shape for scalar
+			Array r(s);
+			r.elements_[0U] = *wrap_array(a).norm();
+			return r;
+		}
+		case 2: //matrix
+		{
+			//Spectral norm
+			Throw() << "norm2(matrix) is not yet possible" << "\n";
+			/*Shape s; //empty Shape for scalar
+			Array r(s);
+
+			Eigen::MatrixX<details::ScalarWrapper> m( wrap_array(a) );
+
+			r.elements_[0U] = *details::sqrt((m.adjoint()*m).eigenvalues().real().maxCoeff());
+			//computing eigenvalues would require static cast to double and comparison operators (<,<=,>,>=,!=,==)
+			//something which we cannot support
+			return r;*/
+			break;
+		}
+		default:
+			Throw() << "Norms are not avaiable for ND tensors" << "\n";
+		}
+	}
+
+	static Array normfro(const Array& a) {
+		if (a.shape().size() != 2) {
+			Throw() << "Frobenius norm is only defined for matrices" << "\n";
+		}
+
+		Shape s;
+		Array r(s);
+		r.elements_[0U] = *wrap_array(a).norm();
+		return r;
+	}
+
+	static Array norminf(const Array& a) {
+		switch (a.shape().size()) {
+			case 0: //scalar
+				Throw() << "Norms are not for scalar values" << "\n";
+				break;
+			case 1: //vector
+			{
+				Shape s; //empty Shape for scalar
+				Array r(s);
+				r.elements_[0U] = *wrap_array(a).lpNorm<Eigen::Infinity>();
+				return r;
+			}
+			case 2: //matrix
+			{
+				Shape s; //empty Shape for scalar
+				Array r(s);
+				r.elements_[0U] = *wrap_array(a).rowwise().lpNorm<1>().maxCoeff();
+				return r;
+			}
+			default:
+				Throw() << "Norms are not avaiable for ND tensors" << "\n";
+		}
+	}
+
+	static Array max(const Array& a) {
+		Shape s;
+		Array r(s);
+		r.elements_[0U] = *wrap_array(flatten(a)).maxCoeff();
+		return r;
+	}
+
+	static Array min(const Array& a) {
+		Shape s;
+		Array r(s);
+		r.elements_[0U] = *wrap_array(flatten(a)).minCoeff();
+		return r;
+	}
+
+	static Array sum(const Array& a) {
+		Shape s;
+		Array r(s);
+		r.elements_[0U] = *wrap_array(flatten(a)).sum();
+		return r;
+	}
+
+	static Array cross(const Array& a, const Array& b) {
+		Shape a_shape(a.shape());
+		Shape b_shape(b.shape());
+		if (a_shape.size() != 1 && a_shape.size() != 2) 
+			Throw() << "Array a of cross product has wrong dimensions";
+		if (b_shape.size() != 1 && b_shape.size() != 2) 
+			Throw() << "Array b of cross product has wrong dimensions";
+		if (a_shape.back() != 2 && a_shape.back() != 3)
+			Throw() << "Array a of cross product doesn't have the right amount of elements";
+		if (b_shape.back() != 2 && b_shape.back() != 3)
+			Throw() << "Array b of cross product doesn't have the right amount of elements";
+
+		//for (MultiIdx) //TODO: Support multiple vector cross-products
+		//{
+			WrappedArray m_a = wrap_array(a);
+			WrappedArray m_b = wrap_array(b);
+
+			if (m_a.cols() == 1) m_a.transposeInPlace(); //col -> row
+			if (m_b.cols() == 1) m_b.transposeInPlace(); //col -> row
+
+			if (m_a.cols() == 2 && m_b.cols() == 3) {
+				m_a.conservativeResize(Eigen::NoChange, 3);
+				m_a(0, 2) = details::ScalarWrapper(details::ScalarNode::create_zero());
+			}
+			else if (m_b.cols() == 2 && m_a.cols() == 3) {
+				m_b.conservativeResize(Eigen::NoChange, 3);
+				m_b(0, 2) = details::ScalarWrapper(details::ScalarNode::create_zero());
+			}
+
+			WrappedArray cross;
+			if (m_a.cols() == 2 && m_b.cols() == 2) {
+				//cross = Eigen::Ref<const Eigen::RowVector2<details::ScalarWrapper>>(m_a).cross(Eigen::Ref<const Eigen::RowVector2<details::ScalarWrapper>>(m_b)); // Only in Eigen 5.0.0+
+				cross = WrappedArray(1, 1);
+				cross(0, 0) = (m_a(0, 0) * m_b(0, 1) - m_b(0, 0) * m_a(0, 1));
+			}
+			else {
+				cross = Eigen::Ref<const Eigen::RowVector3<details::ScalarWrapper>>(m_a).cross(Eigen::Ref<const Eigen::RowVector3<details::ScalarWrapper>>(m_b));
+			}
+			Array arr = unwrap_array(cross, true);
+		//}
+		return Array(arr);
+	}
+
+	// [[ 1, 2 ],  -> [[ 1, 3 ],
+	//	[ 3, 4 ]]      [ 2, 4 ]]
+	static Array transpose(const Array& a) {
+		switch (a.shape().size()) {
+		case 0: //scalar
+			Throw() << "Cannot transpose a scalar" << "\n";
+			break;
+		case 1: //vector
+		{
+			Throw() << "Cannot transpose vector. BParser vectors do not have an orientation" << "\n";
+		}
+		case 2: //matrix
+		{
+			return unwrap_array(wrap_array(a).transpose());
+		}
+		default:
+			Throw() << "Cannot transpose ND tensors" << "\n";
+		}
+	}
+
+	static Array sym(const Array& a) {
+		switch (a.shape().size()) {
+		case 0: //scalar
+			Throw() << "Cannot sym a scalar" << "\n";
+			break;
+		case 1: //vector
+		{
+			Throw() << "Cannot sym a vector" << "\n";
+		}
+		case 2: //matrix
+		{
+			if (a.shape()[0] != a.shape()[1]) {
+				Throw() << "Cannot sym non-square matrix" << "\n";
+			}
+
+			WrappedArray m_a(wrap_array(a));
+			using namespace details;
+			ScalarWrapper two(ScalarNode::create_const(2));
+			return unwrap_array( (m_a + m_a.transpose())/two );
+		}
+		default:
+			Throw() << "Cannot sym ND tensors" << "\n";
+		}
+	}
+	
+	static Array dev(const Array& a) {
+		switch (a.shape().size()) {
+		case 0: //scalar
+			Throw() << "Cannot dev a scalar" << "\n";
+			break;
+		case 1: //vector
+		{
+			Throw() << "Cannot dev a vector" << "\n";
+		}
+		case 2: //matrix
+		{
+			if (a.shape()[0] != a.shape()[1]) {
+				Throw() << "Cannot dev non-square matrix" << "\n";
+			}
+			WrappedArray m_a(wrap_array(a));
+			using namespace details;
+			ScalarWrapper D((int)m_a.rows());
+			WrappedArray I(WrappedArray::Identity(m_a.rows(), m_a.cols()));
+			return unwrap_array( m_a - ( (m_a.trace()/D ) * I ) );
+		}
+		default:
+			Throw() << "Cannot dev ND tensors" << "\n";
+		}
+	}
+
+	static Array det(const Array& a) {
+		switch (a.shape().size()) {
+		case 0: //scalar
+			Throw() << "Cannot compute determinant of a scalar" << "\n";
+			break;
+		case 1: //vector
+		{
+			Throw() << "Cannot compute determinant of a vector" << "\n";
+		}
+		case 2: //matrix
+		{
+			if (a.shape()[0] != a.shape()[1]) {
+				Throw() << "Cannot compute determinant of non-square matrix" << "\n";
+			}
+			WrappedArray m_a(wrap_array(a));
+			Shape s;
+			Array r(s);
+
+			switch (a.shape()[0]) {
+			case 1:
+				return a; //Maybe this should return "a {}" instead "[[a]] {1,1}"
+			case 2:
+				r.elements_[0U] = *Eigen::Ref<Eigen::Matrix2<details::ScalarWrapper>>(m_a).determinant();
+				break;
+			case 3:
+				r.elements_[0U] = *Eigen::Ref<Eigen::Matrix3<details::ScalarWrapper>>(m_a).determinant();
+				break;
+			case 4:
+				r.elements_[0U] = *Eigen::Ref<Eigen::Matrix4<details::ScalarWrapper>>(m_a).determinant();
+				break;
+			default:
+				Throw() << "Cannot compute determinant of >4x4 matrix" << "\n";
+			}
+			return r;
+		}
+		default:
+			Throw() << "Cannot compute determinant of ND tensors" << "\n";
+		}
+	}
+
+	//Square matrix inverse
+	static Array inv(const Array& a) {
+		switch (a.shape().size()) {
+		case 0: //scalar
+			Throw() << "Cannot inverse a scalar" << "\n";
+			break;
+		case 1: //vector
+		{
+			Throw() << "Cannot inverse a vector" << "\n";
+		}
+		case 2: //matrix
+		{
+			if (a.shape()[0] != a.shape()[1]) {
+				Throw() << "Cannot inverse non-square matrix" << "\n";
+			}
+			WrappedArray m_a(wrap_array(a));
+			switch (a.shape()[0]) {
+			case 1:
+				return unwrap_array(Eigen::Ref<Eigen::Matrix<details::ScalarWrapper,1,1>>(m_a).inverse());
+			case 2:
+				return unwrap_array(Eigen::Ref<Eigen::Matrix2<details::ScalarWrapper>>(m_a).inverse());
+			case 3:
+				return unwrap_array(Eigen::Ref<Eigen::Matrix3<details::ScalarWrapper>>(m_a).inverse());
+			case 4:
+				return unwrap_array(Eigen::Ref<Eigen::Matrix4<details::ScalarWrapper>>(m_a).inverse());
+			default:
+				Throw() << "Cannot inverse >4x4 matrix" << "\n";
+			}
+			//return unwrap_array(m_a.inverse());
+		}
+		default:
+			Throw() << "Cannot inverse ND tensors" << "\n";
+		}
+	}
+
 
 	static Array flatten(const Array &tensor) {
 		uint n_elements = shape_size(tensor.shape());

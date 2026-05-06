@@ -15,6 +15,7 @@
 #include "config.hh"
 #include "scalar_node.hh"
 #include "assert.hh"
+#include "array.hh"
 
 
 namespace bparser {
@@ -102,6 +103,7 @@ public:
 
 	/**
 	 * Print ScalarExpression graph in the dot format.
+	 * Useful for debugging
 	 */
 	void print_in_dot() {
 		std::map<ScalarNodePtr , uint> i_node;
@@ -131,8 +133,8 @@ public:
 		std::cout << "Node: " << node->op_name_ <<  "_" << node->result_idx_ << " " << node->result_storage << std::endl;
 	}
 
-
 private:
+
 	void _print_i_node(uint i) {
 		std::cout << sorted[i]->op_name_ << "_" << i << "_"<< sorted[i]->result_idx_;
 	}

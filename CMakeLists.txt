@@ -199,7 +199,7 @@ message(STATUS "=======================================================\n\n")
 
 message(STATUS "VCL2_INCLUDE_DIR = ${CMAKE_CURRENT_SOURCE_DIR}/third_party/VCL_v2")
 
-set(BPARSER_INCLUDES   ${CMAKE_CURRENT_SOURCE_DIR}/include     ${Boost_INCLUDE_DIR}     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/VCL_v2      ${EIGEN3_INCLUDE_DIR})
+set(BPARSER_INCLUDES   ${CMAKE_CURRENT_SOURCE_DIR}/include     ${CMAKE_CURRENT_SOURCE_DIR}/test/cases     ${Boost_INCLUDE_DIR}     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/VCL_v2      ${EIGEN3_INCLUDE_DIR})
 if(NOT PROJECT_IS_TOP_LEVEL)
     set(BPARSER_INCLUDES ${BPARSER_INCLUDES} PARENT_SCOPE)
 endif()
@@ -290,3 +290,64 @@ define_test(test_grammar bparser)
 define_test(test_processor bparser) #is it broken? -LV
 define_test(test_speed bparser)  
 define_test(test_simd)
+
+macro(define_nit_target make_name def_file gen_file src_name)
+    set(nit_source "${CMAKE_CURRENT_SOURCE_DIR}/test/nitpick/${src_name}.cc")
+    set(nit_name "${src_name}_${make_name}")
+    set(nit_binary "${nit_name}_bin")
+
+    add_executable(${nit_binary} EXCLUDE_FROM_ALL  ${nit_source} )
+    add_dependencies(${nit_binary} bparser)
+    target_link_libraries(${nit_binary} bparser)
+    set_property(TARGET ${nit_binary} PROPERTY COMPILE_DEFINITIONS "DEF_FILE=\"${def_file}\";GEN_FILE=\"${gen_file}\"")
+
+    add_custom_target(${nit_name}
+    COMMAND "$<TARGET_FILE:${nit_binary}>"
+    DEPENDS ${nit_binary}
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/test/cases")
+endmacro()
+
+macro(define_nit make_name)
+    set(nit_def_file "${make_name}_def.hh")
+    set(nit_gen_file "${make_name}_gen")
+
+    define_nit_target(${make_name}          ${nit_def_file} "${nit_gen_file}.hh"         "nitpick_generate") #generate the _gen.hh file
+
+    define_nit_target(${make_name}          ${nit_def_file} "${nit_gen_file}_ref.hh"         "nitpick_run") #run the _gen_ref.hh file
+    define_nit_target("${make_name}_edit"   ${nit_def_file} "${nit_gen_file}_edit.hh"    "nitpick_run") #run the _gen_edit.hh file
+endmacro()
+
+define_nit(basic_expr)
+define_nit(norm2)
+define_nit(inv)
+define_nit(cross)
+define_nit(inv4)
+
+
+#set(src_name "nitpick_generate")
+#set(nit_source "${CMAKE_CURRENT_SOURCE_DIR}/nitpick/${src_name}.cc")
+#set(nit_binary "${src_name}_bin")
+#set(nit_name "${src_name}")
+
+#add_executable(${nit_binary} EXCLUDE_FROM_ALL  ${nit_source} )
+#add_dependencies(${nit_binary} bparser)
+#target_link_libraries(${nit_binary} bparser)
+
+#add_custom_target(${nit_name}
+#COMMAND "$<TARGET_FILE:${nit_binary}>"
+#DEPENDS ${nit_binary}
+#WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/nitpick")
+
+#set(src_name "nitpick_run")
+#set(nit_source "${CMAKE_CURRENT_SOURCE_DIR}/nitpick/${src_name}.cc")
+#set(nit_binary "${src_name}_bin")
+#set(nit_name "${src_name}")
+
+#add_executable(${nit_binary} EXCLUDE_FROM_ALL  ${nit_source} )
+#add_dependencies(${nit_binary} bparser)
+#target_link_libraries(${nit_binary} bparser)
+
+#add_custom_target(${nit_name}
+#COMMAND "$<TARGET_FILE:${nit_binary}>"
+#DEPENDS ${nit_binary}
+#WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/nitpick")

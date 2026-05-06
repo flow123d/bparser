@@ -261,6 +261,29 @@ void test_expression() {
 
 	BP_ASSERT(test_expr("tr([[1,9,9],[9,1,9],[9,9,1]])", { 3 }, {}));
 
+	BP_ASSERT(test_expr("norm1([-4,-3,-2,-1,0,1,2,3,4])", {20}, {}));
+	BP_ASSERT(test_expr("norm1([[-4,-3,-2],[-1,0,1],[2,3,4]])", { 7 }, {}));
+	BP_ASSERT(test_expr("norm2([-4,-3,-2,-1,0,1,2,3,4])", { 7.745966692414834 }, {}));
+	//BP_ASSERT(test_expr("norm2([[-4,-3,-2],[-1,0,1],[2,3,4]])", { 7.3484692283495345 }, {})); //Spectral norm uses eigenvalues/singular values. Eigen uses comparison operators in the algorithm. Bparser does not like that
+	BP_ASSERT(test_expr("normfro([[-4,-3,-2],[-1,0,1],[2,3,4]])", { 7.745966692414834 }, {}));
+	BP_ASSERT(test_expr("norminf([-4,-3,-2,-1,0,1,2,3,4])", { 4 }, {}));
+	BP_ASSERT(test_expr("norminf([[-4,-3,-2],[-1,0,1],[2,3,4]])", { 9 }, {}));
+
+	BP_ASSERT(test_expr("[[1,2],[3,4]].T", {1, 3, 2, 4}, { 2,2 }));
+	BP_ASSERT(test_expr("([[1,2],[3,4]].T).T", { 1,2,3,4 }, { 2,2 }));
+	BP_ASSERT(test_expr("a = sym([[1,2],[3,4]]); a.T == a", { 1,1,1,1 }, { 2,2 }));
+	BP_ASSERT(test_expr("dev([[1,2],[3,4]])", { 1-2.5, 2, 3, 4-2.5 }, {2,2}));
+	BP_ASSERT(test_expr("tr(dev([[1,2],[3,4]]))", { 0 }, {}));
+
+	BP_ASSERT(test_expr("det([[1,2],[3,4]])", {-2}, {}));
+
+	BP_ASSERT(test_expr("inv([[1,2],[3,4]])", { -2., 1., 1.5, -0.5 }, { 2,2 }));
+	BP_ASSERT(test_expr("a=[[1]];											 inv(a)", { 1 }, { 1,1 }));
+	BP_ASSERT(test_expr("a=[[1,2],[3,4]];									 a @ inv(a)", { 1,0,0,1 }, { 2,2 }));
+	BP_ASSERT(test_expr("a=[[1,2],[3,4]];									 inv(a) @ a", { 1,0,0,1 }, { 2,2 }));
+	BP_ASSERT(test_expr("a=[[1,2,3],[4,5,6],[7,8,9]];						 inv(a) @ a", { 1,0,0, 0,1,0, 0,0,1 }, { 3,3 }));
+	BP_ASSERT(test_expr("a=[[1,2,3,4],[5,6,7,8],[9,10,11,12],[13,14,15,16]]; inv(a) @ a", { 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 }, { 4,4 }));
+
 	BP_ASSERT(test_expr("abs(-1)+abs(0)+abs(1)", {2}));
 	BP_ASSERT(test_expr("floor(-3.5)", {-4}, {}));
 	BP_ASSERT(test_expr("ceil(-3.5)", {-3}, {}));
@@ -296,6 +319,22 @@ void test_expression() {
 	// BP_ASSERT(test_expr("norm([2, 3])", {5}));
 	BP_ASSERT(test_expr("minimum([1,2,3], [0,4,3])", {0,2,3}));
 	BP_ASSERT(test_expr("maximum([1,2,3], [0,4,3])", {1,4,3}));
+	BP_ASSERT(test_expr("min([1,2,3])", {1}));
+	BP_ASSERT(test_expr("min([-3,-2,-1,0,1,2,3])", { -3 }));
+	BP_ASSERT(test_expr("min([[[8,7],[6,5]],[[4,3],[2,1]]])", { 1 }));
+	BP_ASSERT(test_expr("max([1,2,3])", { 3 }));
+	BP_ASSERT(test_expr("max([-3,-2,-1,0,1,2,3])", { 3 }));
+	BP_ASSERT(test_expr("max([[[8,7],[6,5]],[[4,3],[2,1]]])", { 8 }));
+	BP_ASSERT(test_expr("sum([1,2,3])", { 6 }));
+	BP_ASSERT(test_expr("sum([-3,-2,-1,0,1,2,3])", { 0 }));
+	BP_ASSERT(test_expr("sum([[[8,7],[6,5]],[[4,3],[2,1]]])", { 1+2+3+4+5+6+7+8 }));
+
+	BP_ASSERT(test_expr("cross([1,2,3],[4,5,6])", {-3, 6, -3}, {3}));
+	BP_ASSERT(test_expr("cross([1,2],[4,5,6])", { 12, -6, -3 }, { 3 }));
+	BP_ASSERT(test_expr("cross([1,2,0],[4,5,6])", { 12, -6, -3 }, { 3 }));
+	BP_ASSERT(test_expr("cross([1,2],[4,5])", { -3 }, {}));
+	//BP_ASSERT(test_expr("cross([[1,2,3],[4,5,6]," +
+	//						  "[[4,5,6],[1,2,3]] )"));
 
 	/**
 	 * All bool tests have defined:

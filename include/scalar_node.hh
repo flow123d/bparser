@@ -86,6 +86,9 @@ struct ScalarNode {
 	template <class T>
 	static ScalarNodePtr  create(ScalarNodePtr a, ScalarNodePtr b);
 
+	template <class T>
+	static ScalarNodePtr  create(ScalarNodePtr a, ScalarNodePtr b, ScalarNodePtr c);
+
 
 
 	ScalarNode()
@@ -729,6 +732,82 @@ inline void _ifelse_::eval<double>(double &res, double a, double b, double c) {
 UNARY_FN(_log2_, 	52, log2);
 
 
+struct _muladd_ : public ScalarNode {
+	static const char op_code = 53;
+	static const char n_eval_args = 4;
+	template <typename VecType>
+	inline static void eval(VecType& res, VecType a, VecType b, VecType c);
+};
+template<typename VecType>
+inline void _muladd_::eval(VecType& res, VecType a, VecType b, VecType c) {
+	res = mul_add(a, b, c); // a * b + c
+}
+template<>
+inline void _muladd_::eval<double>(double& res, double a, double b, double c) {
+	res = std::fma(a, b, c); // a * b + c
+}
+
+struct _mulsub_ : public ScalarNode {
+	static const char op_code = 54;
+	static const char n_eval_args = 4;
+	template <typename VecType>
+	inline static void eval(VecType& res, VecType a, VecType b, VecType c);
+};
+template<typename VecType>
+inline void _mulsub_::eval(VecType& res, VecType a, VecType b, VecType c) {
+	res = mul_sub(a, b, c); // a * b - c
+}
+template<>
+inline void _mulsub_::eval<double>(double& res, double a, double b, double c) {
+	res = a * b - c; // a * b - c
+}
+
+struct _nmuladd_ : public ScalarNode {
+	static const char op_code = 55;
+	static const char n_eval_args = 4;
+	template <typename VecType>
+	inline static void eval(VecType& res, VecType a, VecType b, VecType c);
+};
+template<typename VecType>
+inline void _nmuladd_::eval(VecType& res, VecType a, VecType b, VecType c) {
+	res = nmul_add(a, b, c); // c - a * b
+}
+template<>
+inline void _nmuladd_::eval<double>(double& res, double a, double b, double c) {
+	res = c - (a * b); // c - a * b
+}
+
+struct _addmul_ : public ScalarNode {
+	static const char op_code = 56;
+	static const char n_eval_args = 4;
+	template <typename VecType>
+	inline static void eval(VecType& res, VecType a, VecType b, VecType c) {
+
+		res = (a + b) * c;
+	}
+};
+
+struct _submul_ : public ScalarNode {
+	static const char op_code = 57;
+	static const char n_eval_args = 4;
+	template <typename VecType>
+	inline static void eval(VecType& res, VecType a, VecType b, VecType c) {
+
+		res = (a - b) * c;
+	}
+};
+
+struct _mulmul_ : public ScalarNode {
+	static const char op_code = 58;
+	static const char n_eval_args = 4;
+	template <typename VecType>
+	inline static void eval(VecType& res, VecType a, VecType b, VecType c) {
+
+		res = (a * b) * c;
+	}
+};
+
+
 /***********************
  * Construction Nodes.
  */
@@ -802,6 +881,26 @@ ScalarNodePtr ScalarNode::create(ScalarNodePtr a, ScalarNodePtr b) {
 		node_ptr->result_storage = none;
 	} else {
 		BP_ASSERT(T::n_eval_args == 3);
+		node_ptr->result_storage = temporary;
+	}
+
+	return node_ptr;
+}
+
+template <class T>
+ScalarNodePtr ScalarNode::create(ScalarNodePtr a, ScalarNodePtr b, ScalarNodePtr c) {
+	std::shared_ptr<T> node_ptr = std::make_shared<T>();
+	node_ptr->op_code_ = T::op_code;
+	node_ptr->set_name(typeid(T).name());
+	node_ptr->add_input(a);
+	node_ptr->add_input(b);
+	node_ptr->add_input(c);
+	if (T::n_eval_args == 3) {
+		// Note: in place operations are not supported
+		node_ptr->result_storage = none;
+	}
+	else {
+		BP_ASSERT(T::n_eval_args == 4);
 		node_ptr->result_storage = temporary;
 	}
 
