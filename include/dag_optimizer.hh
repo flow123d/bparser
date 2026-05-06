@@ -60,19 +60,17 @@ namespace details {
 		//  new_node	  \ b	     new_node < - - - b
 		//
 
-		void replace_outputs_input(TransposeNodePtr current, ScalarNodePtr new_node) {
+		void replace_outputs_input(TransposeNodePtr current, TransposeNodePtr new_node) {
 			for (TransposeNodeWPtr woutput : current->outputs) {
 				TransposeNodePtr output = woutput.lock();
 				if (!output) continue;
 				for (size_t i = 0; i < output->n_inputs_(); i++) {
 					if (output->inputs_()[i] == current->node) {
-						output->node->inputs_[i] = new_node;
+						output->inputs[i] = new_node;
+						output->node->inputs_[i] = new_node->node;
 					}
 				}
 			}
-		}
-		void replace_outputs_input(TransposeNodePtr current, TransposeNodePtr new_node) {
-			replace_outputs_input(current, new_node->node);
 		}
 
 		//  a - - - > current         a         current
@@ -85,7 +83,7 @@ namespace details {
 			for (uint i = 0; i < current->n_inputs; i++) {
 				TransposeNodePtr& input = current->inputs[i];
 				for (size_t j = 0; j < input->n_outputs(); j++) {
-					if (input->outputs[j].lock() == current) {
+					if (input->outputs[j].lock()->node == current->node) {
 						input->outputs[j] = new_node;
 					}
 				}
